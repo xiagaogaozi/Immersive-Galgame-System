@@ -2,7 +2,7 @@
     'use strict';
 
     const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
-    const DEFAULT_REF = 'v0.2.10';
+    const DEFAULT_REF = 'v0.2.11';
     const RAW_MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/app/dist/manifest.json`;
     const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
     const CSS_ID = 'igs-auto-loader-css';
@@ -17,9 +17,8 @@
         return;
     }
 
-    const blockReason = getDuplicateLoadBlockReason();
-    if (blockReason) {
-        notifyDuplicateLoadBlocked(blockReason);
+    const existingRuntime = reconcileExistingRuntime();
+    if (existingRuntime.done) {
         return;
     }
 
@@ -61,6 +60,7 @@
 
         injectCss(cssUrl);
         injectScript(scriptUrl);
+        scheduleMagicWandEnsure();
         console.info('[IGS Loader] 使用远程版本。', config.ref, config.base);
         return config;
     }
@@ -104,22 +104,6 @@
         return `${url}${url.includes('?') ? '&' : '?'}${mark}`;
     }
 
-    function getDuplicateLoadBlockReason() {
-        if (root[INSTANCE_KEY]) return INSTANCE_KEY;
-        if (root.IGS || root.ImmersiveGalgameSystem) return 'window.IGS';
-        return TRACE_IDS.find((id) => doc.querySelector(`#${id}`)) || '';
-    }
-
-    function notifyDuplicateLoadBlocked(reason) {
-        const message = '[IGS Loader] 检测到沉浸式 Galgame 系统已加载，已阻止重复加载。';
-        console.warn(message, reason);
-        try {
-            if (typeof root.alert === 'function') root.alert('检测到沉浸式 Galgame 系统已加载，请勿重复启用自动更新脚本。');
-        } catch (error) {
-            // Ignore blocked alert calls.
-        }
-    }
-
     function injectCss(href) {
         let link = doc.querySelector(`#${CSS_ID}`);
         if (!link) {
@@ -149,5 +133,98 @@
             }
         };
         doc.head.appendChild(script);
+    }
+
+    function reconcileExistingRuntime() {
+        const api = root.IGS || root.ImmersiveGalgameSystem;
+        if (api && typeof api.ensureMagicWandEntry === 'function') {
+            const result = safeEnsureMagicWandEntry(api);
+            root[INSTANCE_KEY] = {
+                repository: REPOSITORY,
+                loadedAt: Date.now(),
+                status: 'ready',
+                reused: true,
+                magicWandEntry: result,
+            };
+            console.info('[IGS Loader] 沉浸式 Galgame 系统已加载，已重扫魔法棒入口。', result);
+            scheduleMagicWandEnsure();
+            return { done: true, reason: 'reused-existing-runtime' };
+        }
+
+        if (api) {
+            console.warn('[IGS Loader] 检测到旧版 IGS 残留，准备重新加载。');
+            try {
+                if (typeof api.destroy === 'function') api.destroy();
+            } catch (error) {
+                console.warn('[IGS Loader] 旧版 IGS 销毁失败，继续清理残留。', error);
+            }
+            clearGlobalApi(api);
+        }
+
+        const staleTrace = root[INSTANCE_KEY] || TRACE_IDS.find((id) => doc.querySelector(`#${id}`));
+        if (staleTrace) {
+            console.info('[IGS Loader] 清理旧 loader 残留后重新加载。', staleTrace);
+            clearTraceElements();
+            try {
+                delete root[INSTANCE_KEY];
+            } catch (error) {
+                root[INSTANCE_KEY] = null;
+            }
+        }
+
+        return { done: false };
+    }
+
+    function safeEnsureMagicWandEntry(api) {
+        try {
+            return api.ensureMagicWandEntry();
+        } catch (error) {
+            console.warn('[IGS Loader] 重扫魔法棒入口失败。', error);
+            return { ok: false, reason: error && error.message || String(error) };
+        }
+    }
+
+    function scheduleMagicWandEnsure() {
+        let attempts = 0;
+        const maxAttempts = 20;
+        const tick = () => {
+            attempts += 1;
+            const api = root.IGS || root.ImmersiveGalgameSystem;
+            if (api && typeof api.ensureMagicWandEntry === 'function') {
+                const result = safeEnsureMagicWandEntry(api);
+                if (result && result.ok) return;
+            }
+            if (attempts < maxAttempts) {
+                setHostTimeout(tick, 500);
+            }
+        };
+        setHostTimeout(tick, 0);
+    }
+
+    function clearGlobalApi(api) {
+        try {
+            if (root.IGS === api) delete root.IGS;
+        } catch (error) {
+            root.IGS = undefined;
+        }
+        try {
+            if (root.ImmersiveGalgameSystem === api) delete root.ImmersiveGalgameSystem;
+        } catch (error) {
+            root.ImmersiveGalgameSystem = undefined;
+        }
+    }
+
+    function clearTraceElements() {
+        for (const id of TRACE_IDS) {
+            const element = doc.querySelector(`#${id}`);
+            if (element && element.remove) element.remove();
+        }
+    }
+
+    function setHostTimeout(callback, ms) {
+        const setter = root && typeof root.setTimeout === 'function'
+            ? root.setTimeout.bind(root)
+            : setTimeout;
+        setter(callback, ms);
     }
 })();

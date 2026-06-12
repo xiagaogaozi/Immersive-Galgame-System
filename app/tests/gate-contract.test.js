@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 
 import { bootstrapIGS } from '../src/index.js';
 import { dispatchImportBundle } from '../src/registry/import-dispatcher.js';
@@ -76,10 +77,51 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.10'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.11'/);
+    assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
+    assert.match(loaderJson.content, /reconcileExistingRuntime/);
+    assert.match(loaderJson.content, /ensureMagicWandEntry/);
     assert.doesNotMatch(loaderJson.content, /yuzi-phone/i);
     assert.equal(loaderJson.button.enabled, false);
     assert.deepEqual(loaderJson.button.buttons, []);
+});
+
+test('gate:loader-json:repeated enable rescans magic wand without alerting', () => {
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const documentLike = createLoaderDocumentLike();
+    const alerts = [];
+    let ensureCalls = 0;
+    const root = {
+        document: documentLike,
+        alert: (message) => alerts.push(message),
+        console,
+        setTimeout: (callback) => {
+            callback();
+            return 1;
+        },
+        IGS: {
+            ensureMagicWandEntry() {
+                ensureCalls += 1;
+                return { ok: true, entries: 1 };
+            },
+        },
+    };
+    root.parent = root;
+
+    const context = vm.createContext({
+        window: root,
+        document: documentLike,
+        console,
+        setTimeout: root.setTimeout,
+    });
+
+    vm.runInContext(loaderJson.content, context);
+
+    assert.equal(alerts.length, 0);
+    assert.ok(ensureCalls >= 1);
+    assert.equal(documentLike.head.children.length, 0);
+    assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.status, 'ready');
+    assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.reused, true);
 });
 
 test('gate:visual-novel-compat:legacy-storage', () => {
@@ -147,7 +189,7 @@ test('gate:visual-novel-compat:api-shape', () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.2.10');
+    const source = getOriginalReaderSource('0.2.11');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));
@@ -211,6 +253,36 @@ test('gate:api:public-api-exposes-text-preset-groups', () => {
 
 function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
+}
+
+function createLoaderDocumentLike() {
+    const head = {
+        children: [],
+        appendChild(element) {
+            this.children.push(element);
+            return element;
+        },
+    };
+    return {
+        head,
+        querySelector() {
+            return null;
+        },
+        createElement(tagName) {
+            return {
+                tagName: String(tagName).toUpperCase(),
+                set id(value) {
+                    this._id = value;
+                },
+                get id() {
+                    return this._id;
+                },
+                remove() {
+                    this.removed = true;
+                },
+            };
+        },
+    };
 }
 
 function selectorToken(selector) {

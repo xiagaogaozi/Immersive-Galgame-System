@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前已进入 `v0.2.10`：删除 loader 的酒馆助手按钮入口，导入形态恢复为原版 Visual Novel 同款单魔法棒入口。
+- 当前已进入 `v0.2.11`：loader 重复启用时改为重扫魔法棒入口或清理旧实例重载，不再弹“已加载，请勿重复启用”。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -127,6 +127,12 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.2.11 - 2026-06-12
+
+- 修复重复启用自动更新脚本时只弹出“已加载”而不注册魔法棒入口的问题：loader 现在检测到新版 IGS 已存在时会调用 `ensureMagicWandEntry()` 重扫入口。
+- 如果页面残留旧版 `window.IGS`、旧 script/link 或旧 `__IGS_AUTO_UPDATE_LOADER__`，loader 会清理残留并重新加载当前版本，避免旧实例阻断新入口注册。
+- loader 加载 bundle 后会短时重试 `ensureMagicWandEntry()`，对齐原版 Visual Novel 的“菜单重建后继续重扫入口”行为。
 
 ### v0.2.10 - 2026-06-12
 
