@@ -4,11 +4,12 @@ const DEFAULT_MENU_SELECTORS = Object.freeze([
     '.extensions_block .list-group',
 ]);
 
-const ENTRY_SELECTOR = '[data-igs-magic-entry="1"]';
+const ENTRY_SELECTOR = '[data-vnm-magic-entry="1"]';
+const LEGACY_ENTRY_SELECTOR = '[data-igs-magic-entry="1"]';
 
 export function createMagicWandEntry(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
-    const label = options.label || '沉浸式 Galgame';
+    const label = options.label || 'Visual Novel';
     const version = String(options.version || '');
     const menuSelectors = options.menuSelectors || DEFAULT_MENU_SELECTORS;
     const retryIntervalMs = options.retryIntervalMs === false
@@ -50,15 +51,7 @@ export function createMagicWandEntry(options = {}) {
 
         const menuElements = menus.map((item) => item.menu);
         for (const candidateDoc of getCandidateDocuments()) {
-            safeQueryAll(candidateDoc, ENTRY_SELECTOR).forEach((button) => {
-                const shouldRemove = !menuElements.includes(button.parentNode)
-                    || !isMagicEntryListItem(button)
-                    || button.getAttribute('data-igs-version') !== version;
-                if (shouldRemove) {
-                    button.removeEventListener('click', handleMagicEntryClick);
-                    button.remove();
-                }
-            });
+            cleanupMagicEntries(candidateDoc, menuElements);
         }
 
         let entries = 0;
@@ -70,7 +63,7 @@ export function createMagicWandEntry(options = {}) {
                 entries += 1;
                 continue;
             }
-            const usePrimaryId = !found.doc.getElementById('igs-magic-entry-btn');
+            const usePrimaryId = !found.doc.getElementById('vnm-magic-entry-btn');
             found.menu.appendChild(createMagicEntryButton(found.doc, usePrimaryId));
             entries += 1;
         }
@@ -98,10 +91,7 @@ export function createMagicWandEntry(options = {}) {
         }
         delegatedDocs = [];
         for (const candidateDoc of getCandidateDocuments()) {
-            safeQueryAll(candidateDoc, ENTRY_SELECTOR).forEach((button) => {
-                button.removeEventListener('click', handleMagicEntryClick);
-                button.remove();
-            });
+            cleanupMagicEntries(candidateDoc, []);
         }
         lastEnsureResult = { ok: true, reason: 'destroyed', menus: 0, entries: 0 };
         return lastEnsureResult;
@@ -133,14 +123,14 @@ export function createMagicWandEntry(options = {}) {
 
     function createMagicEntryButton(doc, usePrimaryId) {
         const button = doc.createElement('a');
-        if (usePrimaryId) button.id = 'igs-magic-entry-btn';
-        button.className = 'list-group-item igs-magic-entry';
+        if (usePrimaryId) button.id = 'vnm-magic-entry-btn';
+        button.className = 'list-group-item vnm-magic-entry';
         button.href = 'javascript:void(0)';
-        button.setAttribute('data-igs-magic-entry', '1');
-        button.setAttribute('data-igs-version', version);
+        button.setAttribute('data-vnm-magic-entry', '1');
+        button.setAttribute('data-vnm-version', version);
         button.setAttribute('title', `打开${label}`);
         button.setAttribute('aria-label', `打开${label}`);
-        button.innerHTML = `<span class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></span> ${escapeHtml(label)}`;
+        button.innerHTML = '<span class="fa-solid fa-book-open" aria-hidden="true"></span> Visual Novel';
         button.addEventListener('click', handleMagicEntryClick);
         return button;
     }
@@ -274,6 +264,23 @@ export function createMagicWandEntry(options = {}) {
             : globalThis.clearInterval;
         clearer(timer);
     }
+
+    function cleanupMagicEntries(candidateDoc, menuElements) {
+        [ENTRY_SELECTOR, LEGACY_ENTRY_SELECTOR].forEach((selector) => {
+            safeQueryAll(candidateDoc, selector).forEach((button) => {
+                const isLegacy = selector === LEGACY_ENTRY_SELECTOR;
+                const versionAttr = isLegacy ? 'data-igs-version' : 'data-vnm-version';
+                const shouldRemove = isLegacy
+                    || !menuElements.includes(button.parentNode)
+                    || !isMagicEntryListItem(button)
+                    || button.getAttribute(versionAttr) !== version;
+                if (shouldRemove) {
+                    button.removeEventListener('click', handleMagicEntryClick);
+                    button.remove();
+                }
+            });
+        });
+    }
 }
 
 function safeDocument(target) {
@@ -315,16 +322,6 @@ function resolveErrorMessage(result) {
         || result.message
         || result.diagnosis && result.diagnosis.error
         || 'unknown';
-}
-
-function escapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-    })[char]);
 }
 
 function defaultNotify(message, type = 'info') {

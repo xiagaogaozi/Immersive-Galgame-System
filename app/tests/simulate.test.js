@@ -155,6 +155,10 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
     const menu = document.createElement('div');
     menu.id = 'extensionsMenu';
     document.body.appendChild(menu);
+    const legacyEntry = document.createElement('a');
+    legacyEntry.setAttribute('data-igs-magic-entry', '1');
+    legacyEntry.setAttribute('data-igs-version', '0.2.10');
+    menu.appendChild(legacyEntry);
 
     const latestMessage = readJson('fixtures/tavern/standard-message.json');
     const sent = [];
@@ -176,11 +180,14 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
         },
     });
 
-    const entry = menu.querySelector('[data-igs-magic-entry="1"]');
+    const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.2.11');
-    assert.match(entry.innerHTML, /沉浸式 Galgame/);
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.2.12');
+    assert.match(entry.innerHTML, /fa-book-open/);
+    assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
+    assert.equal(menu.querySelectorAll('[data-vnm-magic-entry="1"]').length, 1);
+    assert.equal(menu.querySelector('[data-igs-magic-entry="1"]'), null);
 
     const clickResult = entry.click();
     await clickResult;
@@ -191,7 +198,30 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
     assert.equal(sent.length, 0);
 
     igs.destroy();
-    assert.equal(menu.querySelector('[data-igs-magic-entry="1"]'), null);
+    assert.equal(menu.querySelector('[data-vnm-magic-entry="1"]'), null);
+});
+
+test('gate:simulation:visual-novel-reader-falls-back-to-visible-text-when-raw-message-is-host-ui-html', async () => {
+    const latestMessage = readJson('fixtures/tavern/host-ui-leak-message.json');
+    const igs = bootstrapIGS({
+        global: {},
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const snapshot = opened.reader.snapshot;
+
+    assert.equal(opened.ok, true);
+    assert.match(snapshot.content.displayText, /玉子: 今晚我们先从这里开始。/);
+    assert.equal(snapshot.content.displayText.includes('API Connections'), false);
+    assert.equal(snapshot.content.displayText.includes('rightNavHolder'), false);
+    assert.equal(snapshot.content.displayText.includes('<div'), false);
+    assert.equal(snapshot.content.errors.some((item) => item.code === 'host-ui-html-leaked'), false);
+
+    igs.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-open-settings-renders-four-tabs', () => {
@@ -536,6 +566,9 @@ function matchesSelector(element, selector) {
     if (selector === '.extensions_block .list-group') {
         return element.classList.contains('list-group')
             && Boolean(element.parentNode && element.parentNode.classList && element.parentNode.classList.contains('extensions_block'));
+    }
+    if (selector === '[data-vnm-magic-entry="1"]') {
+        return element.getAttribute('data-vnm-magic-entry') === '1';
     }
     if (selector === '[data-igs-magic-entry="1"]') {
         return element.getAttribute('data-igs-magic-entry') === '1';

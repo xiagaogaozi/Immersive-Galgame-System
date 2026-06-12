@@ -77,7 +77,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.11'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.12'/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -189,7 +189,7 @@ test('gate:visual-novel-compat:api-shape', () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.2.11');
+    const source = getOriginalReaderSource('0.2.12');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

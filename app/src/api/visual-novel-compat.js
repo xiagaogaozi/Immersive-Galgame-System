@@ -1,4 +1,6 @@
 import { resolveLegacyReaderMode } from '../storage/legacy-visual-novel.js';
+import { parseSceneText } from '../scene/text-parser.js';
+import { buildVisualNovelTextPayload } from '../scene/message-source.js';
 
 const READER_MODES = Object.freeze(['pc', 'mobile', 'web', 'fullscreen']);
 
@@ -52,16 +54,15 @@ export function createVisualNovelCompatApi(app) {
             if (!message) {
                 return { ok: false, reason: 'message-not-found', messageId: normalizedId, mode: readerMode };
             }
+            const readerPayload = buildReaderPayload(app, message, normalizedId, readerMode);
             const refreshed = await app.refresh({
                 message,
                 messageId: normalizedId,
                 viewerMode: readerMode,
+                textScene: readerPayload.textScene,
             });
             return openReaderUi(app, {
-                message,
-                messageId: normalizedId,
-                mode: readerMode,
-                viewerMode: readerMode,
+                ...readerPayload,
                 render: refreshed.render,
                 scene: refreshed.scene,
             }, refreshed);
@@ -76,16 +77,15 @@ export function createVisualNovelCompatApi(app) {
             if (!message) {
                 return { ok: false, reason: 'no-message', mode: readerMode, options: cloneData(options) };
             }
+            const readerPayload = buildReaderPayload(app, message, message.id, readerMode);
             const refreshed = await app.refresh({
                 message,
                 messageId: message.id,
                 viewerMode: readerMode,
+                textScene: readerPayload.textScene,
             });
             return openReaderUi(app, {
-                message,
-                messageId: message.id,
-                mode: readerMode,
-                viewerMode: readerMode,
+                ...readerPayload,
                 render: refreshed.render,
                 scene: refreshed.scene,
             }, refreshed);
@@ -141,6 +141,34 @@ function cloneData(value) {
         return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));
     }
     return value;
+}
+
+function buildReaderPayload(app, message, messageId, readerMode) {
+    const unifiedSettings = typeof app.getUnifiedSettingsSnapshot === 'function'
+        ? app.getUnifiedSettingsSnapshot({ mode: readerMode })
+        : null;
+    const bridge = cloneData(
+        unifiedSettings && unifiedSettings.bridge && typeof unifiedSettings.bridge === 'object'
+            ? unifiedSettings.bridge
+            : app.getState().config || {},
+    );
+    const visualNovelText = buildVisualNovelTextPayload(message, {
+        sourceFilter: bridge.sourceFilter,
+        virtualRegex: bridge.virtualRegex,
+    });
+    const textScene = parseSceneText(
+        visualNovelText.formattedText || visualNovelText.visibleText || visualNovelText.cleanedRaw || '',
+        { messageId },
+    );
+
+    return {
+        ...visualNovelText,
+        message,
+        messageId,
+        mode: readerMode,
+        viewerMode: readerMode,
+        textScene,
+    };
 }
 
 function openReaderUi(app, payload, refreshed) {

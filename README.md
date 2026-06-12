@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前运行版本 `v0.2.11`：loader 重复启用时改为重扫魔法棒入口或清理旧实例重载，不再弹“已加载，请勿重复启用”。
-- 下一轮施工图已归档为 `v0.2.12`：优先修复原版 Visual Novel 入口图标不等价、阅读器正文抽取错误和宿主 UI HTML 泄漏。
+- 当前运行版本 `v0.2.12`：已恢复原版 `fa-book-open + Visual Novel` 魔法棒入口，阅读器默认走原版正文抽取链路，并用 `visibleText / cleanNarrativeSource` 兜底宿主 UI HTML 泄漏。
+- `v0.2.12` 已把“截图同款 host UI HTML 泄漏”固定为回归夹具和模拟测试，后续每轮 `npm run gate` 都会卡住这类退化。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -129,11 +129,20 @@ projects/沉浸式galgame系统/
 
 ## 更新日志
 
+### v0.2.12 - 2026-06-12
+
+- 新增 `app/src/scene/message-source.js`，迁移原版 Visual Novel 的 `DEFAULT_SOURCE_FILTER`、`DEFAULT_VIRTUAL_REGEX`、`getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 和强制 fallback 语义，统一正文提取、正文格式化和宿主 HTML 泄漏防护。
+- `app/src/api/visual-novel-compat.js` 现在在 `openLatestAvailable()` / `openViewerFromMessage()` 前先构建 VN 正文 payload，再把清洗后的 `textScene` 送入 `refresh()`，避免 reader 继续直接拿宿主原始 HTML 当正文。
+- `app/src/host/magic-wand-entry.js` 恢复原版单一入口契约：`vnm-magic-entry`、`data-vnm-magic-entry="1"`、`fa-book-open`、`Visual Novel`，并在重扫/销毁时主动清理旧 `[data-igs-magic-entry]` 残留。
+- `app/src/host/tavern-helper-adapter.js` 增加消息筛选和 DOM 可见正文回填，优先打开最近一条可读的非用户消息，并把 `.mes_text` 提取结果作为 `visibleText` 参与 fallback。
+- 新增 `app/fixtures/tavern/host-ui-leak-message.json`，扩展 `app/tests/unit.test.js`、`app/tests/simulate.test.js`、`app/tests/gate-contract.test.js`，固定“只有一个魔法棒入口”“图标必须是 `fa-book-open`”“宿主 UI HTML 不得进入 `.vnm-text`”的回归闸门。
+- runtime、manifest、loader 默认版本同步提升到 `v0.2.12`，本轮已通过 `npm run gate` 和 `npm run build:loader`。
+
 ### v0.2.12-plan - 2026-06-12
 
 - 归档 `plan/v0.2.12-原版VN可用性修复施工图.md`，下一轮实施目标改为“可用性修复优先”：恢复原版 `fa-book-open + Visual Novel` 魔法棒入口，修复阅读器把酒馆宿主 HTML 当正文显示的问题。
 - 施工图要求迁移原版 `getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 的正文抽取和清洗语义，并补截图同款 host UI HTML 泄漏回归 fixture。
-- 本条仅为计划归档，当前可导入运行时仍是 `v0.2.11`；实施完成后再提升 runtime、manifest、loader 默认版本到 `v0.2.12`。
+- 本条为已执行归档；对应实现已在同日发布为 `v0.2.12`。
 
 ### v0.2.11 - 2026-06-12
 

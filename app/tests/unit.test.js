@@ -5,6 +5,11 @@ import path from 'node:path';
 
 import { createInputChannel } from '../src/host/input-channel.js';
 import { createPresetRegistry } from '../src/presets/preset-registry.js';
+import {
+    buildVisualNovelTextPayload,
+    cleanNarrativeSource,
+    DEFAULT_VIRTUAL_REGEX,
+} from '../src/scene/message-source.js';
 import { parseSceneText } from '../src/scene/text-parser.js';
 import { runTextPipeline } from '../src/scene/text-pipeline.js';
 import { createMemoryStorage } from '../src/storage/preset-store.js';
@@ -176,6 +181,37 @@ test('gate:scene:text-pipeline:bad-regex-does-not-throw', () => {
     assert.equal(scene.textPipelineErrors[0].presetType, 'text-format-preset');
 });
 
+test('gate:scene:visual-novel-message-source:extracts-readable-text-from-host-ui-html', () => {
+    const message = readJson('fixtures/tavern/host-ui-leak-message.json');
+    const payload = buildVisualNovelTextPayload(message);
+
+    assert.equal(payload.formattedText.includes('API Connections'), false);
+    assert.equal(payload.formattedText.includes('rightNavHolder'), false);
+    assert.equal(payload.formattedText.includes('<div'), false);
+    assert.equal(payload.formattedText.includes('<button'), false);
+    assert.match(payload.formattedText, /玉子: 今晚我们先从这里开始。/);
+    assert.equal(payload.usedFallback, true);
+});
+
+test('gate:scene:visual-novel-message-source:formats-default-bubble-body', () => {
+    const payload = buildVisualNovelTextPayload({
+        text: '<content>@bubble:玉子|开心|[欢迎来到图书馆。]</content>',
+    }, {
+        virtualRegex: DEFAULT_VIRTUAL_REGEX,
+    });
+
+    assert.equal(payload.formattedText, '[玉子]：欢迎来到图书馆。');
+    assert.equal(payload.virtualRegexChanged, true);
+});
+
+test('gate:scene:visual-novel-message-source:clean-narrative-source-strips-host-ui-tags', () => {
+    const cleaned = cleanNarrativeSource(readJson('fixtures/tavern/host-ui-leak-message.json').text);
+
+    assert.equal(cleaned.includes('<div'), false);
+    assert.equal(cleaned.includes('<button'), false);
+    assert.equal(cleaned.includes('API Connections'), true);
+});
+
 test('gate:visual:generated image scene selects generated-first mode', () => {
     const mode = resolveVisualMode({ generatedImage: { value: 'placeholder://image' } });
     assert.equal(mode, VISUAL_MODES.GENERATED_FIRST);
@@ -248,7 +284,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.2.11',
+        version: '0.2.12',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),

@@ -1,5 +1,13 @@
 import { LEGACY_READER_MODES, resolveLegacyReaderMode } from '../../storage/legacy-visual-novel.js';
 import {
+    buildVisualNovelTextPayload,
+    DEFAULT_VIRTUAL_REGEX,
+    getMessagePrimaryText,
+    looksLikeHostUiHtml,
+    normalizeSourceFilter,
+    normalizeVirtualRegex,
+} from '../../scene/message-source.js';
+import {
     getOriginalReaderHtml,
     getOriginalReaderSource,
     getOriginalReaderStyleText,
@@ -10,22 +18,6 @@ import { getSettingsShellTemplate } from './settings-shell.js';
 import { getSettingsStyleText } from './settings-style.js';
 import { getSettingsTabTemplate, SETTINGS_TAB_DEFS } from './settings-tabs.js';
 import { getReaderModeIcon } from './icons.js';
-
-const DEFAULT_SOURCE_FILTER = Object.freeze({
-    enabled: true,
-    stripHtmlComments: true,
-    allowUntaggedFallback: true,
-    textIncludeTags: 'content',
-    textExcludeTags: '',
-    imageIncludeTags: 'image\ntext_to_image',
-});
-
-const DEFAULT_VIRTUAL_REGEX = Object.freeze({
-    enabled: true,
-    pattern: '^@bubble:([^|\\n]+)\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$',
-    flags: 'i',
-    replacement: '[$1]：$2',
-});
 
 const DEFAULT_IMAGE_API = Object.freeze({
     mode: 'extension',
@@ -471,7 +463,22 @@ export function createVisualNovelReaderHost(options = {}) {
         const scene = cloneData(payload.scene || (payload.render && payload.render.scene) || {});
         const render = payload.render || {};
         const stage = render.stage || {};
-        const text = normalizeDisplayText(firstDefined(scene.text, scene.formattedText, getMessageText(payload.message), payload.raw, ''));
+        const extracted = buildVisualNovelTextPayload(payload.message || payload.raw || '', {
+            sourceFilter: payload.sourceFilter,
+            virtualRegex: payload.virtualRegex,
+            visibleText: payload.visibleText,
+        });
+        const text = normalizeDisplayText(firstDefined(
+            scene.text,
+            scene.formattedText,
+            payload.formattedText,
+            extracted.formattedText,
+            extracted.visibleText,
+            extracted.cleanedRaw,
+            getMessagePrimaryText(payload.message),
+            payload.raw,
+            '',
+        ));
         const displayText = scene.speaker && text
             ? `${scene.speaker}: ${text}`
             : text;
@@ -518,6 +525,8 @@ export function createVisualNovelReaderHost(options = {}) {
                 progress: '1 / 1',
                 backgroundImage,
                 sourceKind: firstDefined(scene.sourceKind, payload.sourceKind, 'raw-text'),
+                warnings: extracted.warnings,
+                errors: extracted.errors,
             },
             readerSettings: cloneData(readerSettings),
             input: {
@@ -526,7 +535,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.2.11'),
+            source: getOriginalReaderSource(options.version || '0.2.12'),
         };
     }
 
@@ -551,7 +560,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.2.11'),
+                version: esc(options.version || '0.2.12'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -846,7 +855,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.2.11' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.2.12' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -857,7 +866,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.2.11',
+            version: snapshot.version || options.version || '0.2.12',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -874,20 +883,6 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.virtualRegex = normalizeVirtualRegex(normalized.virtualRegex);
         normalized.imageApi = normalizeImageApi(normalized.imageApi);
         return normalized;
-    }
-
-    function normalizeSourceFilter(filter) {
-        return {
-            ...cloneData(DEFAULT_SOURCE_FILTER),
-            ...cloneData(filter || {}),
-        };
-    }
-
-    function normalizeVirtualRegex(value) {
-        return {
-            ...cloneData(DEFAULT_VIRTUAL_REGEX),
-            ...cloneData(value || {}),
-        };
     }
 
     function normalizeImageApi(value) {
@@ -935,61 +930,41 @@ export function createVisualNovelReaderHost(options = {}) {
     function buildRegexPreview(bridge) {
         const filter = normalizeSourceFilter(bridge.sourceFilter);
         const virtualRegex = normalizeVirtualRegex(bridge.virtualRegex);
-        const raw = resolvePreviewMessageText();
-        const cleaned = filter.stripHtmlComments
-            ? raw.replace(/<!--[\s\S]*?-->/g, '')
-            : raw;
-        const textSource = extractTaggedText(cleaned, filter.textIncludeTags) || (filter.allowUntaggedFallback ? cleaned : '');
-        if (!textSource.trim()) {
+        const previewMessage = resolvePreviewMessage();
+        const payload = buildVisualNovelTextPayload(previewMessage, {
+            sourceFilter: filter,
+            virtualRegex,
+        });
+        if (!payload.formattedText) {
             return '当前没有可测试的正文内容。';
         }
-        if (!virtualRegex.enabled) {
-            return `formattedTextLength=${textSource.trim().length}\n\n最终正文：\n${textSource.trim()}`;
+        if (!virtualRegex.enabled || !virtualRegex.pattern) {
+            return `formattedTextLength=${payload.formattedText.length}\n\n最终正文：\n${payload.formattedText}`;
         }
-        try {
-            const regex = new RegExp(virtualRegex.pattern, virtualRegex.flags || '');
-            const formatted = textSource.replace(regex, virtualRegex.replacement || '');
-            return [
-                `source=${extractTaggedText(cleaned, filter.textIncludeTags) ? 'tagged' : 'fallback'}`,
-                `tagTextLength=${textSource.trim().length}`,
-                `formattedTextLength=${formatted.trim().length}`,
-                `changed=${formatted !== textSource}`,
-                '',
-                '最终正文：',
-                formatted.trim(),
-            ].join('\n');
-        } catch (error) {
-            return `正则测试失败：${error instanceof Error ? error.message : String(error)}`;
-        }
+        return [
+            `source=${payload.sourceKind}`,
+            `tagTextLength=${String(payload.tagText || '').trim().length}`,
+            `formattedTextLength=${payload.formattedText.length}`,
+            `changed=${payload.virtualRegexChanged === true}`,
+            payload.usedFallback ? 'fallback=true' : 'fallback=false',
+            '',
+            '最终正文：',
+            payload.formattedText,
+        ].join('\n');
     }
 
-    function resolvePreviewMessageText() {
+    function resolvePreviewMessage() {
         if (state.activeReader && state.activeReader.payload && state.activeReader.payload.message) {
-            return getMessageText(state.activeReader.payload.message);
+            return state.activeReader.payload.message;
         }
         if (typeof options.getCurrentMessage === 'function') {
             const message = options.getCurrentMessage();
             if (message && typeof message === 'object' && typeof message.then !== 'function') {
-                return getMessageText(message);
+                return message;
             }
         }
         return '';
     }
-}
-
-function extractTaggedText(raw, tagsText) {
-    const tags = String(tagsText || '')
-        .split(/[\s,]+/)
-        .map((item) => item.trim())
-        .filter(Boolean);
-    for (const tag of tags) {
-        const pattern = new RegExp(`<${escapeRegExp(tag)}>([\\s\\S]*?)<\\/${escapeRegExp(tag)}>`, 'i');
-        const match = String(raw || '').match(pattern);
-        if (match && match[1]) {
-            return match[1].trim();
-        }
-    }
-    return '';
 }
 
 function renderTemplate(template, values) {
@@ -1146,14 +1121,9 @@ function writeToast(message) {
     if (!message) return;
 }
 
-function getMessageText(message) {
-    if (typeof message === 'string') return message;
-    if (!message || typeof message !== 'object') return '';
-    return message.text || message.message || message.content || message.mes || '';
-}
-
 function normalizeDisplayText(value) {
-    return String(value || '').trim();
+    const text = String(value || '').trim();
+    return looksLikeHostUiHtml(text) ? '' : text;
 }
 
 function normalizeBoolean(value, fallback) {

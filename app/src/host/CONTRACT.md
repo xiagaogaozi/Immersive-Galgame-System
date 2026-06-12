@@ -6,7 +6,7 @@
 - 统一定位聊天楼层、当前楼层、输入框、发送按钮和消息图片。
 - 提供 `typeIntoInputAndSend(text)`，供阅读器输入框和选项浮窗调用。
 - `input-channel.js` 是输入框发送的默认骨架入口。
-- `magic-wand-entry.js` 是酒馆魔法棒菜单入口的唯一实现，负责向 `#extensionsMenu`、`#extensions_menu`、`.extensions_block .list-group` 注入 `沉浸式 Galgame` 菜单项。
+- `magic-wand-entry.js` 是酒馆魔法棒菜单入口的唯一实现，负责向 `#extensionsMenu`、`#extensions_menu`、`.extensions_block .list-group` 注入原版 `Visual Novel` 菜单项。
 - 隔离宿主 DOM 选择器变化，避免其它模块直接依赖 `#send_textarea`、`#send_but` 等选择器。
 
 ## 输入发送契约
