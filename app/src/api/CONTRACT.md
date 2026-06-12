@@ -45,4 +45,5 @@ IGS.api.promptPresets.register(preset);
 ## 兼容要求
 
 - 迁移期保留 Visual Novel 既有公开能力的兼容入口：`openSettings()`、`getConfig()`、`getUnifiedSettings()`、`generateImage()`、`destroy()`。
+- 酒馆入口诊断能力：`ensureMagicWandEntry()`、`getMagicWandEntryState()`。
 - 新二创能力优先挂在 `IGS.api.*` 下，不继续扩散旧 `VisualNovelBridge` 调试入口。

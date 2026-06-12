@@ -76,6 +76,8 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.doesNotMatch(loaderJson.content, /yuzi-phone/i);
+    assert.equal(loaderJson.button.enabled, true);
+    assert.deepEqual(loaderJson.button.buttons.map((button) => button.name), ['启动 IGS', '重扫入口']);
 });
 
 test('gate:visual-novel-compat:legacy-storage', () => {
@@ -143,7 +145,7 @@ test('gate:visual-novel-compat:api-shape', () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.2.7');
+    const source = getOriginalReaderSource('0.2.8');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

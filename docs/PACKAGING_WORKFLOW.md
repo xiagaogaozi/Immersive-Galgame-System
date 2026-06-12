@@ -86,6 +86,7 @@ loader/igs-loader.js
 - 给控制台输出加载状态和错误原因。
 
 `loader/igs-loader.js` 不允许承载阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 或业务 UI。
+`loader/igs-loader.json` 可以保留 `启动 IGS`、`重扫入口` 这类诊断按钮；它们只调用主程序公开 API，不承载业务逻辑。真正用户入口由 `app/src/host/magic-wand-entry.js` 注入酒馆魔法棒菜单。
 
 ## 模式判定
 
@@ -130,7 +131,16 @@ structure -> static -> test -> simulate -> perf -> build
   "info": "沉浸式 Galgame 系统自动更新 loader。",
   "button": {
     "enabled": true,
-    "buttons": []
+    "buttons": [
+      {
+        "name": "启动 IGS",
+        "script": "window.IGS && window.IGS.openLatestAvailable ? window.IGS.openLatestAvailable() : alert('IGS 尚未加载完成，请刷新页面或检查控制台的 IGS Loader 报错。')"
+      },
+      {
+        "name": "重扫入口",
+        "script": "window.IGS && window.IGS.ensureMagicWandEntry ? window.IGS.ensureMagicWandEntry() : alert('IGS 尚未加载完成，无法重扫魔法棒入口。')"
+      }
+    ]
   },
   "data": {},
   "export_with": {

@@ -42,6 +42,17 @@ export function createPublicApi(app) {
         },
         typeAndSend: app.typeAndSend,
         getState: app.getState,
+        ensureMagicWandEntry() {
+            if (!app.magicWandEntry || typeof app.magicWandEntry.ensure !== 'function') {
+                return { ok: false, reason: 'magic-wand-entry-not-mounted' };
+            }
+            return app.magicWandEntry.ensure();
+        },
+        getMagicWandEntryState() {
+            return app.magicWandEntry && typeof app.magicWandEntry.getState === 'function'
+                ? app.magicWandEntry.getState()
+                : { attached: false, reason: 'magic-wand-entry-not-mounted' };
+        },
         destroy: app.destroy,
         ...visualNovelCompatApi,
     };

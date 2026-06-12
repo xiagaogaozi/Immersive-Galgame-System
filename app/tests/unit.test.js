@@ -248,7 +248,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.2.7',
+        version: '0.2.8',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -265,6 +265,7 @@ test('gate:api:public api attaches stable global aliases', async () => {
     assert.equal(api.api.textFilterPresets.setCurrent('preset.text-filter.content-only').ok, true);
     assert.equal(api.api.textFilterPresets.getCurrent().id, 'preset.text-filter.content-only');
     assert.equal(api.api.textFilterPresets.exportAll().type, 'igs-import-bundle');
+    assert.equal(api.ensureMagicWandEntry().reason, 'magic-wand-entry-not-mounted');
 });
 
 function readJson(relativePath) {

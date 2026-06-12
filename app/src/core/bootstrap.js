@@ -16,6 +16,7 @@ import { createStageRenderer } from '../visual/stage-renderer.js';
 import { resolveVisualMode } from '../visual/visual-mode.js';
 import { createVisualNovelReaderHost } from '../visual/visual-novel-ui/reader-host.js';
 import { createEventBus } from './event-bus.js';
+import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 
 export function bootstrapIGS(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
@@ -38,7 +39,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.2.7',
+        version: '0.2.8',
         global: globalObject,
         events,
         hostAdapter,
@@ -53,6 +54,7 @@ export function bootstrapIGS(options = {}) {
         saveUnifiedSettings,
         destroy,
         visualNovelUi: null,
+        magicWandEntry: null,
     };
     app.visualNovelUi = options.visualNovelUi || createVisualNovelReaderHost({
         global: globalObject,
@@ -63,6 +65,20 @@ export function bootstrapIGS(options = {}) {
     });
     const publicApi = createPublicApi(app);
     attachPublicApi(globalObject, publicApi);
+    app.magicWandEntry = options.magicWandEntry || createMagicWandEntry({
+        ...(options.magicWandEntryOptions || {}),
+        global: globalObject,
+        version: app.version,
+        label: '沉浸式 Galgame',
+        open: (mode) => publicApi.openLatestAvailable(mode),
+        resolveMode: () => {
+            const snapshot = publicApi.getUnifiedSettings({});
+            return snapshot && (snapshot.readerMode || snapshot.bridge && snapshot.bridge.openMode) || 'pc';
+        },
+    });
+    if (options.autoAttachMagicWand !== false && app.magicWandEntry && typeof app.magicWandEntry.attach === 'function') {
+        app.magicWandEntry.attach();
+    }
     state.status = 'ready';
     events.emit('igs:ready', publicApi);
 
@@ -119,6 +135,9 @@ export function bootstrapIGS(options = {}) {
             lastRender: state.lastRender,
             destroyed: state.destroyed,
             visualNovelUi: app.visualNovelUi ? app.visualNovelUi.getState() : null,
+            magicWandEntry: app.magicWandEntry && typeof app.magicWandEntry.getState === 'function'
+                ? app.magicWandEntry.getState()
+                : null,
         };
     }
 
@@ -205,6 +224,9 @@ export function bootstrapIGS(options = {}) {
         state.status = 'destroyed';
         if (app.visualNovelUi && typeof app.visualNovelUi.destroy === 'function') {
             app.visualNovelUi.destroy();
+        }
+        if (app.magicWandEntry && typeof app.magicWandEntry.destroy === 'function') {
+            app.magicWandEntry.destroy();
         }
         detachPublicApi(globalObject, publicApi);
         events.emit('igs:destroy', publicApi);

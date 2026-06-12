@@ -1,6 +1,7 @@
 export { bootstrapIGS, destroyIGS } from './core/bootstrap.js';
 export { createPublicApi, attachPublicApi } from './api/public-api.js';
 export { createTavernHelperAdapter } from './host/tavern-helper-adapter.js';
+export { createMagicWandEntry } from './host/magic-wand-entry.js';
 export { parseSceneText } from './scene/text-parser.js';
 export { resolveScene } from './scene/scene-resolver.js';
 export { createStageRenderer } from './visual/stage-renderer.js';

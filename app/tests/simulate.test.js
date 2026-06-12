@@ -150,6 +150,50 @@ test('gate:simulation:visual-novel-open-latest-and-open-message-use-compat-api',
     igs.destroy();
 });
 
+test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
+    const document = createFakeDocument();
+    const menu = document.createElement('div');
+    menu.id = 'extensionsMenu';
+    document.body.appendChild(menu);
+
+    const latestMessage = readJson('fixtures/tavern/standard-message.json');
+    const sent = [];
+    const igs = bootstrapIGS({
+        global: {
+            document,
+            setInterval: () => 1,
+            clearInterval: () => {},
+        },
+        magicWandEntryOptions: {
+            retryIntervalMs: false,
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async (text) => {
+                sent.push(text);
+                return { ok: true };
+            },
+        },
+    });
+
+    const entry = menu.querySelector('[data-igs-magic-entry="1"]');
+    assert.ok(entry);
+    assert.equal(entry.getAttribute('data-igs-version'), '0.2.8');
+    assert.match(entry.innerHTML, /沉浸式 Galgame/);
+    assert.equal(igs.getMagicWandEntryState().attached, true);
+
+    const clickResult = entry.click();
+    await clickResult;
+    const state = igs.getState();
+
+    assert.equal(state.visualNovelUi.activeReader.mode, 'pc');
+    assert.equal(state.visualNovelUi.activeReader.snapshot.content.speaker, '艾莉');
+    assert.equal(sent.length, 0);
+
+    igs.destroy();
+    assert.equal(menu.querySelector('[data-igs-magic-entry="1"]'), null);
+});
+
 test('gate:simulation:visual-novel-ui-open-settings-renders-four-tabs', () => {
     const legacyStorage = readJson('fixtures/visual-novel/legacy-storage.json');
     const storage = createMemoryStorage(legacyStorage);
@@ -346,4 +390,165 @@ test('gate:simulation:bad-import-keeps-last-working-refresh', async () => {
 
 function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
+}
+
+function createFakeDocument() {
+    const document = {
+        defaultView: null,
+        head: null,
+        body: null,
+        createElement(tagName) {
+            return createFakeElement(tagName, document);
+        },
+        getElementById(id) {
+            return findFirst(document.body, (element) => element.id === id)
+                || findFirst(document.head, (element) => element.id === id)
+                || null;
+        },
+        querySelector(selector) {
+            return this.querySelectorAll(selector)[0] || null;
+        },
+        querySelectorAll(selector) {
+            return [
+                ...queryAll(document.head, selector),
+                ...queryAll(document.body, selector),
+            ];
+        },
+        addEventListener() {},
+        removeEventListener() {},
+    };
+    document.defaultView = { document };
+    document.head = createFakeElement('head', document);
+    document.body = createFakeElement('body', document);
+    return document;
+}
+
+function createFakeElement(tagName, ownerDocument) {
+    const listeners = new Map();
+    const element = {
+        tagName: String(tagName || '').toUpperCase(),
+        ownerDocument,
+        parentNode: null,
+        parentElement: null,
+        children: [],
+        attributes: new Map(),
+        style: {},
+        innerHTML: '',
+        textContent: '',
+        href: '',
+        className: '',
+        id: '',
+        get classList() {
+            return {
+                contains: (name) => splitClasses(element.className).includes(name),
+            };
+        },
+        appendChild(child) {
+            child.parentNode = element;
+            child.parentElement = element;
+            element.children.push(child);
+            return child;
+        },
+        remove() {
+            if (!element.parentNode) return;
+            element.parentNode.children = element.parentNode.children.filter((child) => child !== element);
+            element.parentNode = null;
+            element.parentElement = null;
+        },
+        setAttribute(name, value) {
+            element.attributes.set(name, String(value));
+            if (name === 'id') element.id = String(value);
+            if (name === 'class') element.className = String(value);
+        },
+        getAttribute(name) {
+            if (name === 'id') return element.id || null;
+            if (name === 'class') return element.className || null;
+            return element.attributes.has(name) ? element.attributes.get(name) : null;
+        },
+        addEventListener(type, handler) {
+            if (!listeners.has(type)) listeners.set(type, []);
+            listeners.get(type).push(handler);
+        },
+        removeEventListener(type, handler) {
+            const next = (listeners.get(type) || []).filter((item) => item !== handler);
+            listeners.set(type, next);
+        },
+        click() {
+            const event = {
+                target: element,
+                currentTarget: element,
+                preventDefault() {},
+                stopPropagation() {},
+            };
+            const results = (listeners.get('click') || []).map((handler) => handler(event));
+            return results[results.length - 1];
+        },
+        closest(selector) {
+            let cursor = element;
+            while (cursor) {
+                if (matchesAnySelector(cursor, selector)) return cursor;
+                cursor = cursor.parentNode;
+            }
+            return null;
+        },
+        querySelector(selector) {
+            return element.querySelectorAll(selector)[0] || null;
+        },
+        querySelectorAll(selector) {
+            return queryAll(element, selector);
+        },
+    };
+    return element;
+}
+
+function queryAll(root, selector) {
+    if (!root) return [];
+    const output = [];
+    for (const child of root.children || []) {
+        if (matchesAnySelector(child, selector)) output.push(child);
+        output.push(...queryAll(child, selector));
+    }
+    return output;
+}
+
+function findFirst(root, predicate) {
+    if (!root) return null;
+    if (predicate(root)) return root;
+    for (const child of root.children || []) {
+        const found = findFirst(child, predicate);
+        if (found) return found;
+    }
+    return null;
+}
+
+function matchesAnySelector(element, selector) {
+    return String(selector || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .some((item) => matchesSelector(element, item));
+}
+
+function matchesSelector(element, selector) {
+    if (!element) return false;
+    if (selector === '#extensionsMenu') return element.id === 'extensionsMenu';
+    if (selector === '#extensions_menu') return element.id === 'extensions_menu';
+    if (selector === '.extensions_block .list-group') {
+        return element.classList.contains('list-group')
+            && Boolean(element.parentNode && element.parentNode.classList && element.parentNode.classList.contains('extensions_block'));
+    }
+    if (selector === '[data-igs-magic-entry="1"]') {
+        return element.getAttribute('data-igs-magic-entry') === '1';
+    }
+    if (selector.startsWith('#')) return element.id === selector.slice(1);
+    if (selector.startsWith('.')) return element.classList.contains(selector.slice(1));
+    if (selector.startsWith('[')) {
+        const match = selector.match(/^\[([^=\]]+)="([^"]*)"\]$/);
+        return match ? element.getAttribute(match[1]) === match[2] : false;
+    }
+    return element.tagName.toLowerCase() === selector.toLowerCase();
+}
+
+function splitClasses(value) {
+    return String(value || '').split(/\s+/).filter(Boolean);
 }
