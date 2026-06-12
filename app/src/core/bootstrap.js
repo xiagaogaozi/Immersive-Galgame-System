@@ -1,37 +1,66 @@
 import { createPublicApi, attachPublicApi, detachPublicApi } from '../api/public-api.js';
 import { createTavernHelperAdapter } from '../host/tavern-helper-adapter.js';
+import { createPresetRegistry } from '../presets/preset-registry.js';
 import { createInputChannel } from '../host/input-channel.js';
 import { parseSceneText } from '../scene/text-parser.js';
 import { createSceneState } from '../scene/scene-state.js';
 import { resolveScene } from '../scene/scene-resolver.js';
+import {
+    readLegacyVisualNovelSettings,
+    writeLegacyVisualNovelSettings,
+    resolveLegacyReaderMode,
+} from '../storage/legacy-visual-novel.js';
+import { createPresetStore } from '../storage/preset-store.js';
 import { createLayerController } from '../visual/layer-controller.js';
 import { createStageRenderer } from '../visual/stage-renderer.js';
 import { resolveVisualMode } from '../visual/visual-mode.js';
+import { createVisualNovelReaderHost } from '../visual/visual-novel-ui/reader-host.js';
 import { createEventBus } from './event-bus.js';
 
 export function bootstrapIGS(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
     const events = options.events || createEventBus();
     const hostAdapter = options.hostAdapter || createTavernHelperAdapter(globalObject);
+    const storageLike = options.storage || getStorageLike(globalObject);
+    const legacyVisualNovel = options.legacyVisualNovelSettings || readLegacyVisualNovelSettings(storageLike);
+    const presetStore = options.presetStore || createPresetStore(storageLike);
+    const presetRegistry = options.presetRegistry || createPresetRegistry({ store: presetStore });
     const inputChannel = createInputChannel(hostAdapter);
     const layerController = options.layerController || createLayerController(options.layers || {});
     const renderer = options.renderer || createStageRenderer(layerController);
     const state = {
         status: 'booting',
-        config: options.config || {},
+        config: mergeInitialConfig(options.config, legacyVisualNovel),
+        legacyVisualNovel,
         currentScene: createSceneState(),
         lastRender: null,
         destroyed: false,
     };
 
     const app = {
-        version: '0.2.1',
+        version: '0.2.7',
+        global: globalObject,
         events,
+        hostAdapter,
+        storage: storageLike,
+        presetRegistry,
         refresh,
         typeAndSend,
         getState,
+        getPresetRegistry,
+        getLegacyVisualNovelSettings,
+        getUnifiedSettingsSnapshot,
+        saveUnifiedSettings,
         destroy,
+        visualNovelUi: null,
     };
+    app.visualNovelUi = options.visualNovelUi || createVisualNovelReaderHost({
+        global: globalObject,
+        version: app.version,
+        getUnifiedSettings: getUnifiedSettingsSnapshot,
+        saveUnifiedSettings,
+        typeAndSend,
+    });
     const publicApi = createPublicApi(app);
     attachPublicApi(globalObject, publicApi);
     state.status = 'ready';
@@ -41,9 +70,14 @@ export function bootstrapIGS(options = {}) {
 
     async function refresh(context = {}) {
         ensureAlive();
-        const message = context.message || (await hostAdapter.getCurrentMessage());
+        const message = context.message
+            || await resolveContextMessage(context.messageId)
+            || await hostAdapter.getCurrentMessage();
         const textScene = context.textScene || parseSceneText(getMessageText(message), {
             messageId: message && message.id,
+            textFilterPreset: resolvePresetInput(context, 'textFilterPreset', 'text-filter-preset', state.config.textFilterPreset),
+            textFormatPreset: resolvePresetInput(context, 'textFormatPreset', 'text-format-preset', state.config.textFormatPreset),
+            sceneRegexPreset: resolvePresetInput(context, 'sceneRegexPreset', 'scene-regex-preset', state.config.sceneRegexPreset),
         });
         const scene = resolveScene({
             ...context,
@@ -52,7 +86,18 @@ export function bootstrapIGS(options = {}) {
         });
         const visualMode = resolveVisualMode(scene, context.visualSettings || state.config.visual || {});
         const renderedScene = createSceneState({ ...scene, visualMode });
-        const renderResult = renderer.render(renderedScene);
+        const renderResult = renderer.render(renderedScene, {
+            mode: context.mode,
+            viewerMode: context.viewerMode,
+            visualSettings: context.visualSettings || state.config.visual || {},
+            readerSettings: context.readerSettings,
+            layoutSettings: context.layoutSettings,
+            viewport: context.viewport || getViewport(globalObject),
+            isMobile: context.isMobile,
+            legacyVisualNovel: state.legacyVisualNovel,
+            systemMessages: context.systemMessages,
+            choiceState: context.choiceState,
+        });
         state.currentScene = renderedScene;
         state.lastRender = renderResult;
         events.emit('igs:scene', renderedScene);
@@ -68,9 +113,89 @@ export function bootstrapIGS(options = {}) {
         return {
             status: state.status,
             config: state.config,
+            legacyVisualNovel: state.legacyVisualNovel,
+            presets: presetRegistry.snapshot(),
             currentScene: state.currentScene,
             lastRender: state.lastRender,
             destroyed: state.destroyed,
+            visualNovelUi: app.visualNovelUi ? app.visualNovelUi.getState() : null,
+        };
+    }
+
+    function getPresetRegistry() {
+        return presetRegistry;
+    }
+
+    function getLegacyVisualNovelSettings() {
+        return cloneData(state.legacyVisualNovel);
+    }
+
+    function getUnifiedSettingsSnapshot(input = {}) {
+        const bridge = {
+            ...cloneData(state.legacyVisualNovel && state.legacyVisualNovel.bridge || {}),
+            ...cloneData(state.config || {}),
+        };
+        const readerMode = resolveLegacyReaderMode(
+            input && typeof input === 'object' ? input.mode : input,
+            state.legacyVisualNovel && state.legacyVisualNovel.displayMode,
+            bridge,
+        );
+        const readerSettingsByMode = cloneData(state.legacyVisualNovel && state.legacyVisualNovel.readerSettingsByMode || {});
+        return {
+            version: app.version,
+            bridge,
+            imageApi: cloneData(bridge.imageApi || {}),
+            readerMode,
+            readerSettings: cloneData(readerSettingsByMode[readerMode] || state.legacyVisualNovel.readerSettings || {}),
+        };
+    }
+
+    function saveUnifiedSettings(payload = {}) {
+        const currentLegacy = state.legacyVisualNovel || readLegacyVisualNovelSettings(storageLike);
+        const nextBridge = {
+            ...cloneData(currentLegacy.bridge || {}),
+            ...cloneData(state.config || {}),
+            ...cloneData(payload.bridge || {}),
+        };
+        const displayMode = resolveLegacyReaderMode(
+            nextBridge.openMode,
+            currentLegacy.displayMode,
+            nextBridge,
+        );
+        const readerMode = resolveLegacyReaderMode(
+            payload.readerMode,
+            displayMode,
+            nextBridge,
+        );
+        const readerSettingsByMode = cloneData(currentLegacy.readerSettingsByMode || {});
+        for (const mode of ['pc', 'mobile', 'web', 'fullscreen']) {
+            if (!readerSettingsByMode[mode]) readerSettingsByMode[mode] = {};
+        }
+        if (payload.readerSettings && typeof payload.readerSettings === 'object') {
+            readerSettingsByMode[readerMode] = cloneData(payload.readerSettings);
+        }
+        const nextLegacy = {
+            ok: true,
+            bridge: nextBridge,
+            displayMode,
+            readerMode,
+            readerSettings: cloneData(readerSettingsByMode[readerMode] || {}),
+            readerSettingsByMode,
+        };
+        const writeResult = storageLike
+            ? writeLegacyVisualNovelSettings(storageLike, nextLegacy)
+            : { ok: true, legacy: nextLegacy, persisted: false };
+        if (writeResult.ok === false) return writeResult;
+        state.legacyVisualNovel = cloneData(writeResult.legacy);
+        state.config = {
+            ...cloneData(state.config || {}),
+            ...cloneData(nextBridge),
+        };
+        events.emit('igs:legacy-settings-updated', cloneData(state.legacyVisualNovel));
+        return {
+            ok: true,
+            legacy: cloneData(state.legacyVisualNovel),
+            unified: getUnifiedSettingsSnapshot({ mode: readerMode }),
         };
     }
 
@@ -78,6 +203,9 @@ export function bootstrapIGS(options = {}) {
         if (state.destroyed) return { ok: true, reason: 'already-destroyed' };
         state.destroyed = true;
         state.status = 'destroyed';
+        if (app.visualNovelUi && typeof app.visualNovelUi.destroy === 'function') {
+            app.visualNovelUi.destroy();
+        }
         detachPublicApi(globalObject, publicApi);
         events.emit('igs:destroy', publicApi);
         events.clear();
@@ -88,6 +216,24 @@ export function bootstrapIGS(options = {}) {
         if (state.destroyed) {
             throw new Error('IGS instance has been destroyed.');
         }
+    }
+
+    async function resolveContextMessage(messageId) {
+        if (messageId == null || !hostAdapter || typeof hostAdapter.getMessageById !== 'function') {
+            return null;
+        }
+        return hostAdapter.getMessageById(messageId);
+    }
+
+    function resolvePresetInput(context, contextKey, presetType, fallbackConfig) {
+        if (Object.prototype.hasOwnProperty.call(context, contextKey)) {
+            return context[contextKey];
+        }
+
+        const currentPreset = presetRegistry.getCurrentData(presetType);
+        if (currentPreset) return currentPreset;
+
+        return fallbackConfig;
     }
 }
 
@@ -102,4 +248,48 @@ function getMessageText(message) {
     if (typeof message === 'string') return message;
     if (!message || typeof message !== 'object') return '';
     return message.text || message.message || message.content || message.mes || '';
+}
+
+function getStorageLike(globalObject) {
+    try {
+        return globalObject && globalObject.localStorage ? globalObject.localStorage : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function getViewport(globalObject) {
+    const visualViewport = globalObject && globalObject.visualViewport;
+    if (visualViewport && Number.isFinite(visualViewport.width) && Number.isFinite(visualViewport.height)) {
+        return {
+            width: visualViewport.width,
+            height: visualViewport.height,
+        };
+    }
+
+    const width = Number(globalObject && globalObject.innerWidth);
+    const height = Number(globalObject && globalObject.innerHeight);
+    if (Number.isFinite(width) && Number.isFinite(height)) {
+        return { width, height };
+    }
+
+    return { width: 0, height: 0 };
+}
+
+function mergeInitialConfig(explicitConfig, legacyVisualNovel) {
+    const nextConfig = cloneData(explicitConfig || {});
+    if (!legacyVisualNovel || legacyVisualNovel.ok === false) return nextConfig;
+    return {
+        ...cloneData(legacyVisualNovel.bridge || {}),
+        ...nextConfig,
+    };
+}
+
+function cloneData(value) {
+    if (value == null) return value;
+    if (Array.isArray(value)) return value.map(cloneData);
+    if (typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));
+    }
+    return value;
 }

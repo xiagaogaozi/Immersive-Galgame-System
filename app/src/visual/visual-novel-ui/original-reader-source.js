@@ -1,0 +1,105 @@
+const TOOLBAR_BUTTONS = [
+    { id: 'prev', title: '上一段', label: '‹' },
+    { id: 'next', title: '下一段', label: '›' },
+    { id: 'regen', title: '重新生成背景图', label: '⟳' },
+    { id: 'save', title: '保存背景图', label: '⇩' },
+    { id: 'settings', title: '设置', label: '⚙' },
+    { id: 'hide', title: '隐藏/显示对话框', label: '◐' },
+    { id: 'prev-turn', title: '上一轮', label: '⏮' },
+    { id: 'next-turn', title: '下一轮', label: '⏭' },
+];
+
+const ORIGINAL_READER_STYLE_TEXT = `
+#vnm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;height:100dvh;z-index:900;background:#000;overflow:hidden;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#fff;}
+#vnm-overlay.vnm-floating,#vnm-overlay.vnm-mode-web,#vnm-overlay.vnm-mode-fullscreen{z-index:2147483000;}
+#vnm-overlay.vnm-fading{opacity:0;transition:opacity .25s;}
+#vnm-bg{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, #2a2a3a 0%, #0c0c11 80%);background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:brightness(.88);}
+#vnm-bg-blur{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:blur(40px) brightness(.55) saturate(1.3);transform:scale(1.12);opacity:0;pointer-events:none;}
+#vnm-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.6) 0%,rgba(0,0,0,.1) 50%,rgba(0,0,0,0) 80%);pointer-events:none;}
+#vnm-click-layer{position:absolute;inset:0;cursor:pointer;z-index:1;}
+.vnm-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.62);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(32px) saturate(180%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
+.vnm-dialog.vnm-hidden{opacity:0;transform:translateX(-50%) translateY(20px);pointer-events:none;}
+#vnm-overlay.vnm-floating #vnm-click-layer{cursor:grab;touch-action:none;}
+#vnm-overlay.vnm-floating .vnm-dialog{box-sizing:border-box;left:12px;right:12px;bottom:14px;width:auto;transform:none;display:flex;flex-direction:column;max-height:min(46%,220px);overflow:visible;padding:16px 18px 14px;}
+#vnm-overlay.vnm-floating-mobile .vnm-dialog{left:10px;right:10px;bottom:12px;max-height:min(42%,190px);padding:14px 14px 12px;}
+.vnm-ctrl-bar{position:absolute;top:-50px;right:0;display:flex;gap:6px;z-index:5;padding:6px;background:rgba(20,20,22,.12);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(48px) saturate(220%);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.20);}
+.vnm-icon-btn{width:36px;height:36px;border:1px solid transparent;cursor:pointer;background:transparent;color:rgba(255,255,255,.52);font-size:15px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;transition:all .18s;outline:none;}
+.vnm-icon-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.96);}
+.vnm-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:10px;letter-spacing:1px;}
+.vnm-text{font-size:18px;line-height:1.7;letter-spacing:.5px;min-height:60px;color:#f4f4f6;text-shadow:0 1px 2px rgba(0,0,0,.6);margin-bottom:14px;white-space:pre-wrap;word-break:break-word;}
+.vnm-controls{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
+.vnm-input{flex:1;min-width:0;height:32px;box-sizing:border-box;padding:0 12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;color:#fff;font-size:14px;line-height:18px;outline:none;font-family:inherit;}
+.vnm-input:focus{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);}
+.vnm-input::placeholder{color:rgba(255,255,255,.4);}
+.vnm-send-btn{height:32px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:58px;padding:0 12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.72);font-size:13px;line-height:18px;font-weight:600;letter-spacing:0;white-space:nowrap;cursor:pointer;}
+.vnm-send-btn:hover{background:rgba(255,255,255,.14);color:rgba(255,255,255,.92);}
+.vnm-send-btn:focus{border-color:rgba(92,170,255,.58);box-shadow:0 0 0 2px rgba(92,170,255,.18);outline:none;}
+.vnm-send-btn:disabled{opacity:.55;pointer-events:none;}
+#vnm-settings{display:none;position:absolute;right:0;bottom:calc(100% + 10px);min-width:232px;background:rgba(16,16,20,.92);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(40px) saturate(180%);border-radius:18px;padding:16px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.6);z-index:30;}
+#vnm-toast{position:absolute;left:50%;top:24px;transform:translateX(-50%);min-width:200px;max-width:min(420px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;background:rgba(16,16,20,.88);border:1px solid rgba(255,255,255,.12);font-size:12px;line-height:1.45;opacity:0;pointer-events:none;}
+`.trim();
+
+const ORIGINAL_READER_HTML = `
+<div id="vnm-bg-blur"></div>
+<div id="vnm-bg"></div>
+<div id="vnm-click-layer"></div>
+<div class="vnm-dialog" id="vnm-dialog">
+  <div class="vnm-ctrl-bar" id="vnm-ctrl-bar">
+    <div id="vnm-bar-pinned"></div>
+    <div id="vnm-bar-btns">
+      ${TOOLBAR_BUTTONS.map((button) => (
+        `<button class="vnm-icon-btn" id="vnm-btn-${button.id}" data-act="${button.id}" title="${button.title}" type="button">${button.label}</button>`
+      )).join('')}
+    </div>
+    <div id="vnm-settings" aria-hidden="true"></div>
+  </div>
+  <div class="vnm-progress" id="vnm-progress"></div>
+  <div class="vnm-text" id="vnm-text"></div>
+  <div class="vnm-controls">
+    <input class="vnm-input" id="vnm-input" type="text" placeholder="输入内容后按 Enter 发送">
+    <button class="vnm-send-btn" id="vnm-send-btn" type="button">发送</button>
+  </div>
+  <div id="vnm-toast" aria-live="polite"></div>
+</div>
+`.trim();
+
+export const ORIGINAL_READER_REQUIRED_SELECTORS = Object.freeze([
+    '#vnm-overlay',
+    '#vnm-bg',
+    '#vnm-bg-blur',
+    '#vnm-click-layer',
+    '.vnm-dialog',
+    '.vnm-ctrl-bar',
+    '#vnm-bar-btns',
+    '#vnm-settings',
+    '.vnm-controls',
+    '#vnm-input',
+    '#vnm-send-btn',
+    '#vnm-toast',
+]);
+
+export const ORIGINAL_READER_STYLE_CONTRACT = Object.freeze({
+    overlayZIndex: '2147483000',
+    dialogWidth: 'min(880px,calc(100vw - 32px))',
+    inputHeight: '32px',
+    sendButtonMinWidth: '58px',
+    toolbarButtonSize: '36px',
+});
+
+export function getOriginalReaderStyleText() {
+    return ORIGINAL_READER_STYLE_TEXT;
+}
+
+export function getOriginalReaderHtml() {
+    return ORIGINAL_READER_HTML;
+}
+
+export function getOriginalReaderSource(version = '0.2.7') {
+    return {
+        version,
+        styleText: ORIGINAL_READER_STYLE_TEXT,
+        html: ORIGINAL_READER_HTML,
+        selectors: Array.from(ORIGINAL_READER_REQUIRED_SELECTORS),
+        styleContract: { ...ORIGINAL_READER_STYLE_CONTRACT },
+    };
+}

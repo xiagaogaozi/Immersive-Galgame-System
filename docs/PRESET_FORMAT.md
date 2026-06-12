@@ -59,3 +59,38 @@
 - 可复制为本地草稿。
 - 可导出单项或当前分组。
 - 错误预设不得覆盖当前启用项。
+
+## 运行时注册表快照
+
+v0.2.5 起，文本预设运行时统一落到 `PresetRegistry` 快照；Node gate 先用 localStorage-compatible / memory storage 固定契约，后续再替换成真实 IndexedDB adapter。
+
+```json
+{
+  "version": 1,
+  "current": {
+    "text-filter-preset": "preset.text-filter.content-only",
+    "text-format-preset": "preset.text-format.bubble-line",
+    "scene-regex-preset": "preset.scene-regex.stage-fields"
+  },
+  "items": {
+    "text-filter-preset": {
+      "preset.text-filter.content-only": {
+        "format": "igs_preset_v1",
+        "type": "text-filter-preset",
+        "id": "preset.text-filter.content-only",
+        "name": "Content Only",
+        "version": 1,
+        "data": {}
+      }
+    }
+  },
+  "drafts": {},
+  "updatedAt": "2026-06-12T00:00:00.000Z"
+}
+```
+
+运行时要求：
+
+- `current` 只指向已通过校验并成功保存的预设。
+- `items` 按 `type -> id -> preset` 存储，导入时先归一化再落盘。
+- 坏预设可以出现在 rejected 结果里，但不能污染 `items` 和 `current`。

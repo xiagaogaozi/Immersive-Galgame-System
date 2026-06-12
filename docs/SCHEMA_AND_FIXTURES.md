@@ -42,6 +42,12 @@ fixtures 文件应短小、可读、可复用。需要大资源时只放 manifes
 | `S9` | registry | Mod / Preset / Pack 导入、权限声明、冲突检测 |
 | `S10` | api | `window.IGS` 公开 API 权限、错误返回和兼容别名 |
 
+## 当前覆盖补充（v0.2.5）
+
+- `S8 storage`：新增 `app/fixtures/presets/preset-registry-snapshot.json`，覆盖预设 current 和 items 的持久化恢复。
+- `S9 registry`：新增 `app/fixtures/presets/text-presets-import-bundle.json` 与 `bad-current-overwrite-bundle.json`，覆盖文本预设导入、坏预设拒收和 current 守卫。
+- `S10 api`：文本预设公开分组继续覆盖 `register/unregister/get/list`，并补充 `setCurrent/getCurrent/export/exportAll` 契约。
+
 ## 命令约定
 
 后续接入真实构建后，优先使用：

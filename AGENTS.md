@@ -40,6 +40,7 @@
 - [ ] 实现修改
 - [ ] 更新 README 更新日志和相关 docs
 - [ ] 按风险级别运行模拟测试或记录 skipped 原因
+- [ ] 提交本项目 Git 仓库、推送 `origin/main`、创建并推送版本标签
 - [ ] 回传变更、验证证据、技术债与残余风险
 ```
 
@@ -83,13 +84,23 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 ## 发布策略
 
 - 只讨论、只规划、只审查时，不提交、不打包、不发布。
-- 用户要求实现时，默认做到本地修改、文档更新和可执行范围内的模拟验证。
-- 用户明确要求发布时，才生成 bundle、loader、标签或 release notes。
+- 用户要求实现时，默认做到本地修改、文档更新、可执行范围内的模拟验证、提交、推送 GitHub 和创建/推送版本标签。
+- 用户明确要求只做本地草稿、不上传或不打标签时，才跳过 GitHub 上传；最终回复必须说明 skipped 原因。
+- 用户明确要求发布酒馆导入件时，才额外生成 loader、release notes 或 GitHub Release。
 - 发布候选不得依赖真实 API key、真实聊天记录或真实 shujuku 数据作为唯一验证来源。
 - 最终给酒馆导入的是 `loader/igs-loader.json`，不是 `app/dist/igs.bundle.js`，也不是原版 `Visual Novel` 的 `latest/*.json`。
 - `loader/igs-loader.json` 的 `content` 必须来自 `loader/igs-loader.js` 原文，JSON 反序列化后两者应完全一致。
 - 远程 bundle 地址必须是普通用户可访问的公开地址；当前 private 仓库的 raw 地址不能作为最终发布源。
 - 发布流程、字段格式和校验命令以 `docs/PACKAGING_WORKFLOW.md` 为准。
+
+## GitHub 回退点硬要求
+
+- 每一轮产生文件改动后，结束前必须在本项目独立仓库执行 `git add .`、`git commit`、`git push origin main`。
+- 每一轮提交后必须创建版本标签并推送：`git tag -a v<当前版本> -m "<版本说明>"` 与 `git push origin v<当前版本>`。
+- 如果当前版本标签已存在，不得强推覆盖；应提升 patch 版本并更新 `app/package.json`、`README.md`、必要的运行时版本常量和 `app/dist/manifest.json`。
+- 上传前必须确认 `git rev-parse --show-toplevel` 指向 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`，禁止从上级 `nailongwang-main` 仓库提交本项目。
+- 上传后必须回查 `git status --short --branch`、`git ls-remote --heads origin main` 与 `git ls-remote --tags origin v<当前版本>`，确认远程分支和标签存在。
+- 只有用户明确要求“只本地修改/不要上传/不要打标签”时才能跳过；跳过必须写入最终回复和必要的 README/docs 技术债记录。
 
 ## 技术债记录
 
@@ -120,6 +131,7 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 - 修改了哪些文件
 - 风险级别
 - 已运行的验证项和 skipped 项
+- GitHub push 和版本标签结果
 - 是否新增抽象
 - 是否留下技术债和残余风险
 

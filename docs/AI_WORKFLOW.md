@@ -120,4 +120,25 @@ git status --short
 
 确认通过后，只提交本项目目录内文件。不要从上级 `nailongwang-main` 仓库提交，也不要把真实 API key、真实聊天记录、真实 shujuku 数据、本机私有配置或 `pc-data/` 上传。
 
+## 每轮结束回退点
+
+每一轮只要产生文件改动，结束前必须上传并打标签。默认命令：
+
+```powershell
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统\app"
+npm run gate
+cd ..
+git status --short
+git add .
+git commit -m "Release v<当前版本>: <简短说明>"
+git push origin main
+git tag -a v<当前版本> -m "v<当前版本>: <简短说明>"
+git push origin v<当前版本>
+git status --short --branch
+git ls-remote --heads origin main
+git ls-remote --tags origin v<当前版本>
+```
+
+如果标签已存在，不覆盖、不强推，提升 patch 版本后重新执行。只有用户明确说不要上传或不要打标签时才跳过，并在最终回复说明原因。
+
 详细发布与上传命令见 `docs/RELEASE.md`。

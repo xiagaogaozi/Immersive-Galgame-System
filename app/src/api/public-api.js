@@ -1,3 +1,6 @@
+import { createPresetGroup, createPresetRegistry } from '../presets/preset-registry.js';
+import { createVisualNovelCompatApi } from './visual-novel-compat.js';
+
 const API_GROUPS = [
     'imageProviders',
     'imageRequestBuilders',
@@ -7,13 +10,26 @@ const API_GROUPS = [
     'themePresets',
     'uiSkins',
     'sceneRegexPresets',
+    'textFilterPresets',
+    'textFormatPresets',
     'backgroundPacks',
     'characterPacks',
     'promptPresets',
 ];
 
+const PRESET_GROUP_TO_TYPE = Object.freeze({
+    sceneRegexPresets: 'scene-regex-preset',
+    textFilterPresets: 'text-filter-preset',
+    textFormatPresets: 'text-format-preset',
+});
+
 export function createPublicApi(app) {
-    const groupedApi = Object.fromEntries(API_GROUPS.map((name) => [name, createRegistryGroup(name)]));
+    const presetRegistry = resolvePresetRegistry(app);
+    const groupedApi = Object.fromEntries(API_GROUPS.map((name) => [
+        name,
+        createApiGroup(name, presetRegistry),
+    ]));
+    const visualNovelCompatApi = createVisualNovelCompatApi(app);
 
     return {
         name: 'Immersive Galgame System',
@@ -27,19 +43,7 @@ export function createPublicApi(app) {
         typeAndSend: app.typeAndSend,
         getState: app.getState,
         destroy: app.destroy,
-
-        openSettings() {
-            return { ok: false, reason: 'settings-ui-not-mounted' };
-        },
-        getConfig() {
-            return app.getState().config;
-        },
-        getUnifiedSettings() {
-            return app.getState().config;
-        },
-        generateImage(request) {
-            return { ok: false, reason: 'provider-not-enabled', request };
-        },
+        ...visualNovelCompatApi,
     };
 }
 
@@ -54,6 +58,14 @@ export function detachPublicApi(globalObject, api) {
     if (!globalObject) return;
     if (globalObject.IGS === api) delete globalObject.IGS;
     if (globalObject.ImmersiveGalgameSystem === api) delete globalObject.ImmersiveGalgameSystem;
+}
+
+function createApiGroup(groupName, presetRegistry) {
+    const presetType = PRESET_GROUP_TO_TYPE[groupName];
+    if (presetType) {
+        return createPresetGroup(presetRegistry, presetType);
+    }
+    return createRegistryGroup(groupName);
 }
 
 function createRegistryGroup(groupName) {
@@ -77,4 +89,13 @@ function createRegistryGroup(groupName) {
             return Array.from(items.values());
         },
     };
+}
+
+function resolvePresetRegistry(app) {
+    if (app && app.presetRegistry) return app.presetRegistry;
+    if (app && typeof app.getPresetRegistry === 'function') {
+        const registry = app.getPresetRegistry();
+        if (registry) return registry;
+    }
+    return createPresetRegistry();
 }

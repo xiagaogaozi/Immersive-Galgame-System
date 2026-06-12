@@ -2,11 +2,35 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
     const helper = globalObject && globalObject.TavernHelper;
 
     return {
+        async getLastMessageId() {
+            if (!helper) return null;
+            return getLastMessageId(helper);
+        },
+
         async getCurrentMessage() {
             if (!helper) return null;
             const lastId = getLastMessageId(helper);
-            const messages = getChatMessages(helper, lastId);
+            const messages = getChatMessages(helper, 0, lastId);
             return normalizeMessage(messages[messages.length - 1], lastId);
+        },
+
+        async getMessageById(messageId) {
+            if (!helper) return null;
+            const normalizedId = normalizeMessageId(messageId);
+            if (normalizedId == null) return null;
+            const direct = getChatMessages(helper, normalizedId, normalizedId).find((message) => {
+                return normalizeMessageId(message && message.id) === normalizedId
+                    || normalizeMessageId(message && message.message_id) === normalizedId;
+            });
+            if (direct) return normalizeMessage(direct, normalizedId);
+
+            const lastId = getLastMessageId(helper);
+            const messages = getChatMessages(helper, 0, lastId);
+            const fallback = messages.find((message) => {
+                return normalizeMessageId(message && message.id) === normalizedId
+                    || normalizeMessageId(message && message.message_id) === normalizedId;
+            });
+            return normalizeMessage(fallback, normalizedId);
         },
 
         async typeAndSend(text) {
@@ -32,9 +56,11 @@ function getLastMessageId(helper) {
     return null;
 }
 
-function getChatMessages(helper, lastId) {
+function getChatMessages(helper, startId, endId) {
     if (typeof helper.getChatMessages !== 'function') return [];
-    const range = lastId == null ? '0-0' : `0-${lastId}`;
+    const safeStart = normalizeMessageId(startId) ?? 0;
+    const safeEnd = normalizeMessageId(endId) ?? safeStart;
+    const range = `${Math.min(safeStart, safeEnd)}-${Math.max(safeStart, safeEnd)}`;
     const messages = helper.getChatMessages(range, { include_swipes: false });
     return Array.isArray(messages) ? messages : [];
 }
@@ -47,4 +73,10 @@ function normalizeMessage(message, fallbackId) {
         text: message.text || message.message || message.content || message.mes || '',
         raw: message,
     };
+}
+
+function normalizeMessageId(value) {
+    const id = Number(value);
+    if (!Number.isFinite(id) || id < 0) return null;
+    return id;
 }

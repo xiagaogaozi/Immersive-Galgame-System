@@ -19,6 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
+- 当前已进入 `v0.2.7`：补上 GitHub 每轮上传与版本标签回退点硬流程。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -126,6 +127,51 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.2.7 - 2026-06-12
+
+- 将“每轮结束必须上传 GitHub 并发布版本标签”写入 `AGENTS.md`、`docs/AI_WORKFLOW.md`、`docs/RELEASE.md` 与 `docs/PACKAGING_WORKFLOW.md`。
+- 固定回退点规则：每轮有文件改动时必须 `git commit`、`git push origin main`、`git tag -a v<当前版本>`、`git push origin v<当前版本>`，并回查远程分支和标签。
+- 标签已存在时禁止覆盖，必须提升 patch 版本后重新发布；只有用户明确要求不上传或不打标签时才允许跳过。
+
+### v0.2.6 - 2026-06-12
+
+- 新增 `app/src/visual/visual-novel-ui/*`，把原版 Visual Novel 的阅读器 overlay、统一设置面板、四个 tab、reader mode 图标和 `.vnm-*` selector 抽成独立等价层；浏览器环境挂真实 DOM，Node 模拟测试返回 snapshot/controller。
+- 更新 `app/src/core/bootstrap.js`、`app/src/api/visual-novel-compat.js` 与 `app/src/storage/legacy-visual-novel.js`，让 `openSettings()` 不再返回 `settings-ui-not-mounted`，并接通 `openLatestAvailable()` / `openViewerFromMessage()` -> 原版阅读器 UI -> `typeAndSend()` 的最小闭环，同时支持旧 `vnm_*` 配置读写回写。
+- 新增 `app/fixtures/visual-novel-ui/*`，并扩展 `app/tests/gate-contract.test.js`、`app/tests/simulate.test.js`，覆盖原版 selector/几何契约、四个 tab、设置保存回写，以及 `Enter` 发送 / `Shift+Enter` 不发送的模拟验收。
+- 当前仍不做真实酒馆实机验真、不接真实 NAI/provider 网络请求、不把 `window.VisualNovelBridge` 旧全局别名重新挂回；本轮验收继续以 `npm run gate` 的模拟闸门为准。
+
+### v0.2.5 - 2026-06-12
+
+- 新增 `app/src/presets/preset-types.js`、`app/src/presets/preset-registry.js` 与 `app/src/storage/preset-store.js`，把三类文本预设接成可持久化的 `PresetRegistry`，固定 `current/items/drafts` 快照结构。
+- 更新 `app/src/api/public-api.js`、`app/src/core/bootstrap.js` 与 `app/src/index.js`，让 `sceneRegexPresets`、`textFilterPresets`、`textFormatPresets` 支持 `setCurrent/getCurrent/export/exportAll`，并让 `refresh()` 在无显式 context 时读取注册表当前预设。
+- 新增 `app/fixtures/presets/*`，补齐预设注册表快照、文本预设导入 bundle 和坏预设不能覆盖 current 的样例。
+- 更新 `app/tests/unit.test.js`、`app/tests/gate-contract.test.js`、`app/tests/simulate.test.js`，覆盖注册表持久化重载、坏预设守卫、导出 bundle 形状和 fake storage 驱动的 refresh 闭环。
+- 当前仍不实现正则与正文页 UI、不接真实 IndexedDB 异步启动、不做真实酒馆或真 provider 实机验真；验收继续以 `npm run gate` 的模拟测试为准。
+
+### v0.2.4 - 2026-06-12
+
+- 新增 `app/src/presets/text-presets.js` 与 `app/src/scene/text-pipeline.js`，把 `text-filter-preset`、`text-format-preset`、`scene-regex-preset` 接成可测试的正文预处理管线。
+- 更新 `app/src/scene/text-parser.js`、`app/src/core/bootstrap.js` 与 `app/src/api/public-api.js`，让 `refresh()` 可接收三类文本预设，并把 `textSource`、`formattedText`、`sourceKind`、`formatSourceKind`、`textPipelineErrors` 暴露到 scene 和公开 API 分组。
+- 新增 `app/fixtures/text/*`、`app/fixtures/imports/text-presets-bundle.json`，固定 `<content>` 过滤、Bubble 对话格式化、scene regex 字段提取和坏正则回退样例。
+- 更新 `app/tests/unit.test.js`、`app/tests/gate-contract.test.js`、`app/tests/simulate.test.js`，补齐正文预设管线 gate、导入契约和 fake host refresh 模拟闭环。
+- 当前仍不实现正则与正文页 UI、不做 preset 持久化切换、不迁移原版 Visual Novel DOM 图片探测，也不做真实酒馆实机验真。
+
+### v0.2.3 - 2026-06-12
+
+- 新增 `app/src/visual/reader-state.js` 与 `app/src/visual/stage-model.js`，把 reader settings、legacy reader mode、viewport 和稳定槽位归一化为可测试的 visual stage model。
+- 更新 `app/src/visual/stage-renderer.js`、`app/src/visual/layer-controller.js` 与 `app/src/core/bootstrap.js`，让 `refresh()` 的渲染结果包含 `stage`、`renderedLayers` 和 reader bridge attributes。
+- 新增 `app/fixtures/visual/*`，补齐 pc/mobile/web/fullscreen 的 reader settings 样例，以及普通场景/生图场景的 stage model 预期。
+- 更新 `app/tests/unit.test.js`、`app/tests/gate-contract.test.js`、`app/tests/simulate.test.js`，把 `S4 visual` 验收到 reader state、responsive layout、stable slots、dialogue layer 和 generated layer。
+- 当前仍不迁移完整 Visual Novel 阅读器 DOM，不实现真实设置面板，不接真实 provider，也不做真实酒馆实机验真。
+
+### v0.2.2 - 2026-06-12
+
+- 新增 `app/src/storage/legacy-visual-novel.js`，只读读取 `vnm_visual_novel_bridge_config`、`vnm-reader-settings-v9-*` 和 `vnm-display-mode`。
+- 新增 `app/src/api/visual-novel-compat.js`，把 `openSettings()`、`getConfig()`、`getUnifiedSettings()`、`openViewerFromMessage()`、`openLatestAvailable()`、`generateImage()` 收敛到 IGS 兼容层。
+- 更新 `bootstrapIGS()` 与 `tavern-helper-adapter`，让 fake host 可按 message id 读取消息，并将旧 bridge 配置并入初始 config。
+- 新增 `app/fixtures/visual-novel/*`、`docs/VISUAL_NOVEL_MIGRATION.md` 与 gate 测试，固定第一阶段兼容基线。
+- 当前仍不迁移完整阅读器 DOM、不实现真实 provider 请求、不挂载 `window.VisualNovelBridge` 旧全局别名。
 
 ### v0.2.1 - 2026-06-12
 

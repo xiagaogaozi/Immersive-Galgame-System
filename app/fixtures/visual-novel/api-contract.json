@@ -1,0 +1,18 @@
+{
+  "methods": [
+    "openSettings",
+    "getConfig",
+    "getUnifiedSettings",
+    "openViewerFromMessage",
+    "openLatestAvailable",
+    "generateImage",
+    "destroy"
+  ],
+  "unifiedSettingsFields": [
+    "version",
+    "bridge",
+    "imageApi",
+    "readerMode",
+    "readerSettings"
+  ]
+}

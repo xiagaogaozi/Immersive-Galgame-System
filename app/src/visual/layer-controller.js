@@ -1,12 +1,17 @@
 export function createLayerController(layers) {
     return {
-        render(scene) {
-            for (const layer of Object.values(layers || {})) {
+        render(stage) {
+            const renderedLayers = [];
+            const layerResults = {};
+
+            for (const [name, layer] of Object.entries(layers || {})) {
                 if (layer && typeof layer.render === 'function') {
-                    layer.render(scene);
+                    renderedLayers.push(name);
+                    layerResults[name] = layer.render(stage, stage && stage.scene);
                 }
             }
-            return { ok: true };
+
+            return { ok: true, renderedLayers, layerResults };
         },
     };
 }

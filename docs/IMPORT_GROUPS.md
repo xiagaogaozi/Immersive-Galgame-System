@@ -41,6 +41,14 @@
 | `character-pack` | 背景/立绘页 |
 | `background-rule-preset` | 背景/立绘页 |
 
+## 导入后状态
+
+- `scene-regex-preset`、`text-filter-preset`、`text-format-preset` 导入后进入同一套 `PresetRegistry`。
+- 对外列表、当前启用项和导出结果都从注册表读取，不在能力页另存第二份状态。
+- `setCurrent()` 只能指向已经通过校验并成功保存的预设。
+- 坏预设保留在 rejected 结果中用于提示，但不得覆盖当前启用项。
+- 文本预设整组导出继续使用 `igs-import-bundle`，方便和其它能力分组共用导入分发流程。
+
 ## 禁止
 
 - 禁止新增全局 Mod 管理页。

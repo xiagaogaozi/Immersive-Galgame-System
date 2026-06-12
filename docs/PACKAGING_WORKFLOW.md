@@ -175,7 +175,29 @@ git status --short
 git add .
 git commit -m "Prepare loader packaging workflow"
 git push origin main
+git tag -a v<当前版本> -m "v<当前版本>: Prepare loader packaging workflow"
+git push origin v<当前版本>
 ```
+
+## 每轮回退点发布规则
+
+后续 AI 每轮结束时，只要本项目有文件改动，必须完成：
+
+```powershell
+git rev-parse --show-toplevel
+cd app
+npm run gate
+cd ..
+git add .
+git commit -m "Release v<当前版本>: <本轮说明>"
+git push origin main
+git tag -a v<当前版本> -m "v<当前版本>: <本轮说明>"
+git push origin v<当前版本>
+git ls-remote --heads origin main
+git ls-remote --tags origin v<当前版本>
+```
+
+`git rev-parse --show-toplevel` 必须返回 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`。如果标签已存在，不强推覆盖，提升 patch 版本后重新发布。
 
 真正生成 `loader/igs-loader.json` 后，还需要验证：
 
@@ -188,6 +210,7 @@ node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('loader/igs-
 - 项目级发布流程、loader、bundle、版本、GitHub 上传说明：写入本项目 `README.md`。
 - 具体打包命令和发布限制：写入 `docs/RELEASE.md` 与本文件。
 - 原版 Visual Novel 迁移注意事项：写入本文件或单独迁移文档。
+- 当前迁移说明：`docs/VISUAL_NOVEL_MIGRATION.md`
 - 不要写入 `奶龙工具箱/CHANGELOG.md`，除非修改的是工具箱本身的流程、Schema、CI 或知识库。
 
 ## 未来实现清单

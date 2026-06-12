@@ -89,13 +89,26 @@ gh repo create xiagaogaozi/immersive-galgame-system --private --source . --remot
 后续更新：
 
 ```powershell
-cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统"
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统\app"
 npm run gate
+cd ..
 git status --short
 git add .
 git commit -m "<简短更新说明>"
 git push origin main
+git tag -a v<当前版本> -m "v<当前版本>: <简短更新说明>"
+git push origin v<当前版本>
+git ls-remote --heads origin main
+git ls-remote --tags origin v<当前版本>
 ```
+
+## 每轮必须上传与打标签
+
+- 任何实现、修复、文档工作流变更、fixtures/test 变更，只要写入了文件，结束前都必须推送到 `origin/main` 并创建版本标签。
+- 标签格式固定为 `vMAJOR.MINOR.PATCH`，必须与 `app/package.json` 中的版本对应。
+- 标签已存在时禁止覆盖，提升 patch 版本再发布。
+- 文档-only 任务可以跳过 `npm run gate`，但仍需提交、推送和打标签；跳过验证必须在最终回复说明。
+- 上传必须在本项目独立仓库根目录执行，先确认 `git rev-parse --show-toplevel` 返回本项目目录。
 
 如果需要给 SillyTavern loader 直接加载 GitHub raw bundle，先确认没有真实密钥、真实聊天记录、真实 shujuku 数据和本机私有路径，再保持仓库 public 或建立单独的公开发布仓库。
 

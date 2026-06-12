@@ -3,8 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { bootstrapIGS } from '../src/index.js';
 import { dispatchImportBundle } from '../src/registry/import-dispatcher.js';
 import { checkStyleContract } from '../src/styles/style-contract.js';
+import { readLegacyVisualNovelSettings } from '../src/storage/legacy-visual-novel.js';
+import { createReaderState } from '../src/visual/reader-state.js';
+import { createStageModel } from '../src/visual/stage-model.js';
+import { getOriginalReaderSource } from '../src/visual/visual-novel-ui/original-reader-source.js';
+import { getSettingsShellTemplate } from '../src/visual/visual-novel-ui/settings-shell.js';
+import { getSettingsStyleText } from '../src/visual/visual-novel-ui/settings-style.js';
+import { getSettingsTabTemplate, SETTINGS_TAB_DEFS } from '../src/visual/visual-novel-ui/settings-tabs.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 const projectRoot = path.resolve(appRoot, '..');
@@ -22,6 +30,21 @@ test('gate:import-contract:dispatches allowed types and rejects forbidden types'
     assert.equal(result.rejected[0].item.type, 'hotkey-preset');
 });
 
+test('gate:import-contract:text-presets', () => {
+    const bundle = readJson('fixtures/imports/text-presets-bundle.json');
+    const handled = [];
+    const result = dispatchImportBundle(bundle, {
+        'text-filter-preset': (item) => handled.push(item.type),
+        'text-format-preset': (item) => handled.push(item.type),
+        'scene-regex-preset': (item) => handled.push(item.type),
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(handled, ['text-filter-preset', 'text-format-preset', 'scene-regex-preset']);
+    assert.equal(result.accepted.length, 3);
+    assert.deepEqual(result.rejected, []);
+});
+
 test('gate:style-contract:requires stable slots and reader bridge attributes', () => {
     const skin = readJson('fixtures/styles/skin-contract.json');
     const result = checkStyleContract(skin);
@@ -29,6 +52,18 @@ test('gate:style-contract:requires stable slots and reader bridge attributes', (
     assert.equal(result.ok, true);
     assert.deepEqual(result.missingSlots, []);
     assert.deepEqual(result.missingData, []);
+});
+
+test('gate:visual-slots-contract:stage-model', () => {
+    const fixture = readJson('fixtures/visual/stage-model.json');
+    const readerState = createReaderState(fixture.standard.readerStateInput);
+    const stage = createStageModel(fixture.standard.scene, readerState);
+    const result = checkStyleContract(stage);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.missingSlots, []);
+    assert.deepEqual(result.missingData, []);
+    assert.equal(stage.layers.hud.toolbar.attributes['data-placement'], 'top-right');
 });
 
 test('gate:loader-json:matches loader source and references public bundle', () => {
@@ -43,6 +78,147 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.doesNotMatch(loaderJson.content, /yuzi-phone/i);
 });
 
+test('gate:visual-novel-compat:legacy-storage', () => {
+    const fixture = readJson('fixtures/visual-novel/legacy-storage.json');
+    const storageLike = {
+        getItem(key) {
+            return Object.prototype.hasOwnProperty.call(fixture, key) ? fixture[key] : null;
+        },
+    };
+
+    const result = readLegacyVisualNovelSettings(storageLike, 'mobile');
+    assert.equal(result.ok, true);
+    assert.equal(result.readerMode, 'mobile');
+    assert.equal(result.displayMode, 'pc');
+    assert.equal(result.bridge.showToasts, true);
+    assert.equal(result.readerSettingsByMode.pc.toolbarDirection, 'horizontal');
+    assert.equal(result.readerSettingsByMode.mobile.toolbarDirection, 'vertical');
+
+    const invalidResult = readLegacyVisualNovelSettings({
+        getItem(key) {
+            if (key === 'vnm_visual_novel_bridge_config') return '{bad json';
+            return null;
+        },
+    });
+    assert.equal(invalidResult.ok, false);
+    assert.equal(invalidResult.reason, 'invalid-legacy-json');
+});
+
+test('gate:visual-novel-compat:api-shape', () => {
+    const contract = readJson('fixtures/visual-novel/api-contract.json');
+    const legacyStorage = readJson('fixtures/visual-novel/legacy-storage.json');
+    const globalObject = {
+        localStorage: {
+            getItem(key) {
+                return Object.prototype.hasOwnProperty.call(legacyStorage, key) ? legacyStorage[key] : null;
+            },
+        },
+    };
+    const igs = bootstrapIGS({
+        global: globalObject,
+        hostAdapter: {
+            getCurrentMessage: async () => null,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    for (const method of contract.methods) {
+        assert.equal(typeof igs[method], 'function');
+    }
+
+    const unifiedSettings = igs.getUnifiedSettings({ mode: 'pc' });
+    for (const field of contract.unifiedSettingsFields) {
+        assert.ok(Object.prototype.hasOwnProperty.call(unifiedSettings, field));
+    }
+    assert.equal(unifiedSettings.readerMode, 'pc');
+    assert.equal(unifiedSettings.bridge.imageApi.mode, 'nai');
+    const settingsResult = igs.openSettings({ tab: 'basic' });
+    assert.equal(settingsResult.ok, true);
+    assert.equal(settingsResult.snapshot.tabs.length, 4);
+    assert.equal(settingsResult.snapshot.tabs[0].label, '基础');
+    assert.equal(igs.generateImage({ prompt: 'moon' }).reason, 'provider-not-enabled');
+
+    igs.destroy();
+});
+
+test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
+    const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
+    const source = getOriginalReaderSource('0.2.7');
+
+    for (const selector of fixture.requiredSelectors) {
+        assert.ok(source.selectors.includes(selector));
+        if (selector !== '#vnm-overlay') {
+            assert.match(source.html, new RegExp(selectorToken(selector)));
+        }
+    }
+
+    assert.equal(source.styleContract.overlayZIndex, fixture.styles['#vnm-overlay'].zIndex);
+    assert.equal(source.styleContract.dialogWidth, fixture.styles['.vnm-dialog'].width);
+    assert.equal(source.styleContract.inputHeight, fixture.styles['.vnm-input'].height);
+    assert.equal(source.styleContract.sendButtonMinWidth, fixture.styles['.vnm-send-btn'].minWidth);
+    assert.equal(source.styleContract.toolbarButtonSize, fixture.styles['.vnm-icon-btn'].width);
+});
+
+test('gate:visual-novel-ui:settings-shell-keeps-original-tabs', () => {
+    const fixture = readJson('fixtures/visual-novel-ui/settings-panel-snapshot.json');
+    const shell = getSettingsShellTemplate();
+
+    assert.match(shell, /vnm-settings-shell/);
+    assert.match(shell, /vnm-settings-tabs/);
+    assert.match(shell, /vnm-settings-body/);
+
+    for (const tab of fixture.tabs) {
+        const defined = SETTINGS_TAB_DEFS.find(([id]) => id === tab.id);
+        assert.ok(defined);
+        assert.equal(defined[1], tab.label);
+        assert.ok(getSettingsTabTemplate(tab.id).length > 0);
+    }
+});
+
+test('gate:visual-novel-ui:settings-style-keeps-original-geometry', () => {
+    const fixture = readJson('fixtures/visual-novel-ui/settings-panel-snapshot.json');
+    const styleText = getSettingsStyleText();
+
+    assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.shellWidth)));
+    assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.headerHeight)));
+    assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.segmentedHeight)));
+    assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.switchHeight)));
+    assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.mobileMedia)));
+});
+
+test('gate:api:public-api-exposes-text-preset-groups', () => {
+    const igs = bootstrapIGS({
+        global: {},
+        hostAdapter: {
+            getCurrentMessage: async () => null,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    assert.equal(typeof igs.api.textFilterPresets.register, 'function');
+    assert.equal(typeof igs.api.textFormatPresets.register, 'function');
+    assert.equal(typeof igs.api.sceneRegexPresets.register, 'function');
+    assert.equal(typeof igs.api.textFilterPresets.setCurrent, 'function');
+    assert.equal(typeof igs.api.textFormatPresets.getCurrent, 'function');
+    assert.equal(typeof igs.api.sceneRegexPresets.exportAll, 'function');
+
+    igs.destroy();
+});
+
 function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
+}
+
+function selectorToken(selector) {
+    if (selector.startsWith('#')) {
+        return `id="${selector.slice(1)}"`;
+    }
+    if (selector.startsWith('.')) {
+        return selector.slice(1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    return selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function escapeRegExp(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
