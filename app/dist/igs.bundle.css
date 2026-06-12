@@ -1,0 +1,3 @@
+.igs-stage { position: relative; width: 100%; height: 100%; }
+.igs-background-layer, .igs-generated-layer, .igs-character-layer, .igs-dialogue-layer, .igs-hud-layer, .igs-choice-layer, .igs-system-layer { position: absolute; inset: 0; }
+.igs-toolbar { display: flex; gap: 8px; }

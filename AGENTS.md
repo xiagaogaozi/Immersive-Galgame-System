@@ -1,0 +1,118 @@
+# 沉浸式 Galgame 系统 AI 协作流程
+
+本文件是 `projects/沉浸式galgame系统/` 的项目级协作规则。上级分流仍以 `../../AGENTS.md` 与 `../../../AGENTS.md` 为准；本项目当前是独立 app 工程规划，不接入奶龙工具箱发布壳。
+
+## 基本约定
+
+- 默认项目目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`
+- 默认工作形态：`loader/` 只放远程 bundle loader，主程序只放 `app/`。
+- 不新增 `project.json`、`latest/`、`archive/`、`tavern helper/` 等奶龙工具箱发布壳目录，除非用户明确要求重新接入工具箱流程。
+- 不运行奶龙工具箱 `pack-project`、`verify-project`、`validate`、`check-refs` 作为本项目验收，除非用户明确要求。
+- 不提交真实 API key、cookie、token、私有聊天记录、真实 shujuku 数据库或用户本地资源。
+- 项目级变更只记录在本目录 `README.md`，不写入奶龙工具箱 `CHANGELOG.md`。
+- 防止结构腐化是硬要求：改动前先读现有模块契约，优先复用已有入口、类型、helper 与状态流。
+
+## 任务风险级别
+
+每次开始前先判断风险，并按风险选择验证动作。
+
+- `R0` 只读、讨论、方案：不改文件、不验证、不提交、不发布。
+- `R1` 文档、契约、fixtures 计划或非运行逻辑修改：检查相关文件自洽，必要时运行静态检索，不打包、不发布。
+- `R2` 单模块普通 JS/CSS 小改：运行相关单测或最小模拟测试，能运行时再补 `pnpm test`。
+- `R3` 跨模块运行时、状态、registry、storage、shujuku、generated-images 或公开 API 修改：运行 `pnpm test`、`pnpm simulate`、必要的局部 smoke。
+- `R4` loader、dist、发布流程、版本号或远程 bundle 链路修改：运行 `pnpm build`、`pnpm simulate`、`pnpm perf`，并保留模拟发布证据。
+- `R5` 真实 provider、真实 shujuku 写入、真实用户数据迁移或不可逆操作：先用 fake provider / fake shujuku / fixtures 做确定性模拟，真实链路必须等用户明确确认。
+
+本项目当前不要求安装版实机验真，也不要求 Computer Use 实机操作。NailongHub 工作流中的实机验真位置，在本项目一律替换为沉浸式 Galgame 系统模拟测试。
+
+## 执行清单规则
+
+功能修改、bug 修复、结构调整和发布流程改动开始时，使用短清单推进，并在每项完成后立即更新状态。
+
+```text
+- [ ] 理解需求并确认风险级别
+- [ ] 检查当前工作区状态
+- [ ] 阅读 README、AGENTS、AI_WORKFLOW 与目标模块 CONTRACT
+- [ ] 检查是否已有可复用模块，避免重复补丁
+- [ ] 实现修改
+- [ ] 更新 README 更新日志和相关 docs
+- [ ] 按风险级别运行模拟测试或记录 skipped 原因
+- [ ] 回传变更、验证证据、技术债与残余风险
+```
+
+不适用的项目标记为 `[x] 不适用：原因`。失败的项目保持未完成状态，并在最终回复说明当前状态。
+
+## 修改前读取顺序
+
+1. 根目录 `README.md`
+2. 本文件 `AGENTS.md`
+3. `docs/AI_WORKFLOW.md`
+4. `功能总集表.md`
+5. 目标模块 `app/src/<模块>/CONTRACT.md`
+6. 涉及跨模块数据时读取 `docs/ARCHITECTURE.md` 与 `docs/SCHEMA_AND_FIXTURES.md`
+
+shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 schema 读取 `app/src/prompts/schemas/CONTRACT.md`。跨模块通用 schema 读取 `app/src/schemas/CONTRACT.md`。
+
+## 防结构腐化约束
+
+- 改动前先搜索调用链，不只在报错点附近补丁。
+- 同类逻辑第二次出现可以接受，第三次必须抽 helper、adapter 或注册表。
+- 新功能必须有明确归属层：host、core、scene、visual、media、registry、storage、generated-images、prompts、shujuku-panel、api。
+- 不在入口文件堆业务逻辑；入口只做启动、注册和模块装配。
+- 不复制粘贴 provider、preset、pack、mod 的相似代码，优先走统一 adapter 或数据驱动映射。
+- 每个新能力要走统一注册、统一权限、统一日志和统一模拟测试入口。
+- 兜底逻辑必须写清触发条件、可删除条件和测试样例。
+- 修改后检查未使用代码、死分支、重复常量、重复 CSS token 与跨层依赖。
+
+## 验证与模拟测试
+
+验证证据按层记录：
+
+- 静态证据：读取过的 `CONTRACT.md`、docs、schema 或调用链。
+- 单元证据：`pnpm test` 或目标测试文件。
+- 模拟证据：`pnpm simulate`，使用 fake TavernHelper、fake shujuku、fake image provider 与 fixtures。
+- 构建证据：`pnpm build`。
+- 性能证据：`pnpm perf`，重点看移动端布局、大图资源、轮询和缓存。
+
+当前未接入命令时，不伪造通过结果。应补充 fixtures、测试矩阵或 skipped 原因，并说明残余风险。
+
+## 发布策略
+
+- 只讨论、只规划、只审查时，不提交、不打包、不发布。
+- 用户要求实现时，默认做到本地修改、文档更新和可执行范围内的模拟验证。
+- 用户明确要求发布时，才生成 bundle、loader、标签或 release notes。
+- 发布候选不得依赖真实 API key、真实聊天记录或真实 shujuku 数据作为唯一验证来源。
+
+## 技术债记录
+
+实现、修复、发布或替代验证后，如果留下技术债、临时方案、无法执行的验证或后续步骤，必须记录在项目 `README.md` 更新日志或相关 docs 中。
+
+记录至少包含：
+
+- 已完成内容
+- 技术债或 skipped 项
+- 暂时留下原因
+- 下一步处理计划
+- 建议处理版本或触发时机
+
+## 版本号规则
+
+当前项目版本使用 `vMAJOR.MINOR.PATCH`。
+
+- 文档、契约、测试计划补充：增加 patch，例如 `v0.1.5` -> `v0.1.6`
+- 新功能模块或可用模拟测试：增加 minor，并重置 patch，例如 `v0.1.6` -> `v0.2.0`
+- 运行时边界或发布形态重大变化：增加 major，并重置 minor/patch，例如 `v0.9.4` -> `v1.0.0`
+
+每次版本变化至少同步更新根 `README.md` 的当前状态和更新日志。
+
+## 最终回复要求
+
+完成后用简体中文说明：
+
+- 修改了哪些文件
+- 风险级别
+- 已运行的验证项和 skipped 项
+- 是否新增抽象
+- 是否留下技术债和残余风险
+
+如果本轮只修改本地协作文档，且用户未要求提交，要明确说明未提交。

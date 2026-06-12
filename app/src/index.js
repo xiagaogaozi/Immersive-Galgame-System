@@ -1,0 +1,13 @@
+export { bootstrapIGS, destroyIGS } from './core/bootstrap.js';
+export { createPublicApi, attachPublicApi } from './api/public-api.js';
+export { createTavernHelperAdapter } from './host/tavern-helper-adapter.js';
+export { parseSceneText } from './scene/text-parser.js';
+export { resolveScene } from './scene/scene-resolver.js';
+export { createStageRenderer } from './visual/stage-renderer.js';
+export { createLayerController } from './visual/layer-controller.js';
+export { resolveVisualMode, VISUAL_MODES } from './visual/visual-mode.js';
+export { createGenerationQueue } from './generated-images/generation-queue.js';
+export { createPromptAdapter } from './prompts/adapters/prompt-adapter.js';
+export { createShujukuClient } from './data/shujuku/client.js';
+export { createResourceCache } from './media/resource-cache.js';
+export { dispatchImportBundle } from './registry/import-dispatcher.js';
