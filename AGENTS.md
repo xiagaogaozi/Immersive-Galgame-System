@@ -1,11 +1,14 @@
 # 沉浸式 Galgame 系统 AI 协作流程
 
-本文件是 `projects/沉浸式galgame系统/` 的项目级协作规则。上级分流仍以 `../../AGENTS.md` 与 `../../../AGENTS.md` 为准；本项目当前是独立 app 工程规划，不接入奶龙工具箱发布壳。
+本文件是 `projects/沉浸式galgame系统/` 的项目级协作规则。上级分流仍以 `../../AGENTS.md` 与 `../../../AGENTS.md` 为准；本项目当前是独立 app 工程，最终发布为独立酒馆助手脚本 loader JSON，不默认接入奶龙工具箱发布壳。
 
 ## 基本约定
 
 - 默认项目目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`
 - 默认工作形态：`loader/` 只放远程 bundle loader，主程序只放 `app/`。
+- 最终导入产物：`loader/igs-loader.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`。
+- 原版脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`。
+- 打包发布入口文档：`docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`。
 - 不新增 `project.json`、`latest/`、`archive/`、`tavern helper/` 等奶龙工具箱发布壳目录，除非用户明确要求重新接入工具箱流程。
 - 不运行奶龙工具箱 `pack-project`、`verify-project`、`validate`、`check-refs` 作为本项目验收，除非用户明确要求。
 - 不提交真实 API key、cookie、token、私有聊天记录、真实 shujuku 数据库或用户本地资源。
@@ -50,6 +53,7 @@
 4. `功能总集表.md`
 5. 目标模块 `app/src/<模块>/CONTRACT.md`
 6. 涉及跨模块数据时读取 `docs/ARCHITECTURE.md` 与 `docs/SCHEMA_AND_FIXTURES.md`
+7. 涉及打包、发布、上传、loader、远程 bundle、GitHub Release 或酒馆助手脚本 JSON 时读取 `docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`
 
 shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 schema 读取 `app/src/prompts/schemas/CONTRACT.md`。跨模块通用 schema 读取 `app/src/schemas/CONTRACT.md`。
 
@@ -82,6 +86,10 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 - 用户要求实现时，默认做到本地修改、文档更新和可执行范围内的模拟验证。
 - 用户明确要求发布时，才生成 bundle、loader、标签或 release notes。
 - 发布候选不得依赖真实 API key、真实聊天记录或真实 shujuku 数据作为唯一验证来源。
+- 最终给酒馆导入的是 `loader/igs-loader.json`，不是 `app/dist/igs.bundle.js`，也不是原版 `Visual Novel` 的 `latest/*.json`。
+- `loader/igs-loader.json` 的 `content` 必须来自 `loader/igs-loader.js` 原文，JSON 反序列化后两者应完全一致。
+- 远程 bundle 地址必须是普通用户可访问的公开地址；当前 private 仓库的 raw 地址不能作为最终发布源。
+- 发布流程、字段格式和校验命令以 `docs/PACKAGING_WORKFLOW.md` 为准。
 
 ## 技术债记录
 

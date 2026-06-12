@@ -12,6 +12,7 @@
 6. 涉及模块流向或归属不清时读取 `docs/ARCHITECTURE.md`。
 7. 只修改对应模块，跨模块必须说明原因。
 8. 当前项目不使用奶龙工具箱发布壳；不要新增 `project.json`、`latest/`、`tavern helper/` 等发布壳相关目录或清单，除非用户明确要求进入发布实施阶段。
+9. 涉及打包、发布、上传、loader、远程 bundle 或酒馆助手脚本 JSON 时，读取 `docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`。
 
 ## 执行中清单
 
@@ -67,6 +68,40 @@ structure -> static -> test -> simulate -> perf -> build
 本项目不运行奶龙工具箱 `pack-project`、`verify-project`、`validate`、`check-refs` 作为本项目验收，除非用户明确要求重新接入工具箱流程。
 
 NailongHub 工作流中的安装版实机验真、Computer Use 实机操作和 live AI 校验，在本项目默认替换为 `docs/SCHEMA_AND_FIXTURES.md` 的 `S0-S10` 模拟测试矩阵。真实酒馆、真实 provider 或真实 shujuku 写入只在用户明确要求时加入。
+
+## 酒馆助手脚本打包
+
+最终发布给用户导入的是：
+
+```text
+loader/igs-loader.json
+```
+
+该文件是 JS-Slash-Runner / 酒馆助手脚本 JSON，结构参考：
+
+```text
+D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json
+```
+
+发布数据流固定为：
+
+```text
+app/src/** -> npm run build -> app/dist/igs.bundle.js + app/dist/igs.bundle.css -> loader/igs-loader.js -> loader/igs-loader.json
+```
+
+原版 Visual Novel 脚本只作为迁移来源和兼容参考，位置固定为：
+
+```text
+D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel
+```
+
+打包发布任务必须遵守：
+
+- 先跑 `npm run gate`，文档-only 任务可 skipped 但必须说明原因。
+- `loader/igs-loader.js` 只负责加载远程 bundle，不写业务逻辑。
+- `loader/igs-loader.json` 的 `content` 必须等于 `loader/igs-loader.js` 原文。
+- 当前仓库是 private 时，不得把 private raw 地址写成最终用户可用发布源。
+- 具体字段、校验命令和公开地址限制见 `docs/PACKAGING_WORKFLOW.md`。
 
 ## GitHub 上传
 

@@ -25,7 +25,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.2.0',
+        version: '0.2.1',
         events,
         refresh,
         typeAndSend,

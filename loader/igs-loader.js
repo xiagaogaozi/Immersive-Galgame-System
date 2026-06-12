@@ -1,0 +1,119 @@
+(function () {
+    'use strict';
+
+    const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
+    const DEFAULT_REF = 'main';
+    const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
+    const CSS_ID = 'igs-auto-loader-css';
+    const SCRIPT_ID = 'igs-auto-loader-js';
+    const TRACE_IDS = [CSS_ID, SCRIPT_ID, 'igs-root', 'igs-stage'];
+
+    const root = resolveRootWindow();
+    const doc = getRootDocument();
+
+    if (!doc) {
+        console.warn('[IGS Loader] 未找到可访问的文档，无法加载沉浸式 Galgame 系统。');
+        return;
+    }
+
+    const blockReason = getDuplicateLoadBlockReason();
+    if (blockReason) {
+        notifyDuplicateLoadBlocked(blockReason);
+        return;
+    }
+
+    root[INSTANCE_KEY] = {
+        repository: REPOSITORY,
+        loadedAt: Date.now(),
+    };
+
+    const config = resolveLoaderConfig();
+    const cssUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.css`, config);
+    const scriptUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.js`, config);
+
+    injectCss(cssUrl);
+    injectScript(scriptUrl);
+
+    function resolveRootWindow() {
+        try {
+            if (window.parent && window.parent.document) return window.parent;
+        } catch (error) {
+            // Cross-origin parent is not usable inside Tavern.
+        }
+        return window;
+    }
+
+    function getRootDocument() {
+        try {
+            return root.document || document;
+        } catch (error) {
+            return document;
+        }
+    }
+
+    function resolveLoaderConfig() {
+        const userConfig = getObject(root.IGS_LOADER_CONFIG);
+        const ref = String(userConfig.ref || root.IGS_LOADER_REF || DEFAULT_REF).trim() || DEFAULT_REF;
+        const defaultBase = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${ref}`;
+        const base = String(userConfig.base || root.IGS_LOADER_BASE || defaultBase).replace(/\/+$/, '');
+        const cacheBust = userConfig.cacheBust === undefined ? ref === 'main' : userConfig.cacheBust !== false;
+        return { ref, base, cacheBust };
+    }
+
+    function getObject(value) {
+        return value && typeof value === 'object' ? value : {};
+    }
+
+    function withCacheBust(url, config) {
+        if (!config.cacheBust) return url;
+        const mark = `igs_t=${Date.now()}`;
+        return `${url}${url.includes('?') ? '&' : '?'}${mark}`;
+    }
+
+    function getDuplicateLoadBlockReason() {
+        if (root[INSTANCE_KEY]) return INSTANCE_KEY;
+        if (root.IGS || root.ImmersiveGalgameSystem) return 'window.IGS';
+        return TRACE_IDS.find((id) => doc.querySelector(`#${id}`)) || '';
+    }
+
+    function notifyDuplicateLoadBlocked(reason) {
+        const message = '[IGS Loader] 检测到沉浸式 Galgame 系统已加载，已阻止重复加载。';
+        console.warn(message, reason);
+        try {
+            if (typeof root.alert === 'function') root.alert('检测到沉浸式 Galgame 系统已加载，请勿重复启用自动更新脚本。');
+        } catch (error) {
+            // Ignore blocked alert calls.
+        }
+    }
+
+    function injectCss(href) {
+        let link = doc.querySelector(`#${CSS_ID}`);
+        if (!link) {
+            link = doc.createElement('link');
+            link.id = CSS_ID;
+            link.rel = 'stylesheet';
+            doc.head.appendChild(link);
+        }
+        link.href = href;
+    }
+
+    function injectScript(src) {
+        if (doc.querySelector(`#${SCRIPT_ID}`)) return;
+        const script = doc.createElement('script');
+        script.id = SCRIPT_ID;
+        script.type = 'module';
+        script.src = src;
+        script.onload = () => {
+            console.info('[IGS Loader] 沉浸式 Galgame 系统 bundle 已加载。', src);
+        };
+        script.onerror = () => {
+            console.error('[IGS Loader] 远程 bundle 加载失败。', src);
+            try {
+                if (typeof root.alert === 'function') root.alert('沉浸式 Galgame 系统远程脚本加载失败，请检查 GitHub 仓库是否公开、网络是否可访问。');
+            } catch (error) {
+                // Ignore blocked alert calls.
+            }
+        };
+        doc.head.appendChild(script);
+    }
+})();

@@ -1,0 +1,200 @@
+# 酒馆助手脚本打包发布工作流
+
+本文件是未来 AI 处理“打包、发布、更新、上传、生成酒馆助手脚本 JSON”时的固定入口。换对话后，先读本文件，再读 `docs/RELEASE.md`。
+
+## 固定结论
+
+- 最终发布形态：JS-Slash-Runner / 酒馆助手脚本 JSON。
+- 参考样例：`D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`。
+- 发布策略：主程序远程 bundle，酒馆导入件只做自动更新 loader。
+- 本项目默认不走奶龙工具箱 `project.json / latest / tavern helper` 发布壳。
+- 本项目默认不运行奶龙工具箱 `pack-project`、`verify-project`、`validate`、`check-refs`，除非用户明确要求重新接入奶龙工具箱流程。
+
+## 原版脚本来源
+
+原版 Visual Novel 脚本项目：
+
+```text
+D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel
+```
+
+关键文件：
+
+```text
+projects/Visual Novel/project.json
+projects/Visual Novel/tavern helper/bridge/src/source.js
+projects/Visual Novel/tavern helper/bridge/src/index.js
+projects/Visual Novel/tavern helper/bridge/src/ui/reader/original-reader.js
+projects/Visual Novel/latest/酒馆助手脚本-Visual Novel v9.6.6.json
+projects/Visual Novel/latest/Visual Novel v9.6.6.js
+```
+
+原版公开 API 兼容面：
+
+```text
+openSettings()
+getConfig()
+getUnifiedSettings()
+openViewerFromMessage()
+openLatestAvailable()
+generateImage()
+destroy()
+```
+
+迁移或兼容这些能力时，先在 IGS 中增加 fixtures 和模拟测试，再考虑修改 `Visual Novel` 本体。
+
+## IGS 源码与产物
+
+IGS 项目根：
+
+```text
+D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统
+```
+
+主程序源码：
+
+```text
+app/src/
+```
+
+构建产物：
+
+```text
+app/dist/igs.bundle.js
+app/dist/igs.bundle.css
+app/dist/manifest.json
+```
+
+酒馆导入产物：
+
+```text
+loader/igs-loader.json
+```
+
+loader 源码：
+
+```text
+loader/igs-loader.js
+```
+
+`loader/igs-loader.js` 只允许做这些事：
+
+- 检查是否重复加载。
+- 解析远程版本或固定版本。
+- 注入 `igs.bundle.css`。
+- 注入 `igs.bundle.js`。
+- 给控制台输出加载状态和错误原因。
+
+`loader/igs-loader.js` 不允许承载阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 或业务 UI。
+
+## 模式判定
+
+本项目发布打包涉及两个模式：
+
+| 阶段 | 模式 | 输出 | 入口 |
+| --- | --- | --- | --- |
+| IGS 主程序开发 | B. JS-Slash-Runner 纯 JS 脚本 / 独立 bundle 源码 | `app/dist/igs.bundle.js` | `window.IGS` / `window.ImmersiveGalgameSystem` |
+| 酒馆导入发布 | A. JS-Slash-Runner Script JSON | `loader/igs-loader.json` | `window.TavernHelper` 环境中的 loader |
+
+不要把最终导入 JSON 写进 `app/src/`。不要把主程序业务逻辑写进 `loader/`。
+
+## 发布前检查
+
+每次生成可发布 loader 前，先运行：
+
+```powershell
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统\app"
+npm run gate
+npm run build:loader
+```
+
+`gate` 顺序固定为：
+
+```text
+structure -> static -> test -> simulate -> perf -> build
+```
+
+如果只改文档，可以不跑 `npm run gate`，但最终回复必须说明 skipped 原因。
+
+## loader JSON 格式
+
+`loader/igs-loader.json` 必须保持这种结构：
+
+```json
+{
+  "type": "script",
+  "enabled": false,
+  "name": "沉浸式 Galgame 系统（自动更新）",
+  "id": "<固定 UUID>",
+  "content": "<loader/igs-loader.js 的原文>",
+  "info": "沉浸式 Galgame 系统自动更新 loader。",
+  "button": {
+    "enabled": true,
+    "buttons": []
+  },
+  "data": {},
+  "export_with": {
+    "data": true,
+    "button": true
+  }
+}
+```
+
+`content` 必须是可直接执行的 JavaScript 字符串。JSON 反序列化后应满足：
+
+```js
+JSON.parse(fs.readFileSync('loader/igs-loader.json', 'utf8')).content === fs.readFileSync('loader/igs-loader.js', 'utf8')
+```
+
+## 远程 bundle 地址规则
+
+当前 GitHub 仓库：
+
+```text
+https://github.com/xiagaogaozi/immersive-galgame-system
+```
+
+当前仓库已计划开放为 public。普通 SillyTavern 用户只能通过公开 GitHub raw、jsDelivr 或公开 Release 资产稳定加载远程 bundle；如果仓库重新设为 private，必须选择其中一个方案：
+
+1. 将仓库保持 public，并使用 GitHub raw 或 jsDelivr 地址。
+2. 源码仓库 private，另建公开发布仓库，只放 `app/dist` 和 loader。
+3. 使用公开 GitHub Release 资产，并让 loader 指向 release asset。
+
+发布前必须确认远程 bundle 中没有真实 API key、cookie、token、私有聊天记录、真实 shujuku 数据或本机私有路径。
+
+## 推荐发布步骤
+
+```powershell
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统\app"
+npm run gate
+```
+
+```powershell
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统"
+git status --short
+git add .
+git commit -m "Prepare loader packaging workflow"
+git push origin main
+```
+
+真正生成 `loader/igs-loader.json` 后，还需要验证：
+
+```powershell
+node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); if(j.type!=='script'||typeof j.content!=='string'||!j.content.includes('igs.bundle.js')) throw new Error('bad loader json');"
+```
+
+## 更新日志要求
+
+- 项目级发布流程、loader、bundle、版本、GitHub 上传说明：写入本项目 `README.md`。
+- 具体打包命令和发布限制：写入 `docs/RELEASE.md` 与本文件。
+- 原版 Visual Novel 迁移注意事项：写入本文件或单独迁移文档。
+- 不要写入 `奶龙工具箱/CHANGELOG.md`，除非修改的是工具箱本身的流程、Schema、CI 或知识库。
+
+## 未来实现清单
+
+- [x] 新增 `loader/igs-loader.js`。
+- [x] 新增生成 `loader/igs-loader.json` 的脚本。
+- [x] 给 loader JSON 增加反解校验。
+- [ ] 确认公开远程 bundle 地址。
+- [x] 在模拟测试中加入 loader 字段校验。
+- [ ] 发布前更新 README 版本日志与 `app/dist/manifest.json` 版本。

@@ -21,6 +21,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
+- 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
+- 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
 - 当前验收策略：`npm run gate`，fixtures 驱动的模拟测试，不要求安装版实机校验。
@@ -90,6 +92,7 @@ projects/沉浸式galgame系统/
 └── docs/
     ├── AI_WORKFLOW.md
     ├── ARCHITECTURE.md
+    ├── PACKAGING_WORKFLOW.md
     ├── SCHEMA_AND_FIXTURES.md
     ├── API_FOR_MOD_AUTHORS.md
     ├── IMAGE_GENERATION.md
@@ -119,8 +122,19 @@ projects/沉浸式galgame系统/
 11. 本项目当前用模拟测试替代实机校验；不得把安装版实机验真作为默认交付要求。
 12. 不要走奶龙工具箱流程校验：本项目不得运行奶龙工具箱 `pack-project`、`verify-project`、`validate`、`check-refs` 作为验收，除非用户明确要求重新接入工具箱流程。
 13. 项目级变更只记录在本 README，不写入工具箱 `CHANGELOG.md`。
+14. 涉及打包、发布、上传、loader、远程 bundle 或酒馆助手脚本 JSON 时，必须先读 `docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`。
+15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.2.1 - 2026-06-12
+
+- 归档 `plan/v0.2.1-酒馆助手脚本发布打包策划书.md`，明确最终按酒馆助手脚本 JSON 形态发布，参考 `_inbox/酒馆助手脚本-玉子手机.json`。
+- 新增 `docs/PACKAGING_WORKFLOW.md`，固定原版 Visual Novel 源路径、IGS 源码路径、`app/dist` bundle、`loader/igs-loader.json` 和发布前验收命令。
+- 更新 README、AGENTS、AI_WORKFLOW、RELEASE 与 loader README，要求后续涉及打包发布时先读发布工作流文档。
+- 明确当前仍不默认接回奶龙工具箱 `project.json / latest / tavern helper` 发布壳；发布导入件采用独立 loader JSON。
+- 新增 `loader/igs-loader.js` 与 `app/scripts/build-loader.js`，可通过 `npm run build:loader` 生成项目内 `loader/igs-loader.json` 供酒馆导入测试。
+- `npm run gate` 新增 loader JSON 反解校验，确保 `loader/igs-loader.json.content` 与 `loader/igs-loader.js` 原文一致。
 
 ### v0.2.0 - 2026-06-12
 

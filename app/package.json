@@ -1,6 +1,6 @@
 {
   "name": "immersive-galgame-system-app",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +10,8 @@
     "simulate": "node --test tests/simulate.test.js",
     "perf": "node scripts/perf-smoke.js",
     "build": "node scripts/build.js",
+    "build:loader": "node scripts/build-loader.js",
+    "package:loader": "npm run build && npm run build:loader",
     "gate": "npm run structure && npm run static && npm run test && npm run simulate && npm run perf && npm run build"
   }
 }

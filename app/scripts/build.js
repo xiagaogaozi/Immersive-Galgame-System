@@ -24,7 +24,7 @@ const css = [
 
 const manifest = {
     name: 'immersive-galgame-system',
-    version: '0.2.0',
+    version: '0.2.1',
     entry: 'igs.bundle.js',
     style: 'igs.bundle.css',
 };

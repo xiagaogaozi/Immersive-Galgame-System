@@ -16,6 +16,9 @@ const required = [
     path.join(appRoot, 'src', 'api', 'public-api.js'),
     path.join(projectRoot, 'AGENTS.md'),
     path.join(projectRoot, 'docs', 'AI_WORKFLOW.md'),
+    path.join(projectRoot, 'docs', 'PACKAGING_WORKFLOW.md'),
+    path.join(projectRoot, 'loader', 'igs-loader.js'),
+    path.join(projectRoot, 'loader', 'igs-loader.json'),
 ];
 
 for (const target of forbidden) {

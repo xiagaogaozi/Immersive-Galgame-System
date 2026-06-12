@@ -3,8 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
+const projectRoot = path.resolve(appRoot, '..');
 const sourceRoots = ['src', 'scripts', 'tests'].map((name) => path.join(appRoot, name));
+sourceRoots.push(path.join(projectRoot, 'loader'));
 const jsonRoots = ['fixtures', 'src', '.'].map((name) => path.join(appRoot, name));
+jsonRoots.push(path.join(projectRoot, 'loader'));
 
 for (const file of findFiles(sourceRoots, '.js')) {
     const result = spawnSync(process.execPath, ['--check', file], {
