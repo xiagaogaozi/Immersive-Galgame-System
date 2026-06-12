@@ -2,7 +2,8 @@
     'use strict';
 
     const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
-    const DEFAULT_REF = 'main';
+    const DEFAULT_REF = 'v0.2.9';
+    const RAW_MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/app/dist/manifest.json`;
     const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
     const CSS_ID = 'igs-auto-loader-css';
     const SCRIPT_ID = 'igs-auto-loader-js';
@@ -27,12 +28,14 @@
         loadedAt: Date.now(),
     };
 
-    const config = resolveLoaderConfig();
-    const cssUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.css`, config);
-    const scriptUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.js`, config);
-
-    injectCss(cssUrl);
-    injectScript(scriptUrl);
+    load().catch((error) => {
+        console.error('[IGS Loader] 启动失败。', error);
+        try {
+            if (typeof root.alert === 'function') root.alert(`沉浸式 Galgame 系统启动失败：${error && error.message || String(error)}`);
+        } catch (alertError) {
+            // Ignore blocked alert calls.
+        }
+    });
 
     function resolveRootWindow() {
         try {
@@ -51,13 +54,44 @@
         }
     }
 
-    function resolveLoaderConfig() {
+    async function load() {
+        const config = await resolveLoaderConfig();
+        const cssUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.css`, config);
+        const scriptUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.js`, config);
+
+        injectCss(cssUrl);
+        injectScript(scriptUrl);
+        console.info('[IGS Loader] 使用远程版本。', config.ref, config.base);
+        return config;
+    }
+
+    async function resolveLoaderConfig() {
         const userConfig = getObject(root.IGS_LOADER_CONFIG);
-        const ref = String(userConfig.ref || root.IGS_LOADER_REF || DEFAULT_REF).trim() || DEFAULT_REF;
+        const explicitRef = String(userConfig.ref || root.IGS_LOADER_REF || '').trim();
+        const ref = explicitRef || await resolveLatestTagRef(userConfig) || DEFAULT_REF;
         const defaultBase = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${ref}`;
         const base = String(userConfig.base || root.IGS_LOADER_BASE || defaultBase).replace(/\/+$/, '');
-        const cacheBust = userConfig.cacheBust === undefined ? ref === 'main' : userConfig.cacheBust !== false;
+        const cacheBust = userConfig.cacheBust === undefined ? ref === 'main' || Boolean(explicitRef && !/^v\d+\.\d+\.\d+$/.test(ref)) : userConfig.cacheBust !== false;
         return { ref, base, cacheBust };
+    }
+
+    async function resolveLatestTagRef(userConfig) {
+        if (userConfig.autoUpdate === false || root.IGS_LOADER_AUTO_UPDATE === false) return DEFAULT_REF;
+        const manifestUrl = withCacheBust(String(userConfig.manifestUrl || root.IGS_LOADER_MANIFEST_URL || RAW_MANIFEST_URL), { cacheBust: true });
+        const fetchFn = root.fetch
+            ? root.fetch.bind(root)
+            : (typeof fetch === 'function' ? fetch : null);
+        if (!fetchFn) return DEFAULT_REF;
+        try {
+            const response = await fetchFn(manifestUrl, { cache: 'no-store' });
+            if (!response || !response.ok) return DEFAULT_REF;
+            const manifest = await response.json();
+            const version = manifest && typeof manifest.version === 'string' ? manifest.version.trim() : '';
+            return /^\d+\.\d+\.\d+$/.test(version) ? `v${version}` : DEFAULT_REF;
+        } catch (error) {
+            console.warn('[IGS Loader] 读取 manifest 失败，回退到内置版本。', error);
+            return DEFAULT_REF;
+        }
     }
 
     function getObject(value) {

@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前已进入 `v0.2.8`：补齐酒馆魔法棒入口与 loader 自检按钮，修复导入自动更新后无可见入口的问题。
+- 当前已进入 `v0.2.9`：自动更新 loader 改为读取 GitHub raw manifest 后加载不可变版本标签，避免 jsDelivr `@main` 缓存旧 dist。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -127,6 +127,12 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.2.9 - 2026-06-12
+
+- 修复自动更新链路的 CDN 缓存风险：loader 默认先读取 `raw.githubusercontent.com/.../main/app/dist/manifest.json` 获取最新版本号，再加载 jsDelivr 的 `@v<version>` 不可变标签资源。
+- `loader/igs-loader.js` 的内置兜底版本升为 `v0.2.9`；仍可通过 `window.IGS_LOADER_REF` 或 `window.IGS_LOADER_CONFIG.ref` 手动指定 `main`、旧标签或测试分支。
+- 发布回查新增远程 CDN 内容确认：本轮已确认 `loader/igs-loader.json` 按钮可从 CDN 拉取；发现 `@main/app/dist/manifest.json` 可能返回旧缓存，因此默认链路不再依赖 jsDelivr 的 `@main` dist。
 
 ### v0.2.8 - 2026-06-12
 

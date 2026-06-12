@@ -172,6 +172,14 @@ https://github.com/xiagaogaozi/immersive-galgame-system
 
 发布前必须确认远程 bundle 中没有真实 API key、cookie、token、私有聊天记录、真实 shujuku 数据或本机私有路径。
 
+当前 loader 默认链路：
+
+```text
+GitHub raw main/app/dist/manifest.json -> 读取 version -> jsDelivr @v<version>/app/dist/igs.bundle.*
+```
+
+不要默认直接从 jsDelivr `@main/app/dist/*` 加载主程序；`@main` 可能出现 CDN 缓存旧 dist。需要测试分支或滚动主分支时，可由用户手动设置 `window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。
+
 ## 推荐发布步骤
 
 ```powershell

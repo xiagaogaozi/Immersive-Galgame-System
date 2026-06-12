@@ -65,6 +65,14 @@
 `loader/igs-loader.js` 只做重复加载检查、版本解析、CSS 注入、JS 注入和错误提示，不承载业务 UI。
 `loader/igs-loader.json` 的按钮只做诊断和手动重扫；正式入口必须由主程序注入酒馆魔法棒菜单。
 
+默认远程加载策略：
+
+```text
+GitHub raw main/app/dist/manifest.json -> 读取 version -> jsDelivr @v<version>/app/dist/igs.bundle.*
+```
+
+不要默认直接依赖 jsDelivr `@main/app/dist/*`，因为 CDN 可能返回旧 dist。需要临时测试主分支时，可以手动设置 `window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。
+
 ## 后续建议命令
 
 ```text
