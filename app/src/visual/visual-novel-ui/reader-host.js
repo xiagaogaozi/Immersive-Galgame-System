@@ -47,6 +47,7 @@ const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.toolbarScale',
     'readerSettings.imgMode',
     'readerSettings.stayMode',
+    'readerSettings.pinnedBtns',
 ]);
 
 const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
@@ -113,6 +114,17 @@ const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
     }),
 });
 
+const TOOLBAR_ACTIONS = Object.freeze([
+    ['prev', '上一段'],
+    ['next', '下一段'],
+    ['regen', '重新生成背景图'],
+    ['save', '保存背景图'],
+    ['settings', '设置'],
+    ['hide', '隐藏'],
+    ['prev-turn', '上一轮'],
+    ['next-turn', '下一轮'],
+]);
+
 export function createVisualNovelReaderHost(options = {}) {
     const state = {
         activeReader: null,
@@ -160,15 +172,18 @@ export function createVisualNovelReaderHost(options = {}) {
         );
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
-        const snapshot = buildReaderSnapshot(payload, nextMode, readerSettings);
+        const snapshot = buildReaderSnapshot(payload, nextMode, readerSettings, 0);
         const controller = createReaderController();
         const domState = mountReaderDom(snapshot, controller);
 
         state.activeReader = {
             payload: cloneData(payload),
             mode: nextMode,
+            index: 0,
             inputValue: '',
             hidden: false,
+            toolbarCollapsed: true,
+            lastAction: '',
             snapshot,
             controller,
             dom: domState,
@@ -238,6 +253,10 @@ export function createVisualNovelReaderHost(options = {}) {
     function closeReader() {
         const current = state.activeReader;
         if (!current) return { ok: true, reason: 'reader-not-open' };
+        closeSettings();
+        if (current.dom && typeof current.dom.dispose === 'function') {
+            current.dom.dispose();
+        }
         unmountNode(current.dom && current.dom.root);
         state.activeReader = null;
         return { ok: true };
@@ -255,7 +274,10 @@ export function createVisualNovelReaderHost(options = {}) {
         return {
             activeReader: state.activeReader ? {
                 mode: state.activeReader.mode,
+                index: state.activeReader.index,
                 hidden: state.activeReader.hidden,
+                toolbarCollapsed: state.activeReader.toolbarCollapsed,
+                lastAction: state.activeReader.lastAction,
                 inputValue: state.activeReader.inputValue,
                 snapshot: cloneData(state.activeReader.snapshot),
             } : null,
@@ -303,6 +325,15 @@ export function createVisualNovelReaderHost(options = {}) {
                 state.activeReader.hidden = !state.activeReader.hidden;
                 rerenderActiveReader();
                 return { ok: true, hidden: state.activeReader.hidden };
+            },
+            toggleToolbar() {
+                if (!state.activeReader) return { ok: false, reason: 'reader-not-open' };
+                state.activeReader.toolbarCollapsed = !state.activeReader.toolbarCollapsed;
+                applyToolbarState(state.activeReader.dom && state.activeReader.dom.overlay, state.activeReader);
+                return { ok: true, collapsed: state.activeReader.toolbarCollapsed };
+            },
+            invokeAction(action) {
+                return handleReaderAction(action);
             },
             openSettings(tab = 'basic') {
                 return openSettings({ tab, mode: state.activeReader ? state.activeReader.mode : 'pc' });
@@ -369,6 +400,18 @@ export function createVisualNovelReaderHost(options = {}) {
             state.activeSettings.readerMode = nextMode;
             draft.readerMode = nextMode;
             draft.readerSettings = cloneData(snapshot.readerSettings);
+            return rerenderSettings();
+        }
+
+        if (path === 'bridge.openMode') {
+            const nextMode = normalizeReaderMode(value, draft.bridge);
+            setPath(draft, path, nextMode);
+            const snapshot = resolveBridgeConfigSnapshot({ mode: nextMode });
+            state.activeSettings.readerMode = nextMode;
+            draft.readerMode = nextMode;
+            draft.readerSettings = cloneData(snapshot.readerSettings);
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
             return rerenderSettings();
         }
 
@@ -442,7 +485,90 @@ export function createVisualNovelReaderHost(options = {}) {
             return rerenderSettings();
         }
 
+        if (normalizedAction.startsWith('toggle-toolbar-pin:')) {
+            const id = normalizedAction.slice('toggle-toolbar-pin:'.length);
+            const allowed = TOOLBAR_ACTIONS.some(([actionId]) => actionId === id);
+            if (!allowed) return { ok: false, reason: 'unknown-toolbar-pin', id };
+            const currentPins = Array.isArray(settingsState.draft.readerSettings.pinnedBtns)
+                ? settingsState.draft.readerSettings.pinnedBtns.slice()
+                : [];
+            const index = currentPins.indexOf(id);
+            if (index >= 0) currentPins.splice(index, 1);
+            else currentPins.push(id);
+            settingsState.draft.readerSettings.pinnedBtns = currentPins;
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
         return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
+    }
+
+    function handleReaderAction(action) {
+        if (!state.activeReader) return { ok: false, reason: 'reader-not-open' };
+        const normalizedAction = String(action || '').trim();
+        state.activeReader.lastAction = normalizedAction;
+
+        if (normalizedAction === 'settings') {
+            return state.activeReader.controller.openSettings('basic');
+        }
+        if (normalizedAction === 'hide') {
+            return state.activeReader.controller.toggleHidden();
+        }
+        if (normalizedAction === 'close') {
+            return state.activeReader.controller.close();
+        }
+        if (normalizedAction === 'toggle-bar') {
+            return state.activeReader.controller.toggleToolbar();
+        }
+        if (normalizedAction === 'prev') {
+            return moveReaderSegment(-1);
+        }
+        if (normalizedAction === 'next') {
+            return moveReaderSegment(1);
+        }
+        if (normalizedAction === 'regen') {
+            writeToast('重画请求已接收，等待生图 provider 接入。');
+            return { ok: true, action: normalizedAction, reason: 'provider-not-enabled' };
+        }
+        if (normalizedAction === 'save') {
+            writeToast('当前背景保存入口已响应。');
+            return { ok: true, action: normalizedAction, reason: 'save-action-received' };
+        }
+        if (['prev-turn', 'next-turn'].includes(normalizedAction)) {
+            writeToast('楼层切换需要宿主消息列表，当前模拟环境仅确认按钮链路。');
+            return { ok: true, action: normalizedAction, reason: 'turn-switch-host-required' };
+        }
+
+        return { ok: false, reason: 'unknown-reader-action', action: normalizedAction };
+    }
+
+    function moveReaderSegment(delta) {
+        if (!state.activeReader) return { ok: false, reason: 'reader-not-open' };
+        const segments = state.activeReader.snapshot && state.activeReader.snapshot.content
+            ? state.activeReader.snapshot.content.segments || []
+            : [];
+        const maxIndex = Math.max(0, segments.length - 1);
+        const nextIndex = Math.max(0, Math.min(maxIndex, Number(state.activeReader.index || 0) + delta));
+        if (nextIndex === state.activeReader.index) {
+            writeToast(delta > 0 ? '已经是最后一段' : '已经是第一段');
+            return {
+                ok: true,
+                moved: false,
+                index: state.activeReader.index,
+                progress: state.activeReader.snapshot && state.activeReader.snapshot.content
+                    ? state.activeReader.snapshot.content.progress
+                    : '',
+            };
+        }
+        state.activeReader.index = nextIndex;
+        rerenderActiveReader();
+        return {
+            ok: true,
+            moved: true,
+            index: state.activeReader.index,
+            progress: state.activeReader.snapshot.content.progress,
+        };
     }
 
     function rerenderActiveReader() {
@@ -454,12 +580,12 @@ export function createVisualNovelReaderHost(options = {}) {
         );
         state.activeReader.mode = nextMode;
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
-        state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, nextMode, readerSettings);
+        state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, nextMode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
         return { ok: true };
     }
 
-    function buildReaderSnapshot(payload, mode, readerSettings) {
+    function buildReaderSnapshot(payload, mode, readerSettings, index = 0) {
         const scene = cloneData(payload.scene || (payload.render && payload.render.scene) || {});
         const render = payload.render || {};
         const stage = render.stage || {};
@@ -479,9 +605,12 @@ export function createVisualNovelReaderHost(options = {}) {
             payload.raw,
             '',
         ));
-        const displayText = scene.speaker && text
-            ? `${scene.speaker}: ${text}`
-            : text;
+        const segments = buildTextSegments(text);
+        const normalizedIndex = Math.max(0, Math.min(segments.length - 1, Number(index) || 0));
+        const currentText = segments[normalizedIndex] || text;
+        const displayText = scene.speaker && currentText
+            ? `${scene.speaker}: ${currentText}`
+            : currentText;
         const backgroundImage = firstDefined(
             scene.generatedImage && scene.generatedImage.value,
             stage.layers && stage.layers.generated && stage.layers.generated.value,
@@ -520,9 +649,12 @@ export function createVisualNovelReaderHost(options = {}) {
             },
             content: {
                 speaker: scene.speaker || '',
-                text,
+                text: currentText,
+                fullText: text,
                 displayText,
-                progress: '1 / 1',
+                segments: cloneData(segments),
+                currentIndex: normalizedIndex,
+                progress: `${normalizedIndex + 1} / ${segments.length}`,
                 backgroundImage,
                 sourceKind: firstDefined(scene.sourceKind, payload.sourceKind, 'raw-text'),
                 warnings: extracted.warnings,
@@ -535,7 +667,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.2.12'),
+            source: getOriginalReaderSource(options.version || '0.2.13'),
         };
     }
 
@@ -560,7 +692,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.2.12'),
+                version: esc(options.version || '0.2.13'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -658,10 +790,11 @@ export function createVisualNovelReaderHost(options = {}) {
             toolbarScaleField: field('readerSettings.toolbarScale', '工具栏大小', selectInput('readerSettings.toolbarScale', reader.toolbarScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
             readerToggles: checkbox('readerSettings.stayMode', reader.stayMode, '留在当前模式'),
+            pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns),
         });
     }
 
-    function mountReaderDom(controller) {
+    function mountReaderDom(snapshot, controller) {
         const doc = getRootDocument(options.global);
         if (!doc) return null;
         ensureStyleTag(doc, 'vnm-overlay-style', getOriginalReaderStyleText());
@@ -673,14 +806,10 @@ export function createVisualNovelReaderHost(options = {}) {
         root.addEventListener('click', async (event) => {
             const button = event.target.closest('[data-act]');
             if (!button) return;
+            event.preventDefault();
+            event.stopPropagation();
             const action = button.getAttribute('data-act');
-            if (action === 'settings') {
-                controller.openSettings('basic');
-                return;
-            }
-            if (action === 'hide') {
-                controller.toggleHidden();
-            }
+            await controller.invokeAction(action);
         });
         root.addEventListener('keydown', async (event) => {
             if (event.target && event.target.id === 'vnm-input') {
@@ -694,9 +823,22 @@ export function createVisualNovelReaderHost(options = {}) {
                 }
             }
         });
+        const keydownHandler = (event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            controller.close();
+        };
+        if (typeof doc.addEventListener === 'function') {
+            doc.addEventListener('keydown', keydownHandler, true);
+        }
         return {
             root,
             doc,
+            dispose() {
+                if (typeof doc.removeEventListener === 'function') {
+                    doc.removeEventListener('keydown', keydownHandler, true);
+                }
+            },
         };
     }
 
@@ -846,16 +988,51 @@ export function createVisualNovelReaderHost(options = {}) {
             toolbar.style.transform = `scale(${Number(snapshot.readerSettings.toolbarScale || 100) / 100})`;
             toolbar.style.transformOrigin = 'right bottom';
         }
+        applyToolbarState(root, current);
         const controls = root.querySelector('.vnm-controls');
         if (controls) {
             controls.style.zoom = String(Number(snapshot.readerSettings.inputScale || 100) / 100);
         }
     }
 
+    function applyToolbarState(root, current) {
+        if (!root || !current) return;
+        const collapsible = root.querySelector('#vnm-bar-btns');
+        const pinned = root.querySelector('#vnm-bar-pinned');
+        const pins = new Set(
+            current.snapshot
+            && current.snapshot.readerSettings
+            && Array.isArray(current.snapshot.readerSettings.pinnedBtns)
+                ? current.snapshot.readerSettings.pinnedBtns
+                : [],
+        );
+
+        for (const [id] of TOOLBAR_ACTIONS) {
+            const button = root.querySelector(`#vnm-btn-${id}`);
+            if (!button) continue;
+            if (pins.has(id) && pinned) {
+                pinned.appendChild(button);
+            } else if (collapsible) {
+                collapsible.appendChild(button);
+            }
+        }
+
+        if (collapsible) {
+            collapsible.style.display = current.toolbarCollapsed ? 'none' : 'flex';
+            collapsible.style.gap = '6px';
+            collapsible.style.alignItems = 'center';
+        }
+        if (pinned) {
+            pinned.style.display = 'flex';
+            pinned.style.gap = '6px';
+            pinned.style.alignItems = 'center';
+        }
+    }
+
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.2.12' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.2.13' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -866,7 +1043,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.2.12',
+            version: snapshot.version || options.version || '0.2.13',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -1027,6 +1204,15 @@ function modelPicker(path, value, models, action, placeholder, disabled) {
     return `<div class="vnm-settings-model"><div class="vnm-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vnm-settings-action vnm-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
 }
 
+function renderPinnedButtons(value) {
+    const pins = Array.isArray(value) ? value : [];
+    const buttons = TOOLBAR_ACTIONS.map(([id, label]) => {
+        const active = pins.includes(id);
+        return `<button type="button" class="vnm-settings-action vnm-settings-inline-action${active ? ' is-active' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" aria-pressed="${active ? 'true' : 'false'}">${esc(label)}</button>`;
+    }).join('');
+    return `<div class="vnm-settings-field"><span>常驻按钮</span><div class="vnm-settings-row">${buttons}</div><em>亮起的按钮会固定在原版工具栏常驻区，未常驻按钮由收纳按钮展开。</em></div>`;
+}
+
 function getRootDocument(globalObject) {
     const root = globalObject || globalThis.window || globalThis;
     try {
@@ -1115,6 +1301,22 @@ function computeLineHeight(fontSize) {
     if (fontSize <= 15) return '1.85';
     if (fontSize <= 18) return '1.7';
     return '1.6';
+}
+
+function buildTextSegments(text) {
+    const source = String(text || '').trim();
+    if (!source) return [''];
+    const paragraphSegments = source
+        .split(/\n{2,}/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    if (paragraphSegments.length > 1) return paragraphSegments;
+
+    const sentenceSegments = source
+        .split(/(?<=[。！？!?])\s+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    return sentenceSegments.length ? sentenceSegments : [source];
 }
 
 function writeToast(message) {

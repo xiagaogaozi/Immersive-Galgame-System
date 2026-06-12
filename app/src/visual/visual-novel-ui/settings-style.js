@@ -32,6 +32,7 @@ const SETTINGS_STYLE_TEXT = `
 .vnm-settings-model select{grid-column:1 / -1;height:36px}
 .vnm-settings-model select:disabled{opacity:.55;cursor:not-allowed}
 .vnm-settings-inline-action{width:96px;height:36px;padding:0 10px;white-space:nowrap}
+.vnm-settings-action.is-active,.vnm-settings-inline-action.is-active{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.28);color:#fff}
 .vnm-settings-action[disabled],.vnm-settings-inline-action[disabled]{opacity:.55;cursor:not-allowed;pointer-events:none}
 .vnm-segmented-field .vnm-settings-field{width:100%}
 .vnm-segmented{height:40px;display:grid;grid-template-columns:repeat(var(--vnm-segment-count,3),minmax(0,1fr));align-items:center;gap:0;padding:4px;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.075);border-radius:14px;position:relative;overflow:hidden}

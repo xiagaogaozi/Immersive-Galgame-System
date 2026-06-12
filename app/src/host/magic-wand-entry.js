@@ -9,7 +9,7 @@ const LEGACY_ENTRY_SELECTOR = '[data-igs-magic-entry="1"]';
 
 export function createMagicWandEntry(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
-    const label = options.label || 'Visual Novel';
+    const label = options.label || '沉浸式 Galgame 系统';
     const version = String(options.version || '');
     const menuSelectors = options.menuSelectors || DEFAULT_MENU_SELECTORS;
     const retryIntervalMs = options.retryIntervalMs === false
@@ -130,7 +130,7 @@ export function createMagicWandEntry(options = {}) {
         button.setAttribute('data-vnm-version', version);
         button.setAttribute('title', `打开${label}`);
         button.setAttribute('aria-label', `打开${label}`);
-        button.innerHTML = '<span class="fa-solid fa-book-open" aria-hidden="true"></span> Visual Novel';
+        button.innerHTML = `<span class="fa-solid fa-book-open" aria-hidden="true"></span> ${escapeHtml(label)}`;
         button.addEventListener('click', handleMagicEntryClick);
         return button;
     }
@@ -322,6 +322,16 @@ function resolveErrorMessage(result) {
         || result.message
         || result.diagnosis && result.diagnosis.error
         || 'unknown';
+}
+
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    })[char]);
 }
 
 function defaultNotify(message, type = 'info') {

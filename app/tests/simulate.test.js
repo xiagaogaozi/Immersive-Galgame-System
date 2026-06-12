@@ -182,9 +182,9 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.2.12');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.2.13');
     assert.match(entry.innerHTML, /fa-book-open/);
-    assert.match(entry.innerHTML, /Visual Novel/);
+    assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
     assert.equal(menu.querySelectorAll('[data-vnm-magic-entry="1"]').length, 1);
     assert.equal(menu.querySelector('[data-igs-magic-entry="1"]'), null);
@@ -205,6 +205,7 @@ test('gate:simulation:visual-novel-reader-falls-back-to-visible-text-when-raw-me
     const latestMessage = readJson('fixtures/tavern/host-ui-leak-message.json');
     const igs = bootstrapIGS({
         global: {},
+        autoAttachMagicWand: false,
         hostAdapter: {
             getCurrentMessage: async () => latestMessage,
             typeAndSend: async () => ({ ok: true }),
@@ -295,6 +296,60 @@ test('gate:simulation:visual-novel-ui-enter-sends-and-shift-enter-does-not', asy
     assert.equal(shiftResult.sent, false);
     assert.equal(enterResult.sent, true);
     assert.deepEqual(sent, ['第二行']);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-close', async () => {
+    const latestMessage = {
+        id: 8,
+        text: '[角色: 艾莉]\n艾莉: 第一句。 第二句。',
+    };
+    const storage = createMemoryStorage();
+    const igs = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const controller = opened.reader.controller;
+    assert.equal(opened.reader.snapshot.content.progress, '1 / 2');
+    assert.equal(igs.getState().visualNovelUi.activeReader.toolbarCollapsed, true);
+
+    const settingsResult = controller.invokeAction('settings');
+    assert.equal(settingsResult.ok, true);
+    assert.equal(igs.getState().visualNovelUi.activeSettings.tab, 'basic');
+
+    const modeResult = settingsResult.controller.setValue('bridge.openMode', 'mobile');
+    assert.equal(modeResult.ok, true);
+    assert.equal(igs.getState().visualNovelUi.activeReader.mode, 'mobile');
+
+    const toggleResult = controller.invokeAction('toggle-bar');
+    assert.equal(toggleResult.ok, true);
+    assert.equal(toggleResult.collapsed, false);
+
+    const hideResult = controller.invokeAction('hide');
+    assert.equal(hideResult.ok, true);
+    assert.equal(hideResult.hidden, true);
+
+    const nextResult = controller.invokeAction('next');
+    assert.equal(nextResult.ok, true);
+    assert.equal(nextResult.moved, true);
+    assert.equal(nextResult.progress, '2 / 2');
+
+    const prevTurnResult = controller.invokeAction('prev-turn');
+    const closeResult = controller.invokeAction('close');
+    const finalState = igs.getState();
+
+    assert.equal(prevTurnResult.ok, true);
+    assert.equal(prevTurnResult.reason, 'turn-switch-host-required');
+    assert.equal(closeResult.ok, true);
+    assert.equal(finalState.visualNovelUi.activeReader, null);
+    assert.equal(finalState.visualNovelUi.activeSettings, null);
 
     igs.destroy();
 });

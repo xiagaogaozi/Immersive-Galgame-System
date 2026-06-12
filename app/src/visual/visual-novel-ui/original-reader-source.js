@@ -1,12 +1,25 @@
+const ICONS = Object.freeze({
+    prev: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="15 18 9 12 15 6"/></svg>',
+    next: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="9 18 15 12 9 6"/></svg>',
+    regen: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+    save: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    settings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 5 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 5a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.2.4.6.8 1 1 .3.2.7.3 1.1.3H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>',
+    hide: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    prevTurn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polygon points="19 20 9 12 19 4 19 20" fill="currentColor" stroke="none"/><line x1="5" y1="19" x2="5" y2="5"/></svg>',
+    nextTurn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor" stroke="none"/><line x1="19" y1="5" x2="19" y2="19"/></svg>',
+    toggleBar: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
+    close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+});
+
 const TOOLBAR_BUTTONS = [
-    { id: 'prev', title: '上一段', label: '‹' },
-    { id: 'next', title: '下一段', label: '›' },
-    { id: 'regen', title: '重新生成背景图', label: '⟳' },
-    { id: 'save', title: '保存背景图', label: '⇩' },
-    { id: 'settings', title: '设置', label: '⚙' },
-    { id: 'hide', title: '隐藏/显示对话框', label: '◐' },
-    { id: 'prev-turn', title: '上一轮', label: '⏮' },
-    { id: 'next-turn', title: '下一轮', label: '⏭' },
+    { id: 'prev', title: '上一段', html: ICONS.prev },
+    { id: 'next', title: '下一段', html: ICONS.next },
+    { id: 'regen', title: '重新生成背景图', html: ICONS.regen },
+    { id: 'save', title: '保存背景图', html: ICONS.save },
+    { id: 'settings', title: '设置', html: ICONS.settings },
+    { id: 'hide', title: '隐藏/显示对话框', html: ICONS.hide },
+    { id: 'prev-turn', title: '上一轮', html: ICONS.prevTurn },
+    { id: 'next-turn', title: '下一轮', html: ICONS.nextTurn },
 ];
 
 const ORIGINAL_READER_STYLE_TEXT = `
@@ -25,6 +38,8 @@ const ORIGINAL_READER_STYLE_TEXT = `
 .vnm-ctrl-bar{position:absolute;top:-50px;right:0;display:flex;gap:6px;z-index:5;padding:6px;background:rgba(20,20,22,.12);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(48px) saturate(220%);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.20);}
 .vnm-icon-btn{width:36px;height:36px;border:1px solid transparent;cursor:pointer;background:transparent;color:rgba(255,255,255,.52);font-size:15px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;transition:all .18s;outline:none;}
 .vnm-icon-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.96);}
+#vnm-bar-btns{display:none;gap:6px;align-items:center;}
+#vnm-bar-pinned{display:flex;gap:6px;align-items:center;}
 .vnm-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:10px;letter-spacing:1px;}
 .vnm-text{font-size:18px;line-height:1.7;letter-spacing:.5px;min-height:60px;color:#f4f4f6;text-shadow:0 1px 2px rgba(0,0,0,.6);margin-bottom:14px;white-space:pre-wrap;word-break:break-word;}
 .vnm-controls{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
@@ -45,13 +60,15 @@ const ORIGINAL_READER_HTML = `
 <div id="vnm-click-layer"></div>
 <div class="vnm-dialog" id="vnm-dialog">
   <div class="vnm-ctrl-bar" id="vnm-ctrl-bar">
-    <div id="vnm-bar-pinned"></div>
     <div id="vnm-bar-btns">
       ${TOOLBAR_BUTTONS.map((button) => (
-        `<button class="vnm-icon-btn" id="vnm-btn-${button.id}" data-act="${button.id}" title="${button.title}" type="button">${button.label}</button>`
+        `<button class="vnm-icon-btn" id="vnm-btn-${button.id}" data-act="${button.id}" title="${button.title}" type="button">${button.html}</button>`
       )).join('')}
     </div>
     <div id="vnm-settings" aria-hidden="true"></div>
+    <div id="vnm-bar-pinned"></div>
+    <button class="vnm-icon-btn" data-act="toggle-bar" title="收纳/展开按钮" type="button">${ICONS.toggleBar}</button>
+    <button class="vnm-icon-btn" data-act="close" title="退出" type="button">${ICONS.close}</button>
   </div>
   <div class="vnm-progress" id="vnm-progress"></div>
   <div class="vnm-text" id="vnm-text"></div>
@@ -94,7 +111,7 @@ export function getOriginalReaderHtml() {
     return ORIGINAL_READER_HTML;
 }
 
-export function getOriginalReaderSource(version = '0.2.12') {
+export function getOriginalReaderSource(version = '0.2.13') {
     return {
         version,
         styleText: ORIGINAL_READER_STYLE_TEXT,

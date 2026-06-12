@@ -39,7 +39,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.2.12',
+        version: '0.2.13',
         global: globalObject,
         events,
         hostAdapter,
@@ -69,7 +69,7 @@ export function bootstrapIGS(options = {}) {
         ...(options.magicWandEntryOptions || {}),
         global: globalObject,
         version: app.version,
-        label: 'Visual Novel',
+        label: '沉浸式 Galgame 系统',
         open: (mode) => publicApi.openLatestAvailable(mode),
         resolveMode: () => {
             const snapshot = publicApi.getUnifiedSettings({});

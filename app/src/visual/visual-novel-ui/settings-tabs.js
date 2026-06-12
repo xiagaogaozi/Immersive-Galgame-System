@@ -78,6 +78,7 @@ const READER_TAB_TEMPLATE = `
   {{toolbarScaleField}}
   {{imgModeField}}
   <div class="vnm-settings-section">{{readerToggles}}</div>
+  <div class="vnm-settings-section vnm-settings-full">{{pinnedButtonsField}}</div>
 </div>
 `.trim();
 

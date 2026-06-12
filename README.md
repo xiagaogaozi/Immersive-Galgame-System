@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前运行版本 `v0.2.12`：已恢复原版 `fa-book-open + Visual Novel` 魔法棒入口，阅读器默认走原版正文抽取链路，并用 `visibleText / cleanNarrativeSource` 兜底宿主 UI HTML 泄漏。
-- `v0.2.12` 已把“截图同款 host UI HTML 泄漏”固定为回归夹具和模拟测试，后续每轮 `npm run gate` 都会卡住这类退化。
+- 当前运行版本 `v0.2.13`：魔法棒入口显示名固定为 `沉浸式 Galgame 系统`，入口形态保留原版 `fa-book-open` 单入口；阅读器工具栏、设置、关闭、收纳、模式切换和段落前后切换已接入模拟验收。
+- `v0.2.13` 已把“入口改名为 Visual Novel”“工具栏点击无效”“设置/关闭失效”“四模式切换失效”固定为回归闸门，后续每轮 `npm run gate` 都会卡住这类退化。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -129,18 +129,28 @@ projects/沉浸式galgame系统/
 
 ## 更新日志
 
+### v0.2.13 - 2026-06-12
+
+- 修复阅读器控制器与 DOM 挂载参数错位导致的工具栏全失效问题：`settings`、`hide`、`toggle-bar`、`close` 现在会走真实 controller 行为，关闭会同时卸载阅读器和设置面板。
+- 魔法棒入口显示名固定为 `沉浸式 Galgame 系统`，继续保留原版 `data-vnm-magic-entry="1"`、`vnm-magic-entry`、`fa-book-open` 单入口契约，并清理旧 `[data-igs-magic-entry]` 残留。
+- 阅读器工具栏恢复原版 SVG 图标、`#vnm-bar-btns` 收纳区、`#vnm-bar-pinned` 常驻区、`toggle-bar` 与 `close` 常驻按钮；默认状态与原版一致为收纳。
+- 设置面板基础页的 `bridge.openMode` 四模式切换现在会即时同步 active reader mode；阅读器页补回常驻按钮配置并持久化到 `vnm-reader-settings-v9-<mode>`。
+- `prev` / `next` 不再是空占位，已能在当前楼层正文段落之间切换并刷新进度；`prev-turn` / `next-turn` 在模拟环境返回明确宿主消息列表需求，不再静默无响应。
+- 扩展 `app/tests/simulate.test.js` 与合约测试，覆盖入口名、SVG 图标、默认收纳、设置打开、四模式切换、隐藏、关闭卸载、段落切换和宿主 UI HTML 泄漏防护。
+- 本轮仍不修改原版 `projects/Visual Novel/**`；上一轮/下一轮跨楼层真实 DOM 图片缓存与真实 provider 重画/保存仍需后续在 host/generated-images 层继续补齐。
+
 ### v0.2.12 - 2026-06-12
 
 - 新增 `app/src/scene/message-source.js`，迁移原版 Visual Novel 的 `DEFAULT_SOURCE_FILTER`、`DEFAULT_VIRTUAL_REGEX`、`getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 和强制 fallback 语义，统一正文提取、正文格式化和宿主 HTML 泄漏防护。
 - `app/src/api/visual-novel-compat.js` 现在在 `openLatestAvailable()` / `openViewerFromMessage()` 前先构建 VN 正文 payload，再把清洗后的 `textScene` 送入 `refresh()`，避免 reader 继续直接拿宿主原始 HTML 当正文。
-- `app/src/host/magic-wand-entry.js` 恢复原版单一入口契约：`vnm-magic-entry`、`data-vnm-magic-entry="1"`、`fa-book-open`、`Visual Novel`，并在重扫/销毁时主动清理旧 `[data-igs-magic-entry]` 残留。
+- `app/src/host/magic-wand-entry.js` 当时恢复了原版单一入口契约：`vnm-magic-entry`、`data-vnm-magic-entry="1"`、`fa-book-open`，并在重扫/销毁时主动清理旧 `[data-igs-magic-entry]` 残留；入口显示名误保留为 `Visual Novel`，已在 `v0.2.13` 改回 `沉浸式 Galgame 系统`。
 - `app/src/host/tavern-helper-adapter.js` 增加消息筛选和 DOM 可见正文回填，优先打开最近一条可读的非用户消息，并把 `.mes_text` 提取结果作为 `visibleText` 参与 fallback。
 - 新增 `app/fixtures/tavern/host-ui-leak-message.json`，扩展 `app/tests/unit.test.js`、`app/tests/simulate.test.js`、`app/tests/gate-contract.test.js`，固定“只有一个魔法棒入口”“图标必须是 `fa-book-open`”“宿主 UI HTML 不得进入 `.vnm-text`”的回归闸门。
 - runtime、manifest、loader 默认版本同步提升到 `v0.2.12`，本轮已通过 `npm run gate` 和 `npm run build:loader`。
 
 ### v0.2.12-plan - 2026-06-12
 
-- 归档 `plan/v0.2.12-原版VN可用性修复施工图.md`，下一轮实施目标改为“可用性修复优先”：恢复原版 `fa-book-open + Visual Novel` 魔法棒入口，修复阅读器把酒馆宿主 HTML 当正文显示的问题。
+- 归档 `plan/v0.2.12-原版VN可用性修复施工图.md`，当时目标是恢复原版 `fa-book-open` 魔法棒入口并修复阅读器把酒馆宿主 HTML 当正文显示的问题；该计划曾沿用 `Visual Novel` 入口文案，已在 `v0.2.13` 按项目名纠正。
 - 施工图要求迁移原版 `getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 的正文抽取和清洗语义，并补截图同款 host UI HTML 泄漏回归 fixture。
 - 本条为已执行归档；对应实现已在同日发布为 `v0.2.12`。
 

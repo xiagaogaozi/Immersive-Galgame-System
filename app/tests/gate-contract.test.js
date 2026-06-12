@@ -77,7 +77,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.12'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.13'/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -189,7 +189,7 @@ test('gate:visual-novel-compat:api-shape', () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.2.12');
+    const source = getOriginalReaderSource('0.2.13');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));
@@ -203,6 +203,11 @@ test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     assert.equal(source.styleContract.inputHeight, fixture.styles['.vnm-input'].height);
     assert.equal(source.styleContract.sendButtonMinWidth, fixture.styles['.vnm-send-btn'].minWidth);
     assert.equal(source.styleContract.toolbarButtonSize, fixture.styles['.vnm-icon-btn'].width);
+    assert.match(source.html, /data-act="toggle-bar"/);
+    assert.match(source.html, /data-act="close"/);
+    assert.match(source.html, /viewBox="0 0 24 24"/);
+    assert.doesNotMatch(source.html, />‹</);
+    assert.doesNotMatch(source.html, />⚙</);
 });
 
 test('gate:visual-novel-ui:settings-shell-keeps-original-tabs', () => {
