@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前已进入 `v0.2.9`：自动更新 loader 改为读取 GitHub raw manifest 后加载不可变版本标签，避免 jsDelivr `@main` 缓存旧 dist。
+- 当前已进入 `v0.2.10`：删除 loader 的酒馆助手按钮入口，导入形态恢复为原版 Visual Novel 同款单魔法棒入口。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,12 @@ projects/沉浸式galgame系统/
 
 ## 更新日志
 
+### v0.2.10 - 2026-06-12
+
+- 修复 JS-Slash-Runner 导入报错：`loader/igs-loader.json` 恢复为 `button.enabled=false`、`button.buttons=[]`，不再生成缺少 `visible` 字段的按钮项。
+- 删除 `启动 IGS`、`重扫入口` 两个酒馆助手按钮；正式用户入口只保留酒馆魔法棒菜单里的 `沉浸式 Galgame`。
+- 更新 loader 合约测试，强制要求自动更新脚本不提供额外按钮入口，防止后续偏离原版 Visual Novel 的入口形态。
+
 ### v0.2.9 - 2026-06-12
 
 - 修复自动更新链路的 CDN 缓存风险：loader 默认先读取 `raw.githubusercontent.com/.../main/app/dist/manifest.json` 获取最新版本号，再加载 jsDelivr 的 `@v<version>` 不可变标签资源。
@@ -138,8 +144,7 @@ projects/沉浸式galgame系统/
 
 - 新增 `app/src/host/magic-wand-entry.js`，启动后自动向酒馆魔法棒菜单 `#extensionsMenu`、`#extensions_menu`、`.extensions_block .list-group` 注入 `沉浸式 Galgame` 入口。
 - `bootstrapIGS()` 现在会自动挂载魔法棒入口，点击入口会调用 `openLatestAvailable()` 打开最新可用楼层阅读器，并在 `destroy()` 时清理菜单项、委托点击和观察器。
-- 公开 API 新增 `ensureMagicWandEntry()` 与 `getMagicWandEntryState()`，用于控制台或 loader 按钮手动重扫入口、诊断入口状态。
-- `loader/igs-loader.json` 新增 `启动 IGS` 与 `重扫入口` 两个酒馆助手按钮，导入后可以直接确认 bundle 是否加载、入口是否完成注入。
+- 公开 API 新增 `ensureMagicWandEntry()` 与 `getMagicWandEntryState()`，用于控制台手动重扫入口、诊断入口状态。
 - 新增模拟测试覆盖“魔法棒菜单存在 -> IGS 注入入口 -> 点击入口 -> 阅读器打开”的最小闭环；本轮仍不执行真实酒馆实机校验。
 
 ### v0.2.7 - 2026-06-12

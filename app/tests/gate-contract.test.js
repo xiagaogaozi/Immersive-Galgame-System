@@ -76,10 +76,10 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.9'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.2\.10'/);
     assert.doesNotMatch(loaderJson.content, /yuzi-phone/i);
-    assert.equal(loaderJson.button.enabled, true);
-    assert.deepEqual(loaderJson.button.buttons.map((button) => button.name), ['启动 IGS', '重扫入口']);
+    assert.equal(loaderJson.button.enabled, false);
+    assert.deepEqual(loaderJson.button.buttons, []);
 });
 
 test('gate:visual-novel-compat:legacy-storage', () => {
@@ -147,7 +147,7 @@ test('gate:visual-novel-compat:api-shape', () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.2.9');
+    const source = getOriginalReaderSource('0.2.10');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

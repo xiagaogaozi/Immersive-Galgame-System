@@ -42,17 +42,8 @@
   "content": "<loader/igs-loader.js 的原文>",
   "info": "沉浸式 Galgame 系统自动更新 loader。",
   "button": {
-    "enabled": true,
-    "buttons": [
-      {
-        "name": "启动 IGS",
-        "script": "window.IGS && window.IGS.openLatestAvailable ? window.IGS.openLatestAvailable() : alert('IGS 尚未加载完成，请刷新页面或检查控制台的 IGS Loader 报错。')"
-      },
-      {
-        "name": "重扫入口",
-        "script": "window.IGS && window.IGS.ensureMagicWandEntry ? window.IGS.ensureMagicWandEntry() : alert('IGS 尚未加载完成，无法重扫魔法棒入口。')"
-      }
-    ]
+    "enabled": false,
+    "buttons": []
   },
   "data": {},
   "export_with": {
@@ -63,7 +54,7 @@
 ```
 
 `loader/igs-loader.js` 只做重复加载检查、版本解析、CSS 注入、JS 注入和错误提示，不承载业务 UI。
-`loader/igs-loader.json` 的按钮只做诊断和手动重扫；正式入口必须由主程序注入酒馆魔法棒菜单。
+`loader/igs-loader.json` 不提供额外酒馆助手按钮；正式入口必须由主程序注入酒馆魔法棒菜单。
 
 默认远程加载策略：
 

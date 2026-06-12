@@ -178,7 +178,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.2.9');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.2.10');
     assert.match(entry.innerHTML, /沉浸式 Galgame/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
 

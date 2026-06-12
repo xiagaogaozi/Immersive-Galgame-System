@@ -2,7 +2,7 @@
     'use strict';
 
     const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
-    const DEFAULT_REF = 'v0.2.9';
+    const DEFAULT_REF = 'v0.2.10';
     const RAW_MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/app/dist/manifest.json`;
     const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
     const CSS_ID = 'igs-auto-loader-css';

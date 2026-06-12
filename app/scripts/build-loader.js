@@ -24,17 +24,8 @@ const loaderJson = {
         '测试前请确认仓库或发布资产为公开可访问。',
     ].join('\n'),
     button: {
-        enabled: true,
-        buttons: [
-            {
-                name: '启动 IGS',
-                script: "window.IGS && window.IGS.openLatestAvailable ? window.IGS.openLatestAvailable() : alert('IGS 尚未加载完成，请刷新页面或检查控制台的 IGS Loader 报错。')",
-            },
-            {
-                name: '重扫入口',
-                script: "window.IGS && window.IGS.ensureMagicWandEntry ? window.IGS.ensureMagicWandEntry() : alert('IGS 尚未加载完成，无法重扫魔法棒入口。')",
-            },
-        ],
+        enabled: false,
+        buttons: [],
     },
     data: {},
     export_with: {
