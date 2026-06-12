@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前已进入 `v0.2.11`：loader 重复启用时改为重扫魔法棒入口或清理旧实例重载，不再弹“已加载，请勿重复启用”。
+- 当前运行版本 `v0.2.11`：loader 重复启用时改为重扫魔法棒入口或清理旧实例重载，不再弹“已加载，请勿重复启用”。
+- 下一轮施工图已归档为 `v0.2.12`：优先修复原版 Visual Novel 入口图标不等价、阅读器正文抽取错误和宿主 UI HTML 泄漏。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -127,6 +128,12 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.2.12-plan - 2026-06-12
+
+- 归档 `plan/v0.2.12-原版VN可用性修复施工图.md`，下一轮实施目标改为“可用性修复优先”：恢复原版 `fa-book-open + Visual Novel` 魔法棒入口，修复阅读器把酒馆宿主 HTML 当正文显示的问题。
+- 施工图要求迁移原版 `getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 的正文抽取和清洗语义，并补截图同款 host UI HTML 泄漏回归 fixture。
+- 本条仅为计划归档，当前可导入运行时仍是 `v0.2.11`；实施完成后再提升 runtime、manifest、loader 默认版本到 `v0.2.12`。
 
 ### v0.2.11 - 2026-06-12
 
