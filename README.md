@@ -19,12 +19,12 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.13`：原版 VN 的 `<image>` 图位现在会先把占位文本注入当前 `.mes_text`，再只在当前楼层作用域内取图，避免把角色卡图片、页面全局图片或楼层外图片错绑进阅读器。
+- 当前项目版本 `v0.3.14`：原版 Visual Novel 参考项目已改名为 `Visual Novel 原版备份`，IGS 的活文档、发布工作流和迁移入口已同步指向备份目录。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
-- 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`。
+- 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
 - 当前验收策略：`npm run gate`，fixtures 驱动的模拟测试，不要求安装版实机校验。
@@ -128,6 +128,11 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.14 - 2026-06-13
+
+- 同步原版参考路径：活文档、AI 工作流、发布说明和 Visual Novel UI 契约中的原版来源目录已改为 `projects/Visual Novel 原版备份`。
+- 本轮不改 IGS 运行时逻辑，只更新原版备份定位，避免后续迁移、验收和打包文档继续指向旧目录名。
 
 ### v0.3.13 - 2026-06-13
 
@@ -248,7 +253,7 @@ projects/沉浸式galgame系统/
 - 设置面板基础页的 `bridge.openMode` 四模式切换现在会即时同步 active reader mode；阅读器页补回常驻按钮配置并持久化到 `vnm-reader-settings-v9-<mode>`。
 - `prev` / `next` 不再是空占位，已能在当前楼层正文段落之间切换并刷新进度；`prev-turn` / `next-turn` 在模拟环境返回明确宿主消息列表需求，不再静默无响应。
 - 扩展 `app/tests/simulate.test.js` 与合约测试，覆盖入口名、SVG 图标、默认收纳、设置打开、四模式切换、隐藏、关闭卸载、段落切换和宿主 UI HTML 泄漏防护。
-- 本轮仍不修改原版 `projects/Visual Novel/**`；上一轮/下一轮跨楼层真实 DOM 图片缓存与真实 provider 重画/保存仍需后续在 host/generated-images 层继续补齐。
+- 本轮仍不修改原版 `projects/Visual Novel 原版备份/**`；上一轮/下一轮跨楼层真实 DOM 图片缓存与真实 provider 重画/保存仍需后续在 host/generated-images 层继续补齐。
 
 ### v0.2.12 - 2026-06-12
 

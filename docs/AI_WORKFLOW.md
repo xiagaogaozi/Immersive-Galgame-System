@@ -92,7 +92,7 @@ app/src/** -> npm run build -> app/dist/igs.bundle.js + app/dist/igs.bundle.css 
 原版 Visual Novel 脚本只作为迁移来源和兼容参考，位置固定为：
 
 ```text
-D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel
+D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份
 ```
 
 打包发布任务必须遵守：

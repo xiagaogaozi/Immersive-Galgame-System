@@ -4,7 +4,7 @@
 
 ## 当前参考源
 
-- 原版项目逻辑参考：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`
+- 原版项目逻辑参考：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`
 - 本轮实际对照源优先使用这些文件：
   - `Visual Novel/tavern helper/bridge/src/source.js`
   - `Visual Novel/tavern helper/bridge/src/ui/reader/original-reader.js`

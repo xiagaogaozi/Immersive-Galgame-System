@@ -13,4 +13,4 @@
 - 不得用新的 `.igs-*` DOM 替换原版 `.vnm-*` DOM。
 - `openSettings()` 不得再返回 `settings-ui-not-mounted`。
 - `openLatestAvailable()` / `openViewerFromMessage()` 必须能得到 `#vnm-overlay` 等价结构。
-- 修改模板、样式和字段路径前，先对照 `projects/Visual Novel/tavern helper/bridge/src/ui/**` 与 `app/fixtures/visual-novel-ui/*`。
+- 修改模板、样式和字段路径前，先对照 `projects/Visual Novel 原版备份/tavern helper/bridge/src/ui/**` 与 `app/fixtures/visual-novel-ui/*`。

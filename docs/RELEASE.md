@@ -28,7 +28,7 @@
 - 当前不走奶龙工具箱 `project.json / latest / tavern helper` 发布壳。
 - loader 只负责加载远程 bundle。
 - 主程序逻辑只来自 `app/`。
-- 原版 Visual Novel 只作为迁移来源和兼容参考，路径是 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`。
+- 原版 Visual Novel 只作为迁移来源和兼容参考，路径是 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 最终给用户导入的是 `loader/igs-loader.json`，不是 `app/dist/igs.bundle.js`。
 
 ## loader JSON 格式

@@ -7,7 +7,7 @@
 - 默认项目目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`
 - 默认工作形态：`loader/` 只放远程 bundle loader，主程序只放 `app/`。
 - 最终导入产物：`loader/igs-loader.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`。
-- 原版脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`。
+- 原版脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 打包发布入口文档：`docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`。
 - 不新增 `project.json`、`latest/`、`archive/`、`tavern helper/` 等奶龙工具箱发布壳目录，除非用户明确要求重新接入工具箱流程。
 - 不运行奶龙工具箱 `pack-project`、`verify-project`、`validate`、`check-refs` 作为本项目验收，除非用户明确要求。

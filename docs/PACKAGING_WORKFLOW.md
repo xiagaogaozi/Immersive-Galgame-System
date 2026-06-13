@@ -15,18 +15,18 @@
 原版 Visual Novel 脚本项目：
 
 ```text
-D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel
+D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份
 ```
 
 关键文件：
 
 ```text
-projects/Visual Novel/project.json
-projects/Visual Novel/tavern helper/bridge/src/source.js
-projects/Visual Novel/tavern helper/bridge/src/index.js
-projects/Visual Novel/tavern helper/bridge/src/ui/reader/original-reader.js
-projects/Visual Novel/latest/酒馆助手脚本-Visual Novel v9.6.6.json
-projects/Visual Novel/latest/Visual Novel v9.6.6.js
+projects/Visual Novel 原版备份/project.json
+projects/Visual Novel 原版备份/tavern helper/bridge/src/source.js
+projects/Visual Novel 原版备份/tavern helper/bridge/src/index.js
+projects/Visual Novel 原版备份/tavern helper/bridge/src/ui/reader/original-reader.js
+projects/Visual Novel 原版备份/latest/酒馆助手脚本-Visual Novel v9.6.6.json
+projects/Visual Novel 原版备份/latest/Visual Novel v9.6.6.js
 ```
 
 原版公开 API 兼容面：
