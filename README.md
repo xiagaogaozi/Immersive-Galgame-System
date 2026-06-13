@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.9`：修复 `<image>` 图位翻页同步，正文翻页时图片页码会跟随当前正文绑定图位变化，普通 DOM 图片不会再被空索引误判为第 1 图。
-- `v0.3.9` 已把“第 1 页不能偷显示后续图位图片”“普通 DOM 图片按 `<image>` 顺序填槽并随正文翻页”固定为回归闸门；`v0.3.8` 已补齐 loader 临时魔法棒入口与普通楼层图片扫描。
+- 当前项目版本 `v0.3.10`：修复远程自动更新 bundle 仍转发到 `app/src` 子模块的问题，确保酒馆加载到的远程文件自包含并包含 `<image>` 图位翻页同步修复。
+- `v0.3.10` 已把 dist bundle 自包含固定为回归闸门；`v0.3.9` 已把“第 1 页不能偷显示后续图位图片”“普通 DOM 图片按 `<image>` 顺序填槽并随正文翻页”固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,13 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.10 - 2026-06-13
+
+- 修复自动更新链路的实机错位风险：`app/scripts/build.js` 现在会把 `app/src` 模块打成自包含的 `app/dist/igs.bundle.js`，不再发布只有 267 字节、继续 `import ../src/index.js` 的转发入口。
+- 这个问题会导致 loader 入口虽然带 cache bust，但浏览器/酒馆仍可能复用未带刷新参数的旧子模块；表现就是本地源码已绑定 `<image>`，酒馆里第 1 页仍显示后段图片，翻正文页时图片页码不跟随。
+- 新增 `gate:dist-bundle:is-self-contained-for-loader-cache-bust` 回归闸门：发布产物不得包含运行时 `import`，必须包含当前版本号与 `resolveSegmentImageIndex` 绑定逻辑。
+- 当前远程发布文件会直接携带 v0.3.9 的 `<image>` 图位修复，避免旧模块缓存继续把正文第 1 页错绑到最后一张图。
 
 ### v0.3.9 - 2026-06-13
 

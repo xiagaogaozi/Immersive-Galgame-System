@@ -121,7 +121,7 @@ export function getOriginalReaderHtml() {
     return ORIGINAL_READER_HTML;
 }
 
-export function getOriginalReaderSource(version = '0.3.9') {
+export function getOriginalReaderSource(version = '0.3.10') {
     return {
         version,
         styleText: ORIGINAL_READER_STYLE_TEXT,

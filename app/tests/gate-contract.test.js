@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { pathToFileURL } from 'node:url';
 
 import { bootstrapIGS } from '../src/index.js';
 import { dispatchImportBundle } from '../src/registry/import-dispatcher.js';
@@ -85,6 +86,27 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.doesNotMatch(loaderJson.content, /yuzi-phone/i);
     assert.equal(loaderJson.button.enabled, false);
     assert.deepEqual(loaderJson.button.buttons, []);
+});
+
+test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
+    const bundle = fs.readFileSync(path.join(appRoot, 'dist', 'igs.bundle.js'), 'utf8');
+
+    assert.doesNotMatch(bundle, /^\s*import\s/m);
+    assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
+    assert.match(bundle, /IGS version: 0\.3\.10/);
+    assert.match(bundle, /resolveSegmentImageIndex/);
+});
+
+test('gate:dist-bundle:loads-as-esm-entry', async () => {
+    const bundleUrl = `${pathToFileURL(path.join(appRoot, 'dist', 'igs.bundle.js')).href}?gate=${Date.now()}`;
+    globalThis.IGS_AUTO_BOOTSTRAP = false;
+    try {
+        const bundle = await import(bundleUrl);
+        assert.equal(typeof bundle.bootstrapIGS, 'function');
+        assert.equal(typeof bundle.createVisualNovelReaderHost, 'function');
+    } finally {
+        delete globalThis.IGS_AUTO_BOOTSTRAP;
+    }
 });
 
 test('gate:loader-json:repeated enable rescans magic wand without alerting', () => {
@@ -317,7 +339,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.9');
+    const source = getOriginalReaderSource('0.3.10');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

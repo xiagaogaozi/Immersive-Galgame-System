@@ -21,6 +21,8 @@
 - `loader/igs-loader.json`
 - `loader/igs-loader.js`
 
+`app/dist/igs.bundle.js` 是给 loader 远程加载的自包含主程序文件。它不能只是 `import ../src/index.js` 的转发入口，否则 cache bust 只会刷新入口文件，浏览器或酒馆仍可能复用旧的源码子模块。
+
 ## 边界
 
 - 当前不走奶龙工具箱 `project.json / latest / tavern helper` 发布壳。
@@ -76,6 +78,7 @@ npm run perf
 ```
 
 这些命令属于 app 自身工程，不属于奶龙工具箱校验流程。
+其中 `npm run build` 与 `npm run test` 会共同检查 dist bundle 自包含，避免自动更新脚本加载到旧子模块。
 
 生成 loader JSON 后，必须额外验证 JSON 字段和 `content`：
 

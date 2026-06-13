@@ -65,6 +65,8 @@ app/dist/igs.bundle.css
 app/dist/manifest.json
 ```
 
+`app/dist/igs.bundle.js` 必须是自包含发布文件，不得在运行时继续 `import ../src/index.js` 或其它 `app/src` 模块。loader 只会给入口 bundle 加 cache bust，如果入口再静态导入未带刷新参数的源码子模块，酒馆同一页面可能继续复用旧模块，导致已修复逻辑没有真正生效。
+
 酒馆导入产物：
 
 ```text
@@ -116,6 +118,7 @@ structure -> static -> test -> simulate -> perf -> build
 ```
 
 如果只改文档，可以不跑 `npm run gate`，但最终回复必须说明 skipped 原因。
+`npm run build` 会检查 `igs.bundle.js` 不含运行时 `import`；`npm run test` 也会通过 `gate:dist-bundle:is-self-contained-for-loader-cache-bust` 防止发布入口退化成源码转发壳。
 
 ## loader JSON 格式
 
