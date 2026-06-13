@@ -38,10 +38,10 @@ const SETTINGS_STYLE_TEXT = `
 .vnm-segmented-field .vnm-settings-field{width:100%}
 .vnm-segmented{height:40px;display:grid;grid-template-columns:repeat(var(--vnm-segment-count,3),minmax(0,1fr));align-items:center;gap:0;padding:4px;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.075);border-radius:14px;position:relative;overflow:hidden}
 .vnm-segmented-indicator{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / var(--vnm-segment-count,3));border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.10));box-shadow:0 1px 4px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12);transform:translateX(calc(var(--vnm-active-index,0) * 100%));transition:transform .16s ease,background .16s ease;pointer-events:none}
-.vnm-segmented-btn{height:32px;min-width:0;position:relative;z-index:1;border:0;border-radius:10px;background:transparent;color:rgba(255,255,255,.48);font:inherit;font-size:12px;line-height:18px;font-weight:650;letter-spacing:0;white-space:nowrap;cursor:pointer;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:color .12s,text-shadow .12s,transform .1s}
+.vnm-segmented-btn{height:32px;min-width:0;position:relative;z-index:1;border:0;border-radius:10px;background:transparent;color:rgba(255,255,255,.48);font:inherit;font-size:12px;line-height:18px;font-weight:650;letter-spacing:0;white-space:nowrap;cursor:pointer;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;gap:5px;overflow:hidden;transition:color .12s,text-shadow .12s,transform .1s}
 .vnm-segmented-btn-icon{width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:currentColor}
 .vnm-segmented-btn-icon svg{width:15px;height:15px;display:block}
-.vnm-segmented-btn-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.vnm-segmented-btn-label{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vnm-segmented-btn:hover{color:rgba(255,255,255,.86)}
 .vnm-segmented-btn:active{transform:scale(.97)}
 .vnm-segmented-btn:focus{outline:none;box-shadow:0 0 0 2px rgba(92,170,255,.18)}

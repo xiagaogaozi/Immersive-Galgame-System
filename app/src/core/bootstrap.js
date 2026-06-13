@@ -46,7 +46,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.3.3',
+        version: '0.3.4',
         global: globalObject,
         events,
         hostAdapter,
@@ -313,9 +313,18 @@ export function bootstrapIGS(options = {}) {
         }
         const normalizedId = Number(messageId);
         const messages = await hostAdapter.listMessages();
+        const step = Number(delta) < 0 ? -1 : 1;
+        const aiTurns = Array.isArray(messages) ? messages.filter(isVisibleAiTurn) : [];
+        const currentTurnIndex = aiTurns.findIndex((message) => Number(message && message.id) === normalizedId);
+        if (currentTurnIndex >= 0) {
+            return aiTurns[currentTurnIndex + step] || null;
+        }
         const currentIndex = messages.findIndex((message) => Number(message && message.id) === normalizedId);
         if (currentIndex < 0) return null;
-        return messages[currentIndex + (Number(delta) < 0 ? -1 : 1)] || null;
+        for (let index = currentIndex + step; index >= 0 && index < messages.length; index += step) {
+            if (isVisibleAiTurn(messages[index])) return messages[index];
+        }
+        return null;
     }
 
     function hasAdjacentMessageCapability() {
@@ -326,6 +335,19 @@ export function bootstrapIGS(options = {}) {
                 || typeof hostAdapter.listMessages === 'function'
             ),
         );
+    }
+
+    function isVisibleAiTurn(message) {
+        return Boolean(
+            message
+            && !isTruthyTurnFlag(message.isUser)
+            && !isTruthyTurnFlag(message.isSystem)
+            && !isTruthyTurnFlag(message.isHidden),
+        );
+    }
+
+    function isTruthyTurnFlag(value) {
+        return value === true || value === 1 || value === '1' || value === 'true';
     }
 
     async function jumpToMessage(messageId) {

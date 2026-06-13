@@ -182,7 +182,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.3');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.4');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -303,7 +303,7 @@ test('gate:simulation:visual-novel-ui-enter-sends-and-shift-enter-does-not', asy
 test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-close', async () => {
     const latestMessage = {
         id: 8,
-        text: '[角色: 艾莉]\n艾莉: 第一句。 第二句。',
+        text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。',
     };
     const storage = createMemoryStorage();
     const igs = bootstrapIGS({
@@ -354,6 +354,43 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
     igs.destroy();
 });
 
+test('gate:simulation:visual-novel-ui-one-line-or-paragraph-per-page', async () => {
+    const messages = [
+        {
+            id: 30,
+            text: '[角色: 艾莉]\n艾莉: 第一句。 第二句。',
+        },
+        {
+            id: 31,
+            text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。',
+        },
+    ];
+    const igs = bootstrapIGS({
+        global: {},
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => messages[0],
+            getMessageById: async (messageId) => messages.find((message) => message.id === Number(messageId)) || null,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const singleLine = await igs.openLatestAvailable('pc');
+    const paragraph = await igs.openViewerFromMessage(31, 'pc');
+    const nextParagraph = await paragraph.reader.controller.invokeAction('next');
+
+    assert.equal(singleLine.ok, true);
+    assert.deepEqual(singleLine.reader.snapshot.content.segments, ['艾莉: 第一句。 第二句。']);
+    assert.equal(singleLine.reader.snapshot.content.progress, '1 / 1');
+    assert.equal(paragraph.ok, true);
+    assert.deepEqual(paragraph.reader.snapshot.content.segments, ['艾莉: 第一段。', '第二段。']);
+    assert.equal(paragraph.reader.snapshot.content.progress, '1 / 2');
+    assert.equal(nextParagraph.ok, true);
+    assert.equal(nextParagraph.progress, '2 / 2');
+
+    igs.destroy();
+});
+
 test('gate:simulation:visual-novel-ui-inline-modes-keep-original-floating-geometry', async () => {
     const document = createFakeDocument({ innerWidth: 1600, innerHeight: 1200 });
     const globalObject = document.defaultView;
@@ -384,6 +421,65 @@ test('gate:simulation:visual-novel-ui-inline-modes-keep-original-floating-geomet
     assert.equal(overlay.style.height, '680px');
     assert.equal(overlay.style.borderRadius, '22px');
     assert.match(overlay.className, /vnm-floating-mobile/);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-floating-window-drag', async () => {
+    const document = createFakeDocument({ innerWidth: 1600, innerHeight: 1200 });
+    const globalObject = document.defaultView;
+    const latestMessage = {
+        id: 32,
+        text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。',
+    };
+    const igs = bootstrapIGS({
+        global: globalObject,
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const overlay = document.getElementById('vnm-overlay');
+    const clickLayer = overlay.querySelector('#vnm-click-layer');
+    const beforeLeft = overlay.style.left;
+    const beforeTop = overlay.style.top;
+
+    clickLayer.dispatchEvent({
+        type: 'pointerdown',
+        button: 0,
+        pointerId: 1,
+        clientX: 800,
+        clientY: 760,
+    });
+    document.dispatchEvent({
+        type: 'pointermove',
+        pointerId: 1,
+        clientX: 872,
+        clientY: 828,
+        cancelable: true,
+    });
+    document.dispatchEvent({
+        type: 'pointerup',
+        pointerId: 1,
+        clientX: 872,
+        clientY: 828,
+    });
+
+    assert.equal(opened.ok, true);
+    assert.notEqual(overlay.style.left, beforeLeft);
+    assert.notEqual(overlay.style.top, beforeTop);
+    assert.equal(overlay.style.transform, 'none');
+    assert.equal(igs.getState().visualNovelUi.activeReader.floatingState.dragged, true);
+
+    const progressBeforeClick = igs.getState().visualNovelUi.activeReader.snapshot.content.progress;
+    clickLayer.click();
+    assert.equal(igs.getState().visualNovelUi.activeReader.snapshot.content.progress, progressBeforeClick);
+
+    globalObject.dispatchEvent({ type: 'resize' });
+    assert.equal(overlay.style.transform, 'none');
 
     igs.destroy();
 });
@@ -573,9 +669,9 @@ test('gate:simulation:visual-novel-ui-hidden-state-can-be-restored-and-toast-sho
 
 test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps_original_entry_mode', async () => {
     const messages = [
-        { id: 7, text: '[角色: 艾莉]\n艾莉: 上一轮第一句。 上一轮第二句。' },
-        { id: 8, text: '[角色: 艾莉]\n艾莉: 当前第一句。 当前第二句。' },
-        { id: 9, text: '[角色: 艾莉]\n艾莉: 下一轮第一句。 下一轮第二句。' },
+        { id: 7, text: '[角色: 艾莉]\n艾莉: 上一轮第一句。\n上一轮第二句。' },
+        { id: 8, text: '[角色: 艾莉]\n艾莉: 当前第一句。\n当前第二句。' },
+        { id: 9, text: '[角色: 艾莉]\n艾莉: 下一轮第一句。\n下一轮第二句。' },
     ];
     const jumped = [];
     const igs = bootstrapIGS({
@@ -612,6 +708,42 @@ test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps
     assert.equal(prevTurnResult.reader.snapshot.content.progress, '2 / 2');
     assert.deepEqual(jumped, [9, 8]);
     assert.equal(state.visualNovelUi.activeReader.snapshot.messageId, 8);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-turn-navigation-skips-user-messages', async () => {
+    const messages = [
+        { id: 7, text: '[角色: 艾莉]\n艾莉: 上一轮第一句。' , isUser: false, isSystem: false, isHidden: false },
+        { id: 8, text: '玩家插话。', role: 'user', isUser: true, isSystem: false, isHidden: false },
+        { id: 9, text: '[角色: 艾莉]\n艾莉: 下一轮第一句。', isUser: false, isSystem: false, isHidden: false },
+    ];
+    const jumped = [];
+    const igs = bootstrapIGS({
+        global: {},
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => messages[2],
+            getMessageById: async (messageId) => messages.find((message) => message.id === Number(messageId)) || null,
+            listMessages: async () => messages,
+            jumpToMessage: async (messageId) => {
+                jumped.push(Number(messageId));
+                return { ok: true, messageId: Number(messageId) };
+            },
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const prevTurnResult = await opened.reader.controller.invokeAction('prev-turn');
+    const nextTurnResult = await prevTurnResult.reader.controller.invokeAction('next-turn');
+
+    assert.equal(opened.reader.snapshot.messageId, 9);
+    assert.equal(prevTurnResult.ok, true);
+    assert.equal(prevTurnResult.reader.snapshot.messageId, 7);
+    assert.equal(nextTurnResult.ok, true);
+    assert.equal(nextTurnResult.reader.snapshot.messageId, 9);
+    assert.deepEqual(jumped, [7, 9]);
 
     igs.destroy();
 });
@@ -694,6 +826,29 @@ test('gate:simulation:visual-novel-ui-regen-polls-external-provider-and-updates-
     assert.equal(state.visualNovelUi.activeReader.snapshot.content.currentImageUrl, 'https://example.com/new-scene.png');
     assert.equal(state.visualNovelUi.activeReader.snapshot.content.backgroundImage, 'https://example.com/new-scene.png');
     assert.equal(button.clickCount, 1);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-long-text-scrolls-not-overlaps-input', async () => {
+    const latestMessage = {
+        id: 33,
+        text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。\n第三段。\n第四段。',
+    };
+    const igs = bootstrapIGS({
+        global: {},
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const styleText = opened.reader.snapshot.source.styleText;
+
+    assert.match(styleText, /#vnm-overlay\.vnm-floating \.vnm-text\{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;\}/);
+    assert.match(styleText, /#vnm-overlay\.vnm-floating \.vnm-controls\{flex-shrink:0;\}/);
 
     igs.destroy();
 });
@@ -1002,6 +1157,8 @@ function createFakeElement(tagName, ownerDocument) {
             const results = (listeners.get(payload.type) || []).map((handler) => handler(payload));
             return results[results.length - 1];
         },
+        setPointerCapture() {},
+        releasePointerCapture() {},
         click(eventOverrides = {}) {
             return element.dispatchEvent({
                 type: 'click',

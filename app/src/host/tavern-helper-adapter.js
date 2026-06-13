@@ -108,7 +108,7 @@ function normalizeMessage(message, fallbackId, domMessageMap = new Map()) {
     if (typeof message === 'string') return { id: fallbackId, text: message, rawHtml: message, raw: message };
     if (!message || typeof message !== 'object') return null;
     const id = resolveMessageId(message, fallbackId);
-    const element = id != null ? domMessageMap.get(id) || null : null;
+    const element = resolveMessageElement(message, id, domMessageMap);
     const rawText = getMessagePrimaryText(message);
     const visibleText = normalizeText(
         message.visibleText
@@ -278,34 +278,65 @@ function getElementMessageId(element) {
     );
 }
 
+function resolveMessageElement(message, id, domMessageMap) {
+    const direct = getMessageDomElement(message);
+    if (direct) return direct;
+    return id != null ? domMessageMap.get(id) || null : null;
+}
+
+function getMessageDomElement(message) {
+    if (!message || typeof message !== 'object') return null;
+    if (isDomLikeMessageElement(message.element)) return message.element;
+    return isDomLikeMessageElement(message) ? message : null;
+}
+
+function isDomLikeMessageElement(value) {
+    return Boolean(
+        value
+        && typeof value === 'object'
+        && typeof value.getAttribute === 'function',
+    );
+}
+
 function isUserMessage(message) {
+    const element = getMessageDomElement(message);
     return Boolean(
         message && (
-            message.is_user === true
-            || message.isUser === true
-            || message.user === true
+            isTruthyFlag(message.is_user)
+            || isTruthyFlag(message.isUser)
+            || isTruthyFlag(message.user)
+            || message.role === 'user'
+            || (element && element.getAttribute('is_user') === 'true')
         ),
     );
 }
 
 function isSystemMessage(message) {
+    const element = getMessageDomElement(message);
     return Boolean(
         message && (
-            message.is_system === true
-            || message.isSystem === true
-            || message.system === true
+            isTruthyFlag(message.is_system)
+            || isTruthyFlag(message.isSystem)
+            || isTruthyFlag(message.system)
+            || (element && element.getAttribute('is_system') === 'true')
         ),
     );
 }
 
 function isHiddenMessage(message) {
+    const element = getMessageDomElement(message);
     return Boolean(
         message && (
-            message.is_hidden === true
-            || message.isHidden === true
-            || message.hidden === true
+            isTruthyFlag(message.is_hidden)
+            || isTruthyFlag(message.isHidden)
+            || isTruthyFlag(message.hidden)
+            || (element && element.getAttribute('is_hidden') === 'true')
         ),
     );
+}
+
+function isTruthyFlag(value) {
+    return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 function normalizeText(value) {

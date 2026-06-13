@@ -33,7 +33,9 @@ const ORIGINAL_READER_STYLE_TEXT = `
 .vnm-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.62);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(32px) saturate(180%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
 .vnm-dialog.vnm-hidden{opacity:0;transform:translateX(-50%) translateY(20px);pointer-events:none;}
 #vnm-overlay.vnm-floating #vnm-click-layer{cursor:grab;touch-action:none;}
+#vnm-overlay.vnm-floating.is-dragging #vnm-click-layer{cursor:grabbing;}
 #vnm-overlay.vnm-floating .vnm-dialog{box-sizing:border-box;left:12px;right:12px;bottom:14px;width:auto;transform:none;display:flex;flex-direction:column;max-height:min(46%,220px);overflow:visible;padding:16px 18px 14px;}
+#vnm-overlay.vnm-floating .vnm-dialog.vnm-hidden{transform:translateY(20px);}
 #vnm-overlay.vnm-floating-mobile .vnm-dialog{left:10px;right:10px;bottom:12px;max-height:min(42%,190px);padding:14px 14px 12px;}
 .vnm-ctrl-bar{position:absolute;top:-50px;right:0;display:flex;gap:6px;z-index:5;padding:6px;background:rgba(20,20,22,.12);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(48px) saturate(220%);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.20);}
 .vnm-icon-btn{width:36px;height:36px;border:1px solid transparent;cursor:pointer;background:transparent;color:rgba(255,255,255,.52);font-size:15px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;transition:all .18s;outline:none;}
@@ -43,6 +45,9 @@ const ORIGINAL_READER_STYLE_TEXT = `
 .vnm-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:10px;letter-spacing:1px;}
 .vnm-text{font-size:18px;line-height:1.7;letter-spacing:.5px;min-height:60px;color:#f4f4f6;text-shadow:0 1px 2px rgba(0,0,0,.6);margin-bottom:14px;white-space:pre-wrap;word-break:break-word;}
 .vnm-controls{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
+#vnm-overlay.vnm-floating .vnm-progress{flex-shrink:0;}
+#vnm-overlay.vnm-floating .vnm-text{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;}
+#vnm-overlay.vnm-floating .vnm-controls{flex-shrink:0;}
 .vnm-input{flex:1;min-width:0;height:32px;box-sizing:border-box;padding:0 12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;color:#fff;font-size:14px;line-height:18px;outline:none;font-family:inherit;}
 .vnm-input:focus{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);}
 .vnm-input::placeholder{color:rgba(255,255,255,.4);}
@@ -116,7 +121,7 @@ export function getOriginalReaderHtml() {
     return ORIGINAL_READER_HTML;
 }
 
-export function getOriginalReaderSource(version = '0.3.3') {
+export function getOriginalReaderSource(version = '0.3.4') {
     return {
         version,
         styleText: ORIGINAL_READER_STYLE_TEXT,

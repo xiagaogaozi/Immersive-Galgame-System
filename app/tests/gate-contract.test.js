@@ -77,7 +77,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.3'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.4'/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -152,12 +152,12 @@ test('gate:loader-json:falls-back-to-main-when-version-cdn-is-missing', async ()
             if (text.includes('manifest.json')) {
                 return {
                     ok: true,
-                    json: async () => ({ version: '0.3.3' }),
+                    json: async () => ({ version: '0.3.4' }),
                 };
             }
             return {
-                ok: !text.includes('@v0.3.3/'),
-                status: text.includes('@v0.3.3/') ? 404 : 200,
+                ok: !text.includes('@v0.3.4/'),
+                status: text.includes('@v0.3.4/') ? 404 : 200,
             };
         },
     };
@@ -243,7 +243,7 @@ test('gate:visual-novel-compat:api-shape', () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.3');
+    const source = getOriginalReaderSource('0.3.4');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));
@@ -260,6 +260,11 @@ test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     assert.match(source.html, /data-act="toggle-bar"/);
     assert.match(source.html, /data-act="close"/);
     assert.match(source.html, /viewBox="0 0 24 24"/);
+    assert.match(source.styleText, /#vnm-overlay\.vnm-floating\.is-dragging #vnm-click-layer\{cursor:grabbing;\}/);
+    assert.match(source.styleText, /#vnm-overlay\.vnm-floating #vnm-click-layer\{cursor:grab;touch-action:none;\}/);
+    assert.match(source.styleText, /#vnm-overlay\.vnm-floating \.vnm-progress\{flex-shrink:0;\}/);
+    assert.match(source.styleText, /#vnm-overlay\.vnm-floating \.vnm-text\{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;\}/);
+    assert.match(source.styleText, /#vnm-overlay\.vnm-floating \.vnm-controls\{flex-shrink:0;\}/);
     assert.doesNotMatch(source.html, />‹</);
     assert.doesNotMatch(source.html, />⚙</);
 });
@@ -293,6 +298,8 @@ test('gate:visual-novel-ui:settings-style-keeps-original-geometry', () => {
     assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.segmentedHeight)));
     assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.switchHeight)));
     assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.mobileMedia)));
+    assert.match(styleText, /\.vnm-segmented-btn\{[^}]*min-width:0;[^}]*overflow:hidden/);
+    assert.match(styleText, /\.vnm-segmented-btn-label\{[^}]*display:block;[^}]*max-width:100%;[^}]*overflow:hidden;[^}]*text-overflow:ellipsis;[^}]*white-space:nowrap/);
 });
 
 test('gate:api:public-api-exposes-text-preset-groups', () => {

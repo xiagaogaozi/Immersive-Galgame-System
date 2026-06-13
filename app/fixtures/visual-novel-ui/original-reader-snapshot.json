@@ -33,6 +33,25 @@
     ".vnm-icon-btn": {
       "width": "36px",
       "height": "36px"
+    },
+    "#vnm-overlay.vnm-floating #vnm-click-layer": {
+      "cursor": "grab",
+      "touchAction": "none"
+    },
+    "#vnm-overlay.vnm-floating.is-dragging #vnm-click-layer": {
+      "cursor": "grabbing"
+    },
+    "#vnm-overlay.vnm-floating .vnm-progress": {
+      "flexShrink": "0"
+    },
+    "#vnm-overlay.vnm-floating .vnm-text": {
+      "minHeight": "0",
+      "overflowY": "auto",
+      "marginBottom": "12px",
+      "flex": "1 1 auto"
+    },
+    "#vnm-overlay.vnm-floating .vnm-controls": {
+      "flexShrink": "0"
     }
   }
 }

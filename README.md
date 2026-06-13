@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.3`：归档原版 VN 分页、拖拽、AI-only 楼层、长文本滚动与四模式选择器修复施工图；运行时行为仍继承 `v0.3.2`，本轮不包含功能修复。
+- 当前项目版本 `v0.3.4`：已按 `plan/v0.3.3-原版VN分页拖拽与AI楼层修复施工图.md` 完成实现，修复原版 VN 分页、PC/手机浮窗拖拽、AI-only 楼层切换、长文本滚动与四模式选择器溢出，并已通过 `npm run gate` 与 `npm run build:loader`。
 - `v0.3.2` 已把“manifest 指向新版本但版本 tag CDN 暂不可用时，不弹失败框并改用 `@main` bundle”固定为回归闸门；`v0.3.1` 已固定 web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
@@ -128,6 +128,13 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.4 - 2026-06-13
+
+- 按 `plan/v0.3.3-原版VN分页拖拽与AI楼层修复施工图.md` 完成运行时代码修复：`buildTextSegments()` 现已对齐原版 VN 的按 `\n+` 分段语义，一行多句保持单页，单换行多段拆成多页。
+- `app/src/visual/visual-novel-ui/reader-host.js` 补回 PC/手机浮窗拖拽、`6px` 阈值、`8px` viewport clamp、拖后 `120ms` click 抑制，并在重渲染与 resize/orientation 后保留用户拖动位置。
+- `app/src/host/tavern-helper-adapter.js` 与 `app/src/core/bootstrap.js` 现已统一跳过用户层、系统层和隐藏层；`prev-turn` / `next-turn` 在 fallback `listMessages()` 链路下也会继续按 AI-only 语义移动。
+- `app/src/visual/visual-novel-ui/original-reader-source.js`、`settings-style.js` 与相关 fixtures/tests 已补齐浮窗滚动、拖拽态、controls 固定和四模式按钮省略显示契约；本轮已通过 `npm run test`、`npm run simulate`、`npm run gate` 和 `npm run build:loader`。
 
 ### v0.3.3 - 2026-06-13
 

@@ -21,6 +21,7 @@ import { resolveVisualMode, VISUAL_MODES } from '../src/visual/visual-mode.js';
 import { createPromptAdapter } from '../src/prompts/adapters/prompt-adapter.js';
 import { naiRequestBuilder } from '../src/generated-images/request-builders/nai-builder.js';
 import { createPublicApi, attachPublicApi } from '../src/api/public-api.js';
+import { createTavernHelperAdapter } from '../src/host/tavern-helper-adapter.js';
 import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
@@ -209,7 +210,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.3',
+            version: '0.3.4',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -229,6 +230,58 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     assert.equal(opened.ok, true);
     assert.equal(opened.snapshot.content.text, '可读正文');
     assert.equal(opened.snapshot.content.displayText, '艾莉: 可读正文');
+    host.destroy();
+});
+
+test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single-page', () => {
+    const host = createVisualNovelReaderHost({
+        global: {},
+        getUnifiedSettings: () => ({
+            version: '0.3.4',
+            bridge: { openMode: 'pc', showToasts: true },
+            readerMode: 'pc',
+            readerSettings: {},
+        }),
+        saveUnifiedSettings: () => ({ ok: true, legacy: {}, unified: {} }),
+    });
+
+    const opened = host.openReader({
+        messageId: 100,
+        scene: {
+            speaker: '艾莉',
+            text: '第一句。 第二句。',
+        },
+    }, { mode: 'pc' });
+
+    assert.equal(opened.ok, true);
+    assert.deepEqual(opened.snapshot.content.segments, ['第一句。 第二句。']);
+    assert.equal(opened.snapshot.content.progress, '1 / 1');
+    host.destroy();
+});
+
+test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-multiple-pages', () => {
+    const host = createVisualNovelReaderHost({
+        global: {},
+        getUnifiedSettings: () => ({
+            version: '0.3.4',
+            bridge: { openMode: 'pc', showToasts: true },
+            readerMode: 'pc',
+            readerSettings: {},
+        }),
+        saveUnifiedSettings: () => ({ ok: true, legacy: {}, unified: {} }),
+    });
+
+    const opened = host.openReader({
+        messageId: 101,
+        scene: {
+            speaker: '艾莉',
+            text: '第一段。\n第二段。',
+        },
+    }, { mode: 'pc' });
+
+    assert.equal(opened.ok, true);
+    assert.deepEqual(opened.snapshot.content.segments, ['第一段。', '第二段。']);
+    assert.equal(opened.snapshot.content.progress, '1 / 2');
     host.destroy();
 });
 
@@ -312,7 +365,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.3',
+        version: '0.3.4',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -330,6 +383,37 @@ test('gate:api:public api attaches stable global aliases', async () => {
     assert.equal(api.api.textFilterPresets.getCurrent().id, 'preset.text-filter.content-only');
     assert.equal(api.api.textFilterPresets.exportAll().type, 'igs-import-bundle');
     assert.equal(api.ensureMagicWandEntry().reason, 'magic-wand-entry-not-mounted');
+});
+
+test('gate:host:tavern-helper-adapter-detects-user-messages-from-role-flags-and-dom', async () => {
+    const domUserMessage = {
+        getAttribute(name) {
+            if (name === 'is_user') return 'true';
+            return null;
+        },
+    };
+    const messages = [
+        { id: 1, text: '玩家发言', role: 'user' },
+        { id: 2, text: '玩家发言 2', is_user: 'true' },
+        { id: 3, text: '玩家发言 3', element: domUserMessage },
+        { id: 4, text: '旁白发言' },
+    ];
+    const adapter = createTavernHelperAdapter({
+        TavernHelper: {
+            getLastMessageId: () => 4,
+            getChatMessages: () => messages,
+        },
+        document: {
+            querySelectorAll: () => [],
+        },
+    });
+
+    const normalized = await adapter.listMessages();
+
+    assert.equal(normalized[0].isUser, true);
+    assert.equal(normalized[1].isUser, true);
+    assert.equal(normalized[2].isUser, true);
+    assert.equal(normalized[3].isUser, false);
 });
 
 function readJson(relativePath) {

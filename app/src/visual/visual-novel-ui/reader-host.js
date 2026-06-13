@@ -189,12 +189,18 @@ export function createVisualNovelReaderHost(options = {}) {
             index: snapshot.content.currentIndex,
             inputValue: '',
             hidden: false,
+            dragSuppressClick: false,
             toolbarCollapsed: true,
             lastAction: '',
             toastMessage: '',
             snapshot,
             controller,
             dom: domState,
+            floatingState: {
+                dragged: false,
+                left: null,
+                top: null,
+            },
             runtime: null,
             toastTimer: null,
         };
@@ -291,10 +297,12 @@ export function createVisualNovelReaderHost(options = {}) {
                 mode: state.activeReader.mode,
                 index: state.activeReader.index,
                 hidden: state.activeReader.hidden,
+                dragSuppressClick: state.activeReader.dragSuppressClick,
                 toolbarCollapsed: state.activeReader.toolbarCollapsed,
                 lastAction: state.activeReader.lastAction,
                 inputValue: state.activeReader.inputValue,
                 toastMessage: state.activeReader.toastMessage,
+                floatingState: cloneData(state.activeReader.floatingState),
                 snapshot: cloneData(state.activeReader.snapshot),
             } : null,
             activeSettings: state.activeSettings ? {
@@ -772,7 +780,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.3'),
+            source: getOriginalReaderSource(options.version || '0.3.4'),
         };
     }
 
@@ -797,7 +805,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.3'),
+                version: esc(options.version || '0.3.4'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1211,7 +1219,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vnm-settings-badge';
-        badge.textContent = options.version || '0.3.3';
+        badge.textContent = options.version || '0.3.4';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1307,6 +1315,11 @@ export function createVisualNovelReaderHost(options = {}) {
         }
         if (clickLayer) {
             clickLayer.addEventListener('click', () => {
+                if (current.dragSuppressClick || (current.runtime && current.runtime.dragSuppressClick)) {
+                    current.dragSuppressClick = false;
+                    if (current.runtime) current.runtime.dragSuppressClick = false;
+                    return;
+                }
                 if (current.hidden) {
                     current.controller.toggleHidden();
                     return;
@@ -1453,7 +1466,7 @@ export function createVisualNovelReaderHost(options = {}) {
         current.runtime = runtime;
 
         if (snapshot.mode === 'pc' || snapshot.mode === 'mobile') {
-            applyInlineReaderRuntime(root, snapshot.mode, runtime);
+            applyInlineReaderRuntime(root, snapshot.mode, runtime, current);
             return;
         }
         if (snapshot.mode === 'web') {
@@ -1483,9 +1496,13 @@ export function createVisualNovelReaderHost(options = {}) {
         if (runtime && typeof fn === 'function') runtime.cleanup.push(fn);
     }
 
-    function applyInlineReaderRuntime(root, mode, runtime) {
+    function applyInlineReaderRuntime(root, mode, runtime, current) {
         const win = runtime.win || {};
         const doc = runtime.doc || {};
+        const floatingState = current && current.floatingState
+            ? current.floatingState
+            : { dragged: false, left: null, top: null };
+        let suppressTimer = null;
         root.style.top = 'auto';
         root.style.right = 'auto';
         root.style.left = '50%';
@@ -1517,16 +1534,32 @@ export function createVisualNovelReaderHost(options = {}) {
             if (availableHeight < targetHeight) {
                 targetHeight = Math.max(minExtremeSize, Math.min(targetHeight, availableHeight));
             }
+            const minLeft = viewport.left + 8;
+            const minTop = viewport.top + 8;
+            const maxLeft = Math.max(minLeft, viewport.right - targetWidth - 8);
+            const maxTop = Math.max(minTop, viewport.bottom - targetHeight - 8);
+            const defaultLeft = Math.round(viewport.left + (viewport.width || targetWidth) / 2);
+            let targetLeft = defaultLeft;
             let targetTop = viewport.top + (viewport.height || (targetHeight + bottomGap)) - bottomGap - targetHeight;
-            const minTop = viewport.top + sideGap;
-            const maxTop = viewport.bottom - sideGap - targetHeight;
             if (targetTop < minTop) targetTop = minTop;
             if (maxTop >= minTop && targetTop > maxTop) targetTop = maxTop;
             root.style.maxWidth = `${safeWidth}px`;
             root.style.maxHeight = `${safeHeight}px`;
             root.style.width = `${targetWidth}px`;
             root.style.height = `${targetHeight}px`;
-            root.style.left = `${Math.round(viewport.left + (viewport.width || targetWidth) / 2)}px`;
+            if (floatingState.dragged && Number.isFinite(floatingState.left) && Number.isFinite(floatingState.top)) {
+                targetLeft = clampNumber(floatingState.left, minLeft, maxLeft);
+                targetTop = clampNumber(floatingState.top, minTop, maxTop);
+                floatingState.left = targetLeft;
+                floatingState.top = targetTop;
+                root.style.left = `${Math.round(targetLeft)}px`;
+                root.style.top = `${Math.round(targetTop)}px`;
+                root.style.right = 'auto';
+                root.style.bottom = 'auto';
+                root.style.transform = 'none';
+                return;
+            }
+            root.style.left = `${defaultLeft}px`;
             root.style.top = `${Math.round(targetTop)}px`;
             root.style.right = 'auto';
             root.style.bottom = 'auto';
@@ -1548,12 +1581,132 @@ export function createVisualNovelReaderHost(options = {}) {
 
         clamp();
         schedule();
+        installFloatingDragRuntime(root, runtime, current, floatingState, () => {
+            if (suppressTimer != null) {
+                const clearer = typeof win.clearTimeout === 'function' ? win.clearTimeout.bind(win) : clearTimeout;
+                clearer(suppressTimer);
+            }
+            current.dragSuppressClick = true;
+            runtime.dragSuppressClick = true;
+            const setter = typeof win.setTimeout === 'function' ? win.setTimeout.bind(win) : setTimeout;
+            suppressTimer = setter(() => {
+                current.dragSuppressClick = false;
+                runtime.dragSuppressClick = false;
+                suppressTimer = null;
+            }, 120);
+        });
         addEventListenerWithCleanup(win, 'resize', schedule, runtime);
         addEventListenerWithCleanup(win, 'orientationchange', schedule, runtime);
         if (win.visualViewport) {
             addEventListenerWithCleanup(win.visualViewport, 'resize', schedule, runtime);
             addEventListenerWithCleanup(win.visualViewport, 'scroll', schedule, runtime);
         }
+        addRuntimeCleanup(runtime, () => {
+            if (suppressTimer != null) {
+                const clearer = typeof win.clearTimeout === 'function' ? win.clearTimeout.bind(win) : clearTimeout;
+                clearer(suppressTimer);
+            }
+        });
+    }
+
+    function installFloatingDragRuntime(root, runtime, current, floatingState, onSuppressClick) {
+        if (!root || !runtime || !current) return;
+        const layer = root.querySelector('#vnm-click-layer');
+        const doc = runtime.doc;
+        if (!layer || !doc || typeof doc.addEventListener !== 'function') return;
+        let active = false;
+        let dragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        let pointerId = null;
+
+        const onMove = (event) => {
+            if (!active) return;
+            const clientX = Number(event && event.clientX);
+            const clientY = Number(event && event.clientY);
+            if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+            if (!dragging && Math.hypot(dx, dy) < 6) return;
+            dragging = true;
+            root.classList.add('is-dragging');
+            if (event && event.cancelable && typeof event.preventDefault === 'function') event.preventDefault();
+            const viewport = getInlineViewportMetrics(runtime.win || {}, doc);
+            const minLeft = viewport.left + 8;
+            const minTop = viewport.top + 8;
+            const maxLeft = Math.max(minLeft, viewport.right - root.offsetWidth - 8);
+            const maxTop = Math.max(minTop, viewport.bottom - root.offsetHeight - 8);
+            const nextLeft = clampNumber(startLeft + dx, minLeft, maxLeft);
+            const nextTop = clampNumber(startTop + dy, minTop, maxTop);
+            floatingState.dragged = true;
+            floatingState.left = nextLeft;
+            floatingState.top = nextTop;
+            runtime.dragged = true;
+            root.style.left = `${Math.round(nextLeft)}px`;
+            root.style.top = `${Math.round(nextTop)}px`;
+            root.style.right = 'auto';
+            root.style.bottom = 'auto';
+            root.style.transform = 'none';
+        };
+
+        const onUp = () => {
+            if (!active) return;
+            active = false;
+            try {
+                if (pointerId !== null && typeof layer.releasePointerCapture === 'function') {
+                    layer.releasePointerCapture(pointerId);
+                }
+            } catch (error) {
+                // Ignore missing pointer capture implementations.
+            }
+            if (typeof doc.removeEventListener === 'function') {
+                doc.removeEventListener('pointermove', onMove);
+                doc.removeEventListener('pointerup', onUp);
+                doc.removeEventListener('pointercancel', onUp);
+            }
+            root.classList.remove('is-dragging');
+            if (dragging && typeof onSuppressClick === 'function') onSuppressClick();
+            dragging = false;
+            pointerId = null;
+        };
+
+        layer.addEventListener('pointerdown', (event) => {
+            if (event && event.button !== undefined && event.button !== 0) return;
+            const clientX = Number(event && event.clientX);
+            const clientY = Number(event && event.clientY);
+            if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
+            active = true;
+            dragging = false;
+            startX = clientX;
+            startY = clientY;
+            pointerId = event && event.pointerId !== undefined ? event.pointerId : null;
+            const rect = typeof root.getBoundingClientRect === 'function'
+                ? root.getBoundingClientRect()
+                : { left: 0, top: 0 };
+            startLeft = Number.isFinite(rect.left) ? rect.left : 0;
+            startTop = Number.isFinite(rect.top) ? rect.top : 0;
+            try {
+                if (pointerId !== null && typeof layer.setPointerCapture === 'function') {
+                    layer.setPointerCapture(pointerId);
+                }
+            } catch (error) {
+                // Ignore missing pointer capture implementations.
+            }
+            doc.addEventListener('pointermove', onMove);
+            doc.addEventListener('pointerup', onUp);
+            doc.addEventListener('pointercancel', onUp);
+        });
+
+        addRuntimeCleanup(runtime, () => {
+            if (typeof doc.removeEventListener === 'function') {
+                doc.removeEventListener('pointermove', onMove);
+                doc.removeEventListener('pointerup', onUp);
+                doc.removeEventListener('pointercancel', onUp);
+            }
+            root.classList.remove('is-dragging');
+        });
     }
 
     function applyWebReaderRuntime(root, runtime) {
@@ -1670,7 +1823,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.3' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.4' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1681,7 +1834,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.3',
+            version: snapshot.version || options.version || '0.3.4',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2067,17 +2220,11 @@ function computeLineHeight(fontSize) {
 function buildTextSegments(text) {
     const source = String(text || '').trim();
     if (!source) return [''];
-    const paragraphSegments = source
-        .split(/\n{2,}/)
-        .map((item) => item.trim())
+    const segments = source
+        .split(/\n+/)
+        .map((item) => item.replace(/\s+/g, ' ').trim())
         .filter(Boolean);
-    if (paragraphSegments.length > 1) return paragraphSegments;
-
-    const sentenceSegments = source
-        .split(/(?<=[。！？!?])\s+/)
-        .map((item) => item.trim())
-        .filter(Boolean);
-    return sentenceSegments.length ? sentenceSegments : [source];
+    return segments.length ? segments : [''];
 }
 
 function applyToastToReader(current, allowed, message) {
@@ -2112,6 +2259,10 @@ function clearReaderToast(current) {
         toast.textContent = '';
         toast.style.opacity = '0';
     }
+}
+
+function clampNumber(value, min, max) {
+    return Math.max(min, Math.min(max, value));
 }
 
 function buildProgressText(currentIndex, totalSegments, imageState) {
