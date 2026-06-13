@@ -5,7 +5,10 @@ import {
     getGlobalDetectionRoots,
     collectDomRegenerateButtonCandidates,
 } from './dom-image-candidates.js';
-import { getMessageScopedRoots } from '../host/tavern-helper-adapter.js';
+import {
+    ensureMessageImagePlaceholders,
+    getMessageScopedRoots,
+} from '../host/tavern-helper-adapter.js';
 
 export function createReaderImageService(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
@@ -36,24 +39,32 @@ export function createReaderImageService(options = {}) {
             const message = await resolveMessageContext(context, hostAdapter, messageId);
             const unifiedSettings = context.unifiedSettings || {};
             const imageApi = resolveImageApi(unifiedSettings);
-            const roots = resolveContextRoots(message, globalObject);
+            const imageSlots = normalizeImageSlots(firstDefined(
+                context.imageSlots,
+                context.imageState && context.imageState.slots,
+                [],
+            ));
+            const scope = resolveContextScope(message, globalObject, {
+                requireMessageScope: imageSlots.length > 0 || context.requiresMessageScope === true,
+            });
+            const placeholderState = imageSlots.length && message
+                ? ensureMessageImagePlaceholders(message, imageSlots)
+                : null;
+            const roots = scope.roots;
             const cachedEntry = cache.get(messageId);
             const providerImages = await collectProviderImages(buildProviderContext({
                 context,
                 message,
                 unifiedSettings,
                 roots,
+                scope,
                 globalObject,
                 fetchFn,
             }), resolveActiveProviders(context.providers, builtinProviders, imageApi));
             const sceneImages = collectSceneImages(context.scene, context.render);
             const cachedImages = cachedEntry && Array.isArray(cachedEntry.images) ? cachedEntry.images : [];
-            const imageSlots = normalizeImageSlots(firstDefined(
-                context.imageSlots,
-                context.imageState && context.imageState.slots,
-                [],
-            ));
             const preferredImageIndex = resolvePreferredImageIndex(context, imageSlots.length);
+            const diagnostics = buildImageDiagnostics(providerImages, placeholderState);
             if (imageSlots.length) {
                 const imageState = buildSlottedImageState({
                     messageId,
@@ -71,6 +82,10 @@ export function createReaderImageService(options = {}) {
                 return {
                     ...imageState,
                     signature: String(stored.entry && stored.entry.signature || imageState.signature || ''),
+                    scopeKind: scope.kind,
+                    scopeOk: scope.ok,
+                    reason: scope.reason || imageState.reason || placeholderState && placeholderState.reason || '',
+                    diagnostics,
                 };
             }
             const images = uniqueImages([
@@ -80,14 +95,22 @@ export function createReaderImageService(options = {}) {
             ]);
             const stored = cache.remember(messageId, images);
             if (stored.ok === false) return emptyImageState(stored);
-            return buildImageState(stored.entry, context.currentIndex);
+            return buildImageState(stored.entry, context.currentIndex, {
+                scopeKind: scope.kind,
+                scopeOk: scope.ok,
+                reason: scope.reason || placeholderState && placeholderState.reason || '',
+                diagnostics,
+            });
         },
 
         async generate(context = {}) {
             const message = await resolveMessageContext(context, hostAdapter, normalizeMessageId(context.messageId));
             const unifiedSettings = context.unifiedSettings || {};
             const imageApi = resolveImageApi(unifiedSettings);
-            const roots = resolveContextRoots(message, globalObject);
+            const scope = resolveContextScope(message, globalObject, {
+                requireMessageScope: context.requiresMessageScope === true,
+            });
+            const roots = scope.roots;
             const request = buildGenerationRequest(context);
             const override = typeof context.imageGenerator === 'function' ? context.imageGenerator : imageGenerator;
 
@@ -139,11 +162,15 @@ export function createReaderImageService(options = {}) {
                 return { ok: false, reason: 'provider-not-enabled' };
             }
             try {
+                const scope = resolveContextScope(context.message || null, globalObject, {
+                    requireMessageScope: context.requiresMessageScope === true,
+                });
                 return await provider.fetchModels(context.request || {}, buildProviderContext({
                     context,
                     message: context.message || null,
                     unifiedSettings,
-                    roots: resolveContextRoots(context.message || null, globalObject),
+                    roots: scope.roots,
+                    scope,
                     globalObject,
                     fetchFn,
                 }));
@@ -174,7 +201,9 @@ export function createReaderImageService(options = {}) {
             }
 
             const roots = message
-                ? resolveContextRoots(message, globalObject)
+                ? resolveContextScope(message, globalObject, {
+                    requireMessageScope: false,
+                }).roots
                 : getGlobalDetectionRoots(globalObject);
             return detectExternalImageAdapter({
                 roots,
@@ -361,9 +390,9 @@ function collectSceneImages(scene = {}, render = {}) {
     return uniqueImages(images);
 }
 
-function buildImageState(entry, currentIndex = 0) {
+function buildImageState(entry, currentIndex = 0, extra = {}) {
     if (!entry || typeof entry !== 'object') {
-        return emptyImageState({ ok: true });
+        return emptyImageState({ ok: true, ...extra });
     }
     const images = Array.isArray(entry.images) ? cloneData(entry.images) : [];
     const activeIndex = images.length ? Math.max(0, Math.min(images.length - 1, normalizeIndex(currentIndex))) : 0;
@@ -378,6 +407,11 @@ function buildImageState(entry, currentIndex = 0) {
         currentIndex: activeIndex,
         currentUrl: images[activeIndex] ? images[activeIndex].url : '',
         displayUrl: images[activeIndex] ? images[activeIndex].url : '',
+        slotUrl: images[activeIndex] ? images[activeIndex].url : '',
+        scopeKind: 'legacy-global',
+        scopeOk: true,
+        diagnostics: buildImageDiagnostics(images),
+        ...extra,
     };
 }
 
@@ -393,6 +427,10 @@ function emptyImageState(extra = {}) {
         currentIndex: 0,
         currentUrl: '',
         displayUrl: '',
+        slotUrl: '',
+        scopeKind: 'none',
+        scopeOk: false,
+        diagnostics: buildImageDiagnostics(),
         ...extra,
     };
 }
@@ -439,13 +477,14 @@ function resolveImageApi(unifiedSettings = {}) {
     };
 }
 
-function buildProviderContext({ context, message, unifiedSettings, roots, globalObject, fetchFn }) {
+function buildProviderContext({ context, message, unifiedSettings, roots, scope, globalObject, fetchFn }) {
     return {
         ...context,
         message: message || null,
         messageId: firstDefined(context.messageId, message && message.id),
         root: roots[0] || message && message.element || null,
         roots,
+        scopePolicy: scope && scope.policy ? cloneData(scope.policy) : buildScopePolicy({ kind: 'legacy-global', ok: true }),
         document: message && message.element && message.element.ownerDocument || context.document || null,
         settings: unifiedSettings,
         unifiedSettings,
@@ -489,10 +528,45 @@ function buildErrorResult(error, fallbackReason, extra = {}) {
     };
 }
 
-function resolveContextRoots(message, globalObject) {
+function resolveContextScope(message, globalObject, options = {}) {
     const roots = message ? getMessageScopedRoots(message) : [];
-    if (roots.length) return roots;
-    return getGlobalDetectionRoots(globalObject);
+    if (roots.length) {
+        return {
+            roots,
+            kind: 'message',
+            ok: true,
+            reason: '',
+            policy: buildScopePolicy({
+                kind: 'message',
+                ok: true,
+                allowGlobalGeneric: false,
+            }),
+        };
+    }
+    if (options.requireMessageScope === true) {
+        return {
+            roots: [],
+            kind: 'message',
+            ok: false,
+            reason: 'message-scope-not-found',
+            policy: buildScopePolicy({
+                kind: 'message',
+                ok: false,
+                allowGlobalGeneric: false,
+            }),
+        };
+    }
+    return {
+        roots: getGlobalDetectionRoots(globalObject),
+        kind: 'legacy-global',
+        ok: true,
+        reason: '',
+        policy: buildScopePolicy({
+            kind: 'legacy-global',
+            ok: true,
+            allowGlobalGeneric: true,
+        }),
+    };
 }
 
 async function resolveMessageContext(context, hostAdapter, messageId) {
@@ -689,10 +763,8 @@ function buildSlottedImageState({
         ...collectUnboundCandidates(providerCandidates, claimedUrls),
         ...collectUnboundCandidates(sceneCandidates, claimedUrls),
     ]);
-    const displayImage = resolveDisplayImage(slots, preferredIndex)
-        || resolveIndexedUnboundImage(unboundImages, preferredIndex, slots.length)
-        || null;
-    const currentUrl = String(displayImage && displayImage.url || '').trim();
+    const currentSlot = slots[preferredIndex] || null;
+    const currentUrl = String(currentSlot && currentSlot.url || '').trim();
     return {
         ok: true,
         messageId,
@@ -704,6 +776,8 @@ function buildSlottedImageState({
         currentIndex: preferredIndex,
         currentUrl,
         displayUrl: currentUrl,
+        slotUrl: currentUrl,
+        reason: currentUrl ? '' : 'no-provider-images-yet',
     };
 }
 
@@ -822,18 +896,45 @@ function resolveDisplayImage(slots, preferredIndex) {
     return String(slot && slot.url || '').trim() ? slot : null;
 }
 
-function resolveIndexedUnboundImage(unboundImages, preferredIndex, slotCount) {
-    if (!Array.isArray(unboundImages) || !unboundImages.length) return null;
-    if (!Number.isFinite(slotCount) || slotCount <= 0) return unboundImages[0] || null;
-    if (unboundImages.length !== slotCount) return null;
-    return unboundImages[clampSlotIndex(preferredIndex, unboundImages.length)] || null;
-}
-
 function shouldUsePreferredSlotFallback(candidates) {
     return (Array.isArray(candidates) ? candidates : []).some((candidate) => {
         if (!candidate || hasSlotBindingSignal(candidate)) return true;
         return String(candidate.providerId || '') !== 'builtin.dom-generic';
     });
+}
+
+function buildScopePolicy(input = {}) {
+    return {
+        kind: String(input.kind || 'legacy-global').trim(),
+        hasMessageScope: input.ok === true && String(input.kind || '') === 'message',
+        allowGlobalGeneric: input.allowGlobalGeneric !== false,
+    };
+}
+
+function buildImageDiagnostics(images = [], placeholderState = null) {
+    const output = {
+        providerCounts: {
+            chatu8: 0,
+            chami: 0,
+            generic: 0,
+            other: 0,
+        },
+        placeholder: placeholderState && typeof placeholderState === 'object'
+            ? {
+                ok: placeholderState.ok !== false,
+                reason: String(placeholderState.reason || '').trim(),
+                count: Number(placeholderState.count) || 0,
+            }
+            : null,
+    };
+    for (const image of Array.isArray(images) ? images : []) {
+        const providerId = String(image && image.providerId || '').trim();
+        if (providerId === 'builtin.st-chatu8') output.providerCounts.chatu8 += 1;
+        else if (providerId === 'builtin.chami') output.providerCounts.chami += 1;
+        else if (providerId === 'builtin.dom-generic') output.providerCounts.generic += 1;
+        else output.providerCounts.other += 1;
+    }
+    return output;
 }
 
 function hasSlotBindingSignal(candidate) {

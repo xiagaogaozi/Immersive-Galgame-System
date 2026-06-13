@@ -94,8 +94,9 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0\.3\.12/);
+    assert.match(bundle, /IGS version: 0\.3\.13/);
     assert.match(bundle, /resolveSegmentImageIndex/);
+    assert.match(bundle, /message-scope-not-found/);
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -348,7 +349,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.12');
+    const source = getOriginalReaderSource('0.3.13');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

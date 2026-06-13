@@ -54,6 +54,10 @@ export function getAdapterSelectors() {
 export function resolveDomRoots(input = {}) {
     const roots = [];
     const seen = new Set();
+    const scopePolicy = input.scopePolicy && typeof input.scopePolicy === 'object'
+        ? input.scopePolicy
+        : {};
+    const lockToScopedRoots = scopePolicy.hasMessageScope === true;
 
     function add(root) {
         if (!root || typeof root.querySelectorAll !== 'function' || seen.has(root)) return;
@@ -64,7 +68,7 @@ export function resolveDomRoots(input = {}) {
     const sourceRoots = Array.isArray(input.roots) ? input.roots : [];
     sourceRoots.forEach(add);
     add(input.root);
-    add(input.document);
+    if (!lockToScopedRoots) add(input.document);
     return roots;
 }
 
@@ -146,11 +150,12 @@ export function collectDomImageCandidates(roots, options = {}) {
     const plain = [];
     let order = 0;
 
-    function add(node, adapterKey) {
+    function add(node, adapterKey, root, selector) {
         if (!node || seenNodes.has(node)) return;
         seenNodes.add(node);
         const imageNode = getImageElement(node) || node;
         if (adapterKey === 'generic' && isLikelyHostDecorImage(node, imageNode)) return;
+        if (adapterKey === 'generic' && !isGenericCandidateAllowed(node, imageNode, root, selector, options.scopePolicy)) return;
         const url = rawImageUrl(imageNode);
         if (!url) return;
         const groupKey = imageCandidateGroupKey(node, imageNode, url, order);
@@ -179,7 +184,7 @@ export function collectDomImageCandidates(roots, options = {}) {
     for (const entry of selectors) {
         for (const root of Array.isArray(roots) ? roots : []) {
             for (const node of safeQueryAll(root, entry.selector)) {
-                add(node, entry.adapterKey);
+                add(node, entry.adapterKey, root, entry.selector);
             }
         }
     }
@@ -393,6 +398,59 @@ function normalizeAdapterSelection(value) {
     const normalized = String(value || 'auto').trim().toLowerCase();
     if (normalized === 'chatu8' || normalized === 'chami' || normalized === 'generic') return normalized;
     return normalized === 'auto' ? 'auto' : normalized;
+}
+
+function isGenericCandidateAllowed(sourceNode, imageNode, root, selector, scopePolicy = {}) {
+    const source = sourceNode && typeof sourceNode === 'object' ? sourceNode : imageNode;
+    const normalizedSelector = String(selector || '');
+    if (String(scopePolicy && scopePolicy.kind || '') === 'legacy-global' && scopePolicy && scopePolicy.allowGlobalGeneric === false) {
+        return false;
+    }
+    if (isDocumentLikeRoot(root)) {
+        if (String(scopePolicy && scopePolicy.kind || '') !== 'message' && normalizedSelector.includes('background-image')) {
+            return false;
+        }
+        return true;
+    }
+    if (isMessageTextRoot(root)) return true;
+    if (isMessageRoot(root)) {
+        if (normalizedSelector.includes('background-image')) {
+            return Boolean(safeClosest(source, '[data-location-hash],[data-image-id],[class*="tsp-"],.mes_text'));
+        }
+        return isWithinMessageText(source);
+    }
+    return true;
+}
+
+function isDocumentLikeRoot(root) {
+    return Boolean(root && typeof root === 'object' && typeof root.querySelectorAll === 'function' && (root.defaultView || root.documentElement || root.body));
+}
+
+function isMessageRoot(root) {
+    if (!root || typeof root !== 'object') return false;
+    const classText = [
+        safeGetAttribute(root, 'class'),
+        root.className,
+    ].filter(Boolean).join(' ');
+    return Boolean(
+        safeGetAttribute(root, 'mesid')
+        || safeGetAttribute(root, 'data-mesid')
+        || safeGetAttribute(root, 'data-message-id')
+        || /(^|\s)mes(\s|$)/.test(classText)
+    );
+}
+
+function isMessageTextRoot(root) {
+    if (!root || typeof root !== 'object') return false;
+    const classText = [
+        safeGetAttribute(root, 'class'),
+        root.className,
+    ].filter(Boolean).join(' ');
+    return /(^|\s)mes_text(\s|$)/.test(classText);
+}
+
+function isWithinMessageText(node) {
+    return Boolean(node && safeClosest(node, '.mes_text'));
 }
 
 function safeQueryAll(root, selector) {

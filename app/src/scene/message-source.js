@@ -73,7 +73,7 @@ export function getVisibleMessageTextFromElement(mesElement) {
     if (!mesText || typeof mesText.cloneNode !== 'function') return '';
     const cloneNode = mesText.cloneNode(true);
     if (typeof cloneNode.querySelectorAll === 'function') {
-        cloneNode.querySelectorAll('script,style,iframe,button,[role="button"],[data-vnm-internal-reader],.vnm-img-ph,.mes_buttons,.extraMesButtons').forEach((node) => {
+        cloneNode.querySelectorAll('script,style,iframe,button,[role="button"],[data-vnm-internal-reader],.vnm-img-ph,.igs-image-placeholder,[data-igs-image-placeholder="1"],.mes_buttons,.extraMesButtons').forEach((node) => {
             if (node && typeof node.remove === 'function') node.remove();
         });
     }

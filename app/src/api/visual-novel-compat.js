@@ -208,6 +208,7 @@ async function enrichReaderPayload(app, payload) {
         imageSource: payload.imageSource,
         imageSlots: payload.imageSlots,
         segmentImageSlots: payload.segmentImageSlots,
+        requiresMessageScope: Array.isArray(payload.imageSlots) && payload.imageSlots.length > 0,
         mode: payload.mode,
     });
     return {

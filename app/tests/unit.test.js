@@ -28,7 +28,10 @@ import { naiRequestBuilder } from '../src/generated-images/request-builders/nai-
 import { fetchModels as fetchImageModels, generateImage as generateImageFromApi } from '../src/generated-images/image-api-client.js';
 import { createReaderImageService } from '../src/generated-images/reader-image-service.js';
 import { createPublicApi, attachPublicApi } from '../src/api/public-api.js';
-import { createTavernHelperAdapter } from '../src/host/tavern-helper-adapter.js';
+import {
+    createTavernHelperAdapter,
+    ensureMessageImagePlaceholders,
+} from '../src/host/tavern-helper-adapter.js';
 import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
@@ -261,7 +264,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.12',
+            version: '0.3.13',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -288,7 +291,7 @@ test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.12',
+            version: '0.3.13',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -314,7 +317,7 @@ test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-mul
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.12',
+            version: '0.3.13',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -416,7 +419,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.12',
+        version: '0.3.13',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -630,6 +633,84 @@ test('gate:generated-images:reader-image-service-does-not-show-later-slot-on-fir
     assert.equal(imageState.slots[5].url, 'https://example.com/slot-6.png');
 });
 
+test('gate:generated-images:reader-image-service-keeps-global-generic-images-out-when-message-scope-is-required', async () => {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
+        sourceFilter: DEFAULT_SOURCE_FILTER,
+    });
+    const leakedImage = createFakeImageNode('https://example.com/role-card.png');
+    const globalDocument = {
+        querySelectorAll(selector) {
+            if (
+                selector === '.mes_text img[src]'
+                || selector === '.mes_text img[data-src]'
+                || selector === 'img[src]'
+                || selector === 'img[data-src]'
+                || selector === 'img[src^="blob:"]'
+                || selector === 'img[src^="data:image"]'
+                || selector === 'video'
+                || selector === 'a[href^="blob:"]'
+                || selector === 'a[href^="data:image"]'
+                || selector === '[style*="background-image"]'
+            ) {
+                return [leakedImage];
+            }
+            return [];
+        },
+    };
+    const service = createReaderImageService({
+        global: {
+            document: globalDocument,
+        },
+    });
+
+    const imageState = await service.collect({
+        messageId: 79,
+        message: { id: 79, text: source },
+        imageSlots: payload.imageSlots,
+        preferredImageIndex: 0,
+    });
+
+    assert.equal(imageState.ok, true);
+    assert.equal(imageState.scopeKind, 'message');
+    assert.equal(imageState.scopeOk, false);
+    assert.equal(imageState.reason, 'message-scope-not-found');
+    assert.equal(imageState.currentUrl, '');
+    assert.equal(imageState.displayUrl, '');
+    assert.equal(imageState.unboundImages.length, 0);
+    assert.equal(imageState.diagnostics.providerCounts.generic, 0);
+});
+
+test('gate:host:ensure-message-image-placeholders-reuses-owned-placeholder', () => {
+    const mesText = createTestMesTextRoot();
+    const message = {
+        element: {
+            getAttribute() {
+                return null;
+            },
+            querySelector(selector) {
+                return selector === '.mes_text' ? mesText : null;
+            },
+        },
+    };
+    const slots = [
+        { rawBlock: '<image>[图 1]\nimage###one###</image>' },
+        { rawBlock: '<image>[图 2]\nimage###two###</image>' },
+    ];
+
+    const first = ensureMessageImagePlaceholders(message, slots);
+    const second = ensureMessageImagePlaceholders(message, slots);
+
+    assert.equal(first.ok, true);
+    assert.equal(first.reason, 'placeholder-injected');
+    assert.equal(second.ok, true);
+    assert.equal(second.reason, 'placeholder-present');
+    assert.equal(mesText.children.length, 1);
+    assert.equal(mesText.children[0].getAttribute('data-igs-image-placeholder'), '1');
+    assert.match(mesText.children[0].textContent, /image###one###/);
+    assert.match(mesText.children[0].textContent, /image###two###/);
+});
+
 test('gate:host:tavern-helper-adapter-uses-hide-state-fallback-for-hidden-messages', async () => {
     const messages = [
         { id: 0, text: '玩家', role: 'user' },
@@ -709,4 +790,87 @@ function buildStoredZip(filename, bytes) {
     header.writeUInt16LE(nameBytes.length, 26);
     header.writeUInt16LE(0, 28);
     return Buffer.concat([header, nameBytes, dataBytes]);
+}
+
+function createFakeImageNode(url) {
+    return {
+        tagName: 'IMG',
+        src: url,
+        currentSrc: url,
+        ownerDocument: null,
+        className: '',
+        style: {
+            backgroundImage: '',
+        },
+        getAttribute() {
+            return null;
+        },
+        closest() {
+            return null;
+        },
+        querySelector() {
+            return null;
+        },
+    };
+}
+
+function createTestMesTextRoot() {
+    const children = [];
+    return {
+        ownerDocument: {
+            createElement() {
+                return createTestElement();
+            },
+        },
+        children,
+        appendChild(node) {
+            node.parentNode = this;
+            node.parentElement = this;
+            children.push(node);
+            return node;
+        },
+        dispatchEvent() {
+            return true;
+        },
+        querySelector(selector) {
+            return this.querySelectorAll(selector)[0] || null;
+        },
+        querySelectorAll(selector) {
+            const owned = children.filter((child) => {
+                const hasOwnedClass = String(child.className || '').split(/\s+/).includes('igs-image-placeholder');
+                const hasOwnedAttr = child.getAttribute && child.getAttribute('data-igs-image-placeholder') === '1';
+                const hasLegacyClass = String(child.className || '').split(/\s+/).includes('vnm-img-ph');
+                return selector === '[data-igs-image-placeholder="1"], .igs-image-placeholder'
+                    ? hasOwnedClass || hasOwnedAttr
+                    : selector === '.vnm-img-ph'
+                        ? hasLegacyClass
+                        : false;
+            });
+            return owned;
+        },
+    };
+}
+
+function createTestElement() {
+    const attributes = new Map();
+    return {
+        className: '',
+        style: {},
+        textContent: '',
+        parentNode: null,
+        parentElement: null,
+        setAttribute(name, value) {
+            attributes.set(name, String(value));
+        },
+        getAttribute(name) {
+            return attributes.has(name) ? attributes.get(name) : null;
+        },
+        remove() {
+            if (!this.parentNode || !Array.isArray(this.parentNode.children)) return;
+            const index = this.parentNode.children.indexOf(this);
+            if (index >= 0) this.parentNode.children.splice(index, 1);
+            this.parentNode = null;
+            this.parentElement = null;
+        },
+    };
 }

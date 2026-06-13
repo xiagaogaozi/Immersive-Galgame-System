@@ -13,6 +13,7 @@ export const chamiProvider = Object.freeze({
     async detect(context) {
         return collectDomImageCandidates(resolveDomRoots(context), {
             adapterKeys: ['chami'],
+            scopePolicy: context.scopePolicy,
         }).length > 0;
     },
     async generate() {
@@ -24,6 +25,7 @@ export const chamiProvider = Object.freeze({
     extractImages(messageContext) {
         return collectDomImageCandidates(resolveDomRoots(messageContext), {
             adapterKeys: ['chami'],
+            scopePolicy: messageContext.scopePolicy,
         }).map((candidate) => ({
             url: candidate.url,
             providerId: 'builtin.chami',

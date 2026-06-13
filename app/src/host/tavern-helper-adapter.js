@@ -7,6 +7,8 @@ import { collectDomRegenerateButtonCandidates } from '../generated-images/dom-im
 
 const INTERNAL_READER_ATTR = 'data-vnm-internal-reader';
 const HIDDEN_CACHE_WINDOW_MS = 300;
+const IGS_IMAGE_PLACEHOLDER_SELECTOR = '[data-igs-image-placeholder="1"], .igs-image-placeholder';
+const LEGACY_IMAGE_PLACEHOLDER_SELECTOR = '.vnm-img-ph';
 
 export function createTavernHelperAdapter(globalObject = globalThis.window || globalThis) {
     let hiddenMessageCache = { at: 0, ids: null };
@@ -66,6 +68,16 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
             const message = await this.getMessageById(messageId);
             if (!message) return null;
             return findMessageRegenerateButton(message, imageIndex, imageState);
+        },
+
+        async ensureMessageImagePlaceholders(messageId, imageSlots = [], message = null) {
+            const scopedMessage = message || await this.getMessageById(messageId);
+            return ensureMessageImagePlaceholders(scopedMessage, imageSlots);
+        },
+
+        async removeMessageImagePlaceholders(messageId, message = null) {
+            const scopedMessage = message || await this.getMessageById(messageId);
+            return removeMessageImagePlaceholders(scopedMessage);
         },
 
         async typeAndSend(text) {
@@ -150,6 +162,67 @@ export function getMessageScopedRoots(message, targetDocument = null) {
     return roots;
 }
 
+export function ensureMessageImagePlaceholders(message, imageSlots = []) {
+    const blocks = normalizeImagePlaceholderBlocks(imageSlots);
+    if (!blocks.length) {
+        return removeMessageImagePlaceholders(message);
+    }
+    const mesText = getMessageTextRoot(resolveMessageElementFromInput(message));
+    if (!mesText || typeof mesText.appendChild !== 'function') {
+        return {
+            ok: false,
+            reason: 'message-text-root-not-found',
+            count: blocks.length,
+        };
+    }
+    const owned = getOwnedImagePlaceholders(mesText);
+    const legacy = !owned.length && typeof mesText.querySelector === 'function'
+        ? mesText.querySelector(LEGACY_IMAGE_PLACEHOLDER_SELECTOR)
+        : null;
+    if (legacy) {
+        return {
+            ok: true,
+            reason: 'placeholder-present-legacy',
+            count: blocks.length,
+        };
+    }
+    const textContent = blocks.join('\n');
+    if (owned.length === 1 && String(owned[0].textContent || '').trim() === textContent) {
+        return {
+            ok: true,
+            reason: 'placeholder-present',
+            count: blocks.length,
+        };
+    }
+    owned.forEach(removeNodeSafely);
+    const placeholder = createMessageImagePlaceholderNode(mesText.ownerDocument, textContent);
+    mesText.appendChild(placeholder);
+    dispatchMessagePlaceholderMutation(mesText);
+    return {
+        ok: true,
+        reason: 'placeholder-injected',
+        count: blocks.length,
+    };
+}
+
+export function removeMessageImagePlaceholders(message) {
+    const mesText = getMessageTextRoot(resolveMessageElementFromInput(message));
+    if (!mesText) {
+        return {
+            ok: false,
+            reason: 'message-text-root-not-found',
+            count: 0,
+        };
+    }
+    const owned = getOwnedImagePlaceholders(mesText);
+    owned.forEach(removeNodeSafely);
+    return {
+        ok: true,
+        reason: owned.length ? 'placeholder-removed' : 'placeholder-none',
+        count: owned.length,
+    };
+}
+
 function getLastMessageId(globalObject) {
     const helper = getTavernHelper(globalObject);
     if (helper && typeof helper.getLastMessageId === 'function') {
@@ -165,6 +238,101 @@ function getLastMessageId(globalObject) {
 function resolveContextLastMessageId(globalObject) {
     const chat = getChatFromContext(globalObject);
     return Array.isArray(chat) && chat.length ? chat.length - 1 : null;
+}
+
+function resolveMessageElementFromInput(message) {
+    if (!message || typeof message !== 'object') return null;
+    if (isDomLikeMessageElement(message.element)) return message.element;
+    return isDomLikeMessageElement(message) ? message : null;
+}
+
+function normalizeImagePlaceholderBlocks(imageSlots) {
+    const output = [];
+    for (const slot of Array.isArray(imageSlots) ? imageSlots : []) {
+        const rawBlock = String(slot && slot.rawBlock || '').trim();
+        const promptText = String(slot && slot.promptText || '').trim();
+        const block = rawBlock || promptText;
+        if (!block || output.includes(block)) continue;
+        output.push(block);
+    }
+    return output;
+}
+
+function getOwnedImagePlaceholders(mesText) {
+    if (!mesText || typeof mesText.querySelectorAll !== 'function') return [];
+    try {
+        return Array.from(mesText.querySelectorAll(IGS_IMAGE_PLACEHOLDER_SELECTOR));
+    } catch (error) {
+        return [];
+    }
+}
+
+function createMessageImagePlaceholderNode(ownerDocument, textContent) {
+    const node = ownerDocument && typeof ownerDocument.createElement === 'function'
+        ? ownerDocument.createElement('div')
+        : buildFallbackPlaceholderNode();
+    if (typeof node.setAttribute === 'function') {
+        node.setAttribute('data-vnm-placeholder', '1');
+        node.setAttribute('data-igs-image-placeholder', '1');
+    }
+    node.className = 'vnm-img-ph igs-image-placeholder';
+    node.style = node.style || {};
+    node.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;font-size:0';
+    node.textContent = String(textContent || '');
+    return node;
+}
+
+function buildFallbackPlaceholderNode() {
+    return {
+        className: '',
+        style: {},
+        textContent: '',
+        attributes: new Map(),
+        parentNode: null,
+        parentElement: null,
+        setAttribute(name, value) {
+            this.attributes.set(name, String(value));
+        },
+        getAttribute(name) {
+            return this.attributes.has(name) ? this.attributes.get(name) : null;
+        },
+        remove() {
+            if (!this.parentNode || !Array.isArray(this.parentNode.children)) return;
+            this.parentNode.children = this.parentNode.children.filter((child) => child !== this);
+            this.parentNode = null;
+            this.parentElement = null;
+        },
+    };
+}
+
+function dispatchMessagePlaceholderMutation(mesText) {
+    if (!mesText || typeof mesText.dispatchEvent !== 'function') return;
+    const ownerWindow = mesText.ownerDocument && mesText.ownerDocument.defaultView || globalThis.window || globalThis;
+    const EventCtor = ownerWindow && ownerWindow.Event || globalThis.Event;
+    try {
+        if (typeof EventCtor === 'function') {
+            mesText.dispatchEvent(new EventCtor('DOMSubtreeModified', { bubbles: true }));
+            return;
+        }
+    } catch (error) {
+        // Fall back to plain-object dispatch for fake documents.
+    }
+    try {
+        mesText.dispatchEvent({ type: 'DOMSubtreeModified', bubbles: true });
+    } catch (error) {
+        // Ignore dispatch failures from host shims.
+    }
+}
+
+function removeNodeSafely(node) {
+    if (!node) return;
+    if (typeof node.remove === 'function') {
+        node.remove();
+        return;
+    }
+    if (node.parentNode && Array.isArray(node.parentNode.children)) {
+        node.parentNode.children = node.parentNode.children.filter((child) => child !== node);
+    }
 }
 
 function getChatMessages(globalObject, startId, endId, extraOptions = {}) {

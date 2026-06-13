@@ -13,6 +13,7 @@ export const domGenericProvider = Object.freeze({
     async detect(context) {
         return collectDomImageCandidates(resolveDomRoots(context), {
             adapterKeys: ['generic'],
+            scopePolicy: context.scopePolicy,
         }).length > 0;
     },
 
@@ -27,6 +28,7 @@ export const domGenericProvider = Object.freeze({
     extractImages(messageContext) {
         return collectDomImageCandidates(resolveDomRoots(messageContext), {
             adapterKeys: ['generic'],
+            scopePolicy: messageContext.scopePolicy,
         }).map((candidate) => ({
             url: candidate.url,
             providerId: 'builtin.dom-generic',

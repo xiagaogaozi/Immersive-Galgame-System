@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.12`：自动更新 loader 改为读取 GitHub API 的 `main` 最新提交哈希，再加载 jsDelivr `@提交哈希` 自包含 bundle，绕开 `@main` 分支文件缓存和新标签同步延迟。
-- `v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门；`v0.3.9` 已把 `<image>` 图位翻页同步固定为回归闸门。
+- 当前项目版本 `v0.3.13`：原版 VN 的 `<image>` 图位现在会先把占位文本注入当前 `.mes_text`，再只在当前楼层作用域内取图，避免把角色卡图片、页面全局图片或楼层外图片错绑进阅读器。
+- `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,13 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.13 - 2026-06-13
+
+- 按 `plan/v0.3.13-原版VN安全楼层取图与image占位绑定施工图.md` 收紧原版 VN 兼容取图范围：`reader-image-service.js` 现已在存在 `<image>` 图位时强制要求当前楼层作用域，找不到当前楼层根时直接返回空图位，不再退回整页扫描。
+- `dom-image-candidates.js` 修复了隐藏的整页漏扫入口：即使已经拿到当前消息根，provider 也不会再偷偷把 `document` 加回扫描列表；普通 `img[src]` 只有在当前 `.mes_text` 内时才允许参与图位绑定。
+- `tavern-helper-adapter.js` 新增当前楼层 `<image>` 占位注入与复用逻辑，`message-source.js` 同步忽略这些隐藏占位文本，确保正文分页不被占位节点污染。
+- 扩展 Node 模拟酒馆测试：新增“楼层外角色卡图不得混入当前 `<image>` 图位”“当前楼层第三图位重绘仍锁定第三图位”“占位节点只注入当前 `.mes_text`”等回归场景。
 
 ### v0.3.12 - 2026-06-13
 

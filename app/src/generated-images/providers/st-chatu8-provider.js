@@ -13,6 +13,7 @@ export const stChatu8Provider = Object.freeze({
     async detect(context) {
         return collectDomImageCandidates(resolveDomRoots(context), {
             adapterKeys: ['chatu8'],
+            scopePolicy: context.scopePolicy,
         }).length > 0;
     },
     async generate() {
@@ -24,6 +25,7 @@ export const stChatu8Provider = Object.freeze({
     extractImages(messageContext) {
         return collectDomImageCandidates(resolveDomRoots(messageContext), {
             adapterKeys: ['chatu8'],
+            scopePolicy: messageContext.scopePolicy,
         }).map((candidate) => ({
             url: candidate.url,
             providerId: 'builtin.st-chatu8',

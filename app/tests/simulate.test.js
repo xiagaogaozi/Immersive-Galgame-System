@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.12');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.13');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -1083,6 +1083,56 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-th
     igs.destroy();
 });
 
+test('gate:simulation:visual-novel-ui-slot-scope-blocks-outside-message-images-and-injects-placeholders', async () => {
+    const document = createFakeDocument();
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const roleCardImage = createFakeMediaNode({
+        ownerDocument: document,
+        tagName: 'IMG',
+        src: 'https://example.com/role-card-cover.png',
+    });
+    const messageRoot = createFakeMessageElement(document, {
+        messageId: 40,
+        textContent: source,
+        outsideGenericNodes: [roleCardImage],
+    });
+    const message = {
+        id: 40,
+        text: source,
+        element: messageRoot,
+    };
+    const igs = bootstrapIGS({
+        global: { document },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'auto',
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const mesText = messageRoot.querySelector('.mes_text');
+    const placeholders = mesText.querySelectorAll('[data-igs-image-placeholder="1"], .igs-image-placeholder');
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.reader.snapshot.content.imageCount, 6);
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, '');
+    assert.equal(opened.reader.snapshot.content.currentSlotImageUrl, '');
+    assert.equal(opened.reader.snapshot.content.backgroundImage, '');
+    assert.equal(placeholders.length, 1);
+    assert.match(placeholders[0].textContent, /image###slot-1###/);
+    assert.match(placeholders[0].textContent, /image###slot-6###/);
+    assert.equal(roleCardImage.closest('.mes_text'), null);
+
+    igs.destroy();
+});
+
 test('gate:simulation:visual-novel-ui-image-slot-binding-falls-back-to-scan-order-when-image-tags-disabled', async () => {
     const document = createFakeDocument();
     const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
@@ -1665,7 +1715,9 @@ function matchesSelector(element, selector) {
         return element.getAttribute('data-igs-magic-entry') === '1';
     }
     if (selector.startsWith('#')) return element.id === selector.slice(1);
-    if (selector.startsWith('.')) return element.classList.contains(selector.slice(1));
+    if (selector.startsWith('.')) {
+        return Boolean(element.classList && typeof element.classList.contains === 'function' && element.classList.contains(selector.slice(1)));
+    }
     if (selector.startsWith('[')) {
         const exactMatch = selector.match(/^\[([^=\]]+)="([^"]*)"\]$/);
         if (exactMatch) return element.getAttribute(exactMatch[1]) === exactMatch[2];
@@ -1732,85 +1784,139 @@ function createFakeMessageElement(ownerDocument, options = {}) {
             },
         }));
     const genericNodes = Array.isArray(options.genericNodes) ? options.genericNodes : [];
+    const outsideGenericNodes = Array.isArray(options.outsideGenericNodes) ? options.outsideGenericNodes : [];
     const regenButtons = Array.isArray(options.regenButtons) ? options.regenButtons : [];
     const chamiButtons = Array.isArray(options.chamiButtons) ? options.chamiButtons : [];
     const frameDocuments = Array.isArray(options.frameDocuments) ? options.frameDocuments : [];
-    return {
-        ownerDocument,
-        __images: images,
-        __chamiImages: chamiImages,
-        __genericNodes: genericNodes,
-        __regenButtons: regenButtons,
-        __chamiButtons: chamiButtons,
-        __frameDocuments: frameDocuments,
-        querySelector(selector) {
-            if (selector === '.mes_text') return null;
-            return this.querySelectorAll(selector)[0] || null;
+    const messageRoot = createFakeElement('div', ownerDocument);
+    const mesText = createFakeElement('div', ownerDocument);
+    const messageId = Number.isFinite(Number(options.messageId)) ? Number(options.messageId) : 1;
+    const originalRootQuerySelectorAll = messageRoot.querySelectorAll.bind(messageRoot);
+    const originalMesTextQuerySelectorAll = mesText.querySelectorAll.bind(mesText);
+
+    messageRoot.className = 'mes';
+    messageRoot.setAttribute('mesid', String(messageId));
+    messageRoot.setAttribute('data-message-id', String(messageId));
+    mesText.className = 'mes_text';
+    mesText.textContent = String(options.textContent || '');
+    mesText.innerText = mesText.textContent;
+    messageRoot.appendChild(mesText);
+
+    for (const node of images) attachNodeToFakeParent(node, mesText, ownerDocument);
+    for (const node of chamiImages) attachNodeToFakeParent(node, mesText, ownerDocument);
+    for (const node of genericNodes) attachNodeToFakeParent(node, mesText, ownerDocument);
+    for (const node of regenButtons) attachNodeToFakeParent(node, mesText, ownerDocument);
+    for (const node of chamiButtons) attachNodeToFakeParent(node, mesText, ownerDocument);
+    for (const node of outsideGenericNodes) attachNodeToFakeParent(node, messageRoot, ownerDocument);
+
+    const frameNodes = frameDocuments.map((doc) => ({
+        contentDocument: doc,
+        contentWindow: { document: doc },
+        getAttribute() {
+            return null;
         },
-        querySelectorAll(selector) {
-            if (selector === 'img.st-chatu8-image-tag-image' || selector === '[class*="st-chatu8"] img' || selector === '[class*="chatu8"] img') {
-                return images;
-            }
-            if (selector === 'button.image-tag-button' || selector === 'button[class*="image-tag-button"]' || selector === 'button[class*="st-chatu8-image"]') {
-                return regenButtons;
-            }
-            if (
-                selector === '.tsp-generated-image'
-                || selector === '.tsp-inline-image'
-                || selector === '.tsp-image-slot img'
-                || selector === 'img[src*="tsp-images"]'
-                || selector === '[data-image-id]'
-                || selector === '[data-location-hash]'
-                || selector === 'img[data-image-id]'
-                || selector === 'img[data-location-hash]'
-                || selector === '[data-image-id] img'
-                || selector === '[data-location-hash] img'
-            ) {
-                return chamiImages;
-            }
-            if (selector === '.tsp-regenerate-btn' || selector === '.tsp-inline-gen-btn') {
-                return chamiButtons;
-            }
-            if (
-                selector === '.mes_text img[src]'
-                || selector === '.mes_text img[data-src]'
-                || selector === 'img[src]'
-                || selector === 'img[data-src]'
-                || selector === 'img[src^="blob:"]'
-                || selector === 'img[src^="data:image"]'
-                || selector === 'video'
-                || selector === 'a[href^="blob:"]'
-                || selector === 'a[href^="data:image"]'
-                || selector === '[style*="background-image"]'
-            ) {
-                return genericNodes;
-            }
-            if (selector === 'iframe') {
-                return frameDocuments.map((doc) => ({
-                    contentDocument: doc,
-                    contentWindow: { document: doc },
-                    getAttribute() {
-                        return null;
-                    },
-                }));
-            }
-            return [];
+        closest(selector) {
+            return matchesAnySelector(messageRoot, selector) ? messageRoot : null;
         },
+    }));
+    const resolveSpecialSelector = (selector, includeOutsideGeneric = false) => {
+        if (selector === '.mes_text') return [mesText];
+        if (selector === 'img.st-chatu8-image-tag-image' || selector === '[class*="st-chatu8"] img' || selector === '[class*="chatu8"] img') {
+            return images;
+        }
+        if (selector === 'button.image-tag-button' || selector === 'button[class*="image-tag-button"]' || selector === 'button[class*="st-chatu8-image"]') {
+            return regenButtons;
+        }
+        if (
+            selector === '.tsp-generated-image'
+            || selector === '.tsp-inline-image'
+            || selector === '.tsp-image-slot img'
+            || selector === 'img[src*="tsp-images"]'
+            || selector === '[data-image-id]'
+            || selector === '[data-location-hash]'
+            || selector === 'img[data-image-id]'
+            || selector === 'img[data-location-hash]'
+            || selector === '[data-image-id] img'
+            || selector === '[data-location-hash] img'
+        ) {
+            return chamiImages;
+        }
+        if (selector === '.tsp-regenerate-btn' || selector === '.tsp-inline-gen-btn') {
+            return chamiButtons;
+        }
+        if (
+            selector === '.mes_text img[src]'
+            || selector === '.mes_text img[data-src]'
+            || selector === 'img[src]'
+            || selector === 'img[data-src]'
+            || selector === 'img[src^="blob:"]'
+            || selector === 'img[src^="data:image"]'
+            || selector === 'video'
+            || selector === 'a[href^="blob:"]'
+            || selector === 'a[href^="data:image"]'
+            || selector === '[style*="background-image"]'
+        ) {
+            return includeOutsideGeneric ? genericNodes.concat(outsideGenericNodes) : genericNodes;
+        }
+        if (selector === 'iframe') {
+            return frameNodes;
+        }
+        return null;
     };
+
+    messageRoot.__images = images;
+    messageRoot.__chamiImages = chamiImages;
+    messageRoot.__genericNodes = genericNodes;
+    messageRoot.__outsideGenericNodes = outsideGenericNodes;
+    messageRoot.__regenButtons = regenButtons;
+    messageRoot.__chamiButtons = chamiButtons;
+    messageRoot.__frameDocuments = frameDocuments;
+    messageRoot.__mesText = mesText;
+    messageRoot.querySelectorAll = function querySelectorAll(selector) {
+        const special = resolveSpecialSelector(selector, true);
+        return special || originalRootQuerySelectorAll(selector);
+    };
+    mesText.querySelectorAll = function querySelectorAll(selector) {
+        const special = resolveSpecialSelector(selector, false);
+        return special || originalMesTextQuerySelectorAll(selector);
+    };
+    return messageRoot;
 }
 
 function createFakeRegenerateButton(onClick, options = {}) {
     const attributes = new Map(Object.entries(options.attributes || {}));
     return {
+        tagName: 'BUTTON',
+        parentNode: null,
+        parentElement: null,
+        children: [],
+        className: String(options.className || ''),
         clickCount: 0,
         getAttribute(name) {
+            if (name === 'class') return this.className || null;
             return attributes.has(name) ? attributes.get(name) : null;
         },
         setAttribute(name, value) {
+            if (name === 'class') {
+                this.className = String(value);
+                return;
+            }
             attributes.set(name, String(value));
         },
-        closest() {
+        closest(selector) {
+            let cursor = this;
+            while (cursor) {
+                if (matchesAnySelector(cursor, selector)) return cursor;
+                cursor = cursor.parentNode;
+            }
             return null;
+        },
+        remove() {
+            if (!this.parentNode || !Array.isArray(this.parentNode.children)) return;
+            const index = this.parentNode.children.indexOf(this);
+            if (index >= 0) this.parentNode.children.splice(index, 1);
+            this.parentNode = null;
+            this.parentElement = null;
         },
         click() {
             this.clickCount += 1;
@@ -1824,29 +1930,51 @@ function createFakeMediaNode(options = {}) {
     return {
         ownerDocument: options.ownerDocument || null,
         tagName: String(options.tagName || 'IMG').toUpperCase(),
+        parentNode: null,
+        parentElement: null,
+        children: [],
         currentSrc: options.currentSrc || options.src || '',
         src: options.src || options.currentSrc || '',
         href: options.href || '',
+        className: String(options.className || ''),
         style: {
             backgroundImage: options.backgroundImage || '',
         },
         getAttribute(name) {
+            if (name === 'src') return this.src || null;
             if (name === 'data-src') return attributes.get('data-src') || options.dataSrc || null;
             if (name === 'href') return attributes.get('href') || options.href || null;
+            if (name === 'class') return this.className || null;
             return attributes.has(name) ? attributes.get(name) : null;
         },
         setAttribute(name, value) {
+            if (name === 'class') {
+                this.className = String(value);
+                return;
+            }
             attributes.set(name, String(value));
             if (name === 'data-src') {
                 this.currentSrc = '';
                 this.src = '';
             }
         },
-        closest() {
+        closest(selector) {
+            let cursor = this;
+            while (cursor) {
+                if (matchesAnySelector(cursor, selector)) return cursor;
+                cursor = cursor.parentNode;
+            }
             return null;
         },
         querySelector() {
             return null;
+        },
+        remove() {
+            if (!this.parentNode || !Array.isArray(this.parentNode.children)) return;
+            const index = this.parentNode.children.indexOf(this);
+            if (index >= 0) this.parentNode.children.splice(index, 1);
+            this.parentNode = null;
+            this.parentElement = null;
         },
     };
 }
@@ -1861,4 +1989,15 @@ function createFakeScopedRoot(map = {}) {
             return Array.isArray(map[selector]) ? map[selector] : [];
         },
     };
+}
+
+function attachNodeToFakeParent(node, parent, ownerDocument) {
+    if (!node || !parent) return node;
+    node.ownerDocument = node.ownerDocument || ownerDocument || null;
+    node.parentNode = parent;
+    node.parentElement = parent;
+    if (Array.isArray(parent.children) && !parent.children.includes(node)) {
+        parent.children.push(node);
+    }
+    return node;
 }
