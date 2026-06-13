@@ -182,7 +182,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.2.13');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.2.14');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -320,7 +320,7 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
     assert.equal(opened.reader.snapshot.content.progress, '1 / 2');
     assert.equal(igs.getState().visualNovelUi.activeReader.toolbarCollapsed, true);
 
-    const settingsResult = controller.invokeAction('settings');
+    const settingsResult = await controller.invokeAction('settings');
     assert.equal(settingsResult.ok, true);
     assert.equal(igs.getState().visualNovelUi.activeSettings.tab, 'basic');
 
@@ -328,21 +328,21 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
     assert.equal(modeResult.ok, true);
     assert.equal(igs.getState().visualNovelUi.activeReader.mode, 'mobile');
 
-    const toggleResult = controller.invokeAction('toggle-bar');
+    const toggleResult = await controller.invokeAction('toggle-bar');
     assert.equal(toggleResult.ok, true);
     assert.equal(toggleResult.collapsed, false);
 
-    const hideResult = controller.invokeAction('hide');
+    const hideResult = await controller.invokeAction('hide');
     assert.equal(hideResult.ok, true);
     assert.equal(hideResult.hidden, true);
 
-    const nextResult = controller.invokeAction('next');
+    const nextResult = await controller.invokeAction('next');
     assert.equal(nextResult.ok, true);
     assert.equal(nextResult.moved, true);
     assert.equal(nextResult.progress, '2 / 2');
 
-    const prevTurnResult = controller.invokeAction('prev-turn');
-    const closeResult = controller.invokeAction('close');
+    const prevTurnResult = await controller.invokeAction('prev-turn');
+    const closeResult = await controller.invokeAction('close');
     const finalState = igs.getState();
 
     assert.equal(prevTurnResult.ok, true);
@@ -350,6 +350,133 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
     assert.equal(closeResult.ok, true);
     assert.equal(finalState.visualNovelUi.activeReader, null);
     assert.equal(finalState.visualNovelUi.activeSettings, null);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps_original_entry_mode', async () => {
+    const messages = [
+        { id: 7, text: '[角色: 艾莉]\n艾莉: 上一轮第一句。 上一轮第二句。' },
+        { id: 8, text: '[角色: 艾莉]\n艾莉: 当前第一句。 当前第二句。' },
+        { id: 9, text: '[角色: 艾莉]\n艾莉: 下一轮第一句。 下一轮第二句。' },
+    ];
+    const jumped = [];
+    const igs = bootstrapIGS({
+        global: {},
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => messages[1],
+            getMessageById: async (messageId) => messages.find((message) => message.id === Number(messageId)) || null,
+            getAdjacentMessage: async (messageId, delta) => {
+                const index = messages.findIndex((message) => message.id === Number(messageId));
+                return index < 0 ? null : messages[index + (delta < 0 ? -1 : 1)] || null;
+            },
+            jumpToMessage: async (messageId) => {
+                jumped.push(Number(messageId));
+                return { ok: true, messageId: Number(messageId) };
+            },
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const nextTurnResult = await opened.reader.controller.invokeAction('next-turn');
+    const prevTurnResult = await nextTurnResult.reader.controller.invokeAction('prev-turn');
+    const state = igs.getState();
+
+    assert.equal(opened.reader.snapshot.messageId, 8);
+    assert.equal(nextTurnResult.ok, true);
+    assert.equal(nextTurnResult.moved, true);
+    assert.equal(nextTurnResult.reader.snapshot.messageId, 9);
+    assert.equal(nextTurnResult.reader.snapshot.content.progress, '1 / 2');
+    assert.equal(prevTurnResult.ok, true);
+    assert.equal(prevTurnResult.moved, true);
+    assert.equal(prevTurnResult.reader.snapshot.messageId, 8);
+    assert.equal(prevTurnResult.reader.snapshot.content.progress, '2 / 2');
+    assert.deepEqual(jumped, [9, 8]);
+    assert.equal(state.visualNovelUi.activeReader.snapshot.messageId, 8);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-collects-provider-images-and-save-returns-downloadable-url', async () => {
+    const document = createFakeDocument();
+    const message = {
+        id: 20,
+        text: '[角色: 玉子]\n玉子: 看看这张图。',
+        element: createFakeMessageElement(document, {
+            imageUrls: [
+                'https://example.com/scene-1.png',
+                'https://example.com/scene-2.png',
+            ],
+        }),
+    };
+    const igs = bootstrapIGS({
+        global: { document },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const saveResult = await opened.reader.controller.invokeAction('save');
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.reader.snapshot.content.imageCount, 2);
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/scene-1.png');
+    assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/scene-1.png');
+    assert.equal(saveResult.ok, true);
+    assert.equal(saveResult.url, 'https://example.com/scene-1.png');
+    assert.equal(saveResult.filename, 'igs-20-1.png');
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-regen-polls-external-provider-and-updates-background', async () => {
+    const document = createFakeDocument();
+    const messageRoot = createFakeMessageElement(document, {
+        imageUrls: ['https://example.com/old-scene.png'],
+    });
+    const message = {
+        id: 21,
+        text: '[角色: 玉子]\n玉子: 重新画一张。',
+        element: messageRoot,
+    };
+    const button = createFakeRegenerateButton(() => {
+        messageRoot.__images[0].currentSrc = 'https://example.com/new-scene.png';
+        messageRoot.__images[0].src = 'https://example.com/new-scene.png';
+    });
+    messageRoot.__regenButtons.push(button);
+
+    const igs = bootstrapIGS({
+        global: { document, setTimeout },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                pollIntervalMs: 1,
+                pollAttempts: 3,
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const regenResult = await opened.reader.controller.invokeAction('regen');
+    const state = igs.getState();
+
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/old-scene.png');
+    assert.equal(regenResult.ok, true);
+    assert.equal(regenResult.reason, 'external-image-updated');
+    assert.equal(regenResult.imageState.currentUrl, 'https://example.com/new-scene.png');
+    assert.equal(state.visualNovelUi.activeReader.snapshot.content.currentImageUrl, 'https://example.com/new-scene.png');
+    assert.equal(state.visualNovelUi.activeReader.snapshot.content.backgroundImage, 'https://example.com/new-scene.png');
+    assert.equal(button.clickCount, 1);
 
     igs.destroy();
 });
@@ -639,4 +766,43 @@ function matchesSelector(element, selector) {
 
 function splitClasses(value) {
     return String(value || '').split(/\s+/).filter(Boolean);
+}
+
+function createFakeMessageElement(ownerDocument, options = {}) {
+    const images = (options.imageUrls || []).map((url) => ({
+        currentSrc: url,
+        src: url,
+    }));
+    const regenButtons = [];
+    return {
+        ownerDocument,
+        __images: images,
+        __regenButtons: regenButtons,
+        querySelector(selector) {
+            if (selector === '.mes_text') return null;
+            return this.querySelectorAll(selector)[0] || null;
+        },
+        querySelectorAll(selector) {
+            if (selector === 'img.st-chatu8-image-tag-image, [class*="st-chatu8"] img, [class*="chatu8"] img') {
+                return images;
+            }
+            if (selector === 'button.image-tag-button, button[class*="image-tag-button"], button[class*="st-chatu8-image"]') {
+                return regenButtons;
+            }
+            if (selector === '.tsp-regenerate-btn, .tsp-inline-gen-btn') {
+                return [];
+            }
+            return [];
+        },
+    };
+}
+
+function createFakeRegenerateButton(onClick) {
+    return {
+        clickCount: 0,
+        click() {
+            this.clickCount += 1;
+            onClick();
+        },
+    };
 }

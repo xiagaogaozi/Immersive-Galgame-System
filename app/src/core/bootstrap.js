@@ -17,6 +17,7 @@ import { resolveVisualMode } from '../visual/visual-mode.js';
 import { createVisualNovelReaderHost } from '../visual/visual-novel-ui/reader-host.js';
 import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
+import { createReaderImageService } from '../generated-images/reader-image-service.js';
 
 export function bootstrapIGS(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
@@ -29,6 +30,12 @@ export function bootstrapIGS(options = {}) {
     const inputChannel = createInputChannel(hostAdapter);
     const layerController = options.layerController || createLayerController(options.layers || {});
     const renderer = options.renderer || createStageRenderer(layerController);
+    const readerImageService = options.readerImageService || createReaderImageService({
+        global: globalObject,
+        hostAdapter,
+        imageGenerator: options.imageGenerator,
+        providers: options.imageProviders,
+    });
     const state = {
         status: 'booting',
         config: mergeInitialConfig(options.config, legacyVisualNovel),
@@ -39,7 +46,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.2.13',
+        version: '0.2.14',
         global: globalObject,
         events,
         hostAdapter,
@@ -47,6 +54,8 @@ export function bootstrapIGS(options = {}) {
         presetRegistry,
         refresh,
         typeAndSend,
+        generateImage,
+        collectMessageImages,
         getState,
         getPresetRegistry,
         getLegacyVisualNovelSettings,
@@ -56,14 +65,41 @@ export function bootstrapIGS(options = {}) {
         visualNovelUi: null,
         magicWandEntry: null,
     };
+    let publicApi = null;
     app.visualNovelUi = options.visualNovelUi || createVisualNovelReaderHost({
         global: globalObject,
         version: app.version,
         getUnifiedSettings: getUnifiedSettingsSnapshot,
         saveUnifiedSettings,
         typeAndSend,
+        getAdjacentMessage: hasAdjacentMessageCapability() ? resolveAdjacentMessage : null,
+        jumpToMessage: jumpToMessage,
+        openViewerFromMessage(messageId, mode, openOptions = {}) {
+            if (!publicApi || typeof publicApi.openViewerFromMessage !== 'function') {
+                return { ok: false, reason: 'public-api-not-ready', messageId, mode, openOptions };
+            }
+            return publicApi.openViewerFromMessage(messageId, mode, openOptions);
+        },
+        collectMessageImages(context = {}) {
+            return readerImageService.collect({
+                ...context,
+                providers: getImageProviders(),
+                unifiedSettings: getUnifiedSettingsSnapshot({ mode: context.mode }),
+            });
+        },
+        regenerateImage(context = {}) {
+            return readerImageService.regenerate({
+                ...context,
+                providers: getImageProviders(),
+                unifiedSettings: getUnifiedSettingsSnapshot({ mode: context.mode }),
+            });
+        },
+        saveImage(context = {}) {
+            return readerImageService.save(context);
+        },
     });
-    const publicApi = createPublicApi(app);
+    publicApi = createPublicApi(app);
+    readerImageService.registerProviders(publicApi.api.imageProviders);
     attachPublicApi(globalObject, publicApi);
     app.magicWandEntry = options.magicWandEntry || createMagicWandEntry({
         ...(options.magicWandEntryOptions || {}),
@@ -123,6 +159,26 @@ export function bootstrapIGS(options = {}) {
     async function typeAndSend(text) {
         ensureAlive();
         return inputChannel.typeAndSend(text);
+    }
+
+    function generateImage(request, generateOptions = {}) {
+        if (typeof options.imageGenerator !== 'function') {
+            return {
+                ok: false,
+                reason: 'provider-not-enabled',
+                request: cloneData(request),
+                options: cloneData(generateOptions),
+            };
+        }
+        return options.imageGenerator(request, generateOptions);
+    }
+
+    async function collectMessageImages(context = {}) {
+        return readerImageService.collect({
+            ...context,
+            providers: getImageProviders(),
+            unifiedSettings: context.unifiedSettings || getUnifiedSettingsSnapshot({ mode: context.mode }),
+        });
     }
 
     function getState() {
@@ -245,6 +301,45 @@ export function bootstrapIGS(options = {}) {
             return null;
         }
         return hostAdapter.getMessageById(messageId);
+    }
+
+    async function resolveAdjacentMessage(messageId, delta = 1) {
+        if (messageId == null || !hostAdapter) return null;
+        if (typeof hostAdapter.getAdjacentMessage === 'function') {
+            return hostAdapter.getAdjacentMessage(messageId, delta);
+        }
+        if (typeof hostAdapter.listMessages !== 'function') {
+            return null;
+        }
+        const normalizedId = Number(messageId);
+        const messages = await hostAdapter.listMessages();
+        const currentIndex = messages.findIndex((message) => Number(message && message.id) === normalizedId);
+        if (currentIndex < 0) return null;
+        return messages[currentIndex + (Number(delta) < 0 ? -1 : 1)] || null;
+    }
+
+    function hasAdjacentMessageCapability() {
+        return Boolean(
+            hostAdapter
+            && (
+                typeof hostAdapter.getAdjacentMessage === 'function'
+                || typeof hostAdapter.listMessages === 'function'
+            ),
+        );
+    }
+
+    async function jumpToMessage(messageId) {
+        if (!hostAdapter || typeof hostAdapter.jumpToMessage !== 'function') {
+            return { ok: false, reason: 'missing-jump-api', messageId };
+        }
+        return hostAdapter.jumpToMessage(messageId);
+    }
+
+    function getImageProviders() {
+        if (!publicApi || !publicApi.api || !publicApi.api.imageProviders || typeof publicApi.api.imageProviders.list !== 'function') {
+            return [];
+        }
+        return publicApi.api.imageProviders.list();
     }
 
     function resolvePresetInput(context, contextKey, presetType, fallbackConfig) {

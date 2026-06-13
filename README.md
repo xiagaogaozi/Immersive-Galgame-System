@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前运行版本 `v0.2.13`：魔法棒入口显示名固定为 `沉浸式 Galgame 系统`，入口形态保留原版 `fa-book-open` 单入口；阅读器工具栏、设置、关闭、收纳、模式切换和段落前后切换已接入模拟验收。
-- `v0.2.13` 已把“入口改名为 Visual Novel”“工具栏点击无效”“设置/关闭失效”“四模式切换失效”固定为回归闸门，后续每轮 `npm run gate` 都会卡住这类退化。
+- 当前运行版本 `v0.2.14`：魔法棒入口显示名固定为 `沉浸式 Galgame 系统`，入口形态保留原版 `fa-book-open` 单入口；阅读器工具栏、设置、关闭、收纳、模式切换、跨楼层切换、外部图片重绘和保存链路已接入模拟验收。
+- `v0.2.14` 已把“入口改名为 Visual Novel”“工具栏点击无效”“设置/关闭失效”“四模式切换失效”“跨楼层切换失效”“外部 provider 图片重绘/保存失效”固定为回归闸门，后续每轮 `npm run gate` 都会卡住这类退化。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,15 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.2.14 - 2026-06-13
+
+- 新增 `app/src/generated-images/reader-image-service.js`、`app/src/generated-images/provider-runtime.js` 与 `app/src/media/message-image-cache.js`，把原版 VN 的楼层图片收集、缓存、外部 provider 重绘轮询和保存下载链路拆成独立运行时模块。
+- `app/src/host/tavern-helper-adapter.js` 新增 `listMessages()`、`getAdjacentMessage()`、`jumpToMessage()`、`findRegenerateButton()`，并按原版 VN 语义补齐可读楼层筛选、消息归一化和重绘按钮定位。
+- `app/src/api/visual-novel-compat.js` 与 `app/src/core/bootstrap.js` 现已接通 `openViewerFromMessage()` 的 `startAtEnd`/`message` 透传、跨楼层跳转、内置 image provider 注册，以及阅读器级 `collectMessageImages()` / `generateImage()` / `saveImage()`。
+- `app/src/visual/visual-novel-ui/reader-host.js` 现已恢复原版 VN 的 `prev-turn` / `next-turn`、图片重绘、图片保存和按图片数量刷新的进度文本；跨楼层返回上一轮时会从末段打开，保持原版阅读节奏。
+- `loader/igs-loader.js`、`app/package.json`、`app/dist/manifest.json` 与阅读器源码默认版本同步提升到 `v0.2.14`；`loader/igs-loader.json` 需由 `npm run build:loader` 重新生成并与源码保持完全一致。
+- 扩展 `app/tests/simulate.test.js`、`app/tests/gate-contract.test.js`、`app/tests/unit.test.js`，新增跨楼层切换、provider 图片提取、保存返回可下载 URL、外部重绘轮询更新背景等模拟验收闸门。
 
 ### v0.2.13 - 2026-06-12
 

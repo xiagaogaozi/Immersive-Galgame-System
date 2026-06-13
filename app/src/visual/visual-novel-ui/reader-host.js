@@ -172,14 +172,19 @@ export function createVisualNovelReaderHost(options = {}) {
         );
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
-        const snapshot = buildReaderSnapshot(payload, nextMode, readerSettings, 0);
+        const snapshot = buildReaderSnapshot(
+            payload,
+            nextMode,
+            readerSettings,
+            payload.startAtEnd === true ? Number.MAX_SAFE_INTEGER : 0,
+        );
         const controller = createReaderController();
         const domState = mountReaderDom(snapshot, controller);
 
         state.activeReader = {
-            payload: cloneData(payload),
+            payload: cloneReaderPayload(payload),
             mode: nextMode,
-            index: 0,
+            index: snapshot.content.currentIndex,
             inputValue: '',
             hidden: false,
             toolbarCollapsed: true,
@@ -504,7 +509,7 @@ export function createVisualNovelReaderHost(options = {}) {
         return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
     }
 
-    function handleReaderAction(action) {
+    async function handleReaderAction(action) {
         if (!state.activeReader) return { ok: false, reason: 'reader-not-open' };
         const normalizedAction = String(action || '').trim();
         state.activeReader.lastAction = normalizedAction;
@@ -528,16 +533,13 @@ export function createVisualNovelReaderHost(options = {}) {
             return moveReaderSegment(1);
         }
         if (normalizedAction === 'regen') {
-            writeToast('重画请求已接收，等待生图 provider 接入。');
-            return { ok: true, action: normalizedAction, reason: 'provider-not-enabled' };
+            return regenerateCurrentImage();
         }
         if (normalizedAction === 'save') {
-            writeToast('当前背景保存入口已响应。');
-            return { ok: true, action: normalizedAction, reason: 'save-action-received' };
+            return saveCurrentImage();
         }
         if (['prev-turn', 'next-turn'].includes(normalizedAction)) {
-            writeToast('楼层切换需要宿主消息列表，当前模拟环境仅确认按钮链路。');
-            return { ok: true, action: normalizedAction, reason: 'turn-switch-host-required' };
+            return moveReaderTurn(normalizedAction === 'prev-turn' ? -1 : 1);
         }
 
         return { ok: false, reason: 'unknown-reader-action', action: normalizedAction };
@@ -585,6 +587,92 @@ export function createVisualNovelReaderHost(options = {}) {
         return { ok: true };
     }
 
+    async function moveReaderTurn(delta) {
+        const current = state.activeReader;
+        if (!current) return { ok: false, reason: 'reader-not-open' };
+        const currentMessageId = current.snapshot && current.snapshot.messageId;
+        const getAdjacentMessage = typeof options.getAdjacentMessage === 'function'
+            ? options.getAdjacentMessage
+            : null;
+        if (currentMessageId == null || !getAdjacentMessage) {
+            writeToast('楼层切换需要宿主消息列表。');
+            return { ok: true, moved: false, reason: 'turn-switch-host-required' };
+        }
+        const target = await getAdjacentMessage(currentMessageId, delta);
+        if (!target) {
+            writeToast(delta > 0 ? '没有下一轮' : '没有上一轮');
+            return { ok: true, moved: false, reason: 'turn-not-found', messageId: currentMessageId };
+        }
+        if (typeof options.jumpToMessage === 'function') {
+            try {
+                await options.jumpToMessage(target.id);
+            } catch (error) {
+                // 宿主跳转失败不阻断阅读器切层。
+            }
+        }
+        if (typeof options.openViewerFromMessage !== 'function') {
+            return { ok: false, reason: 'missing-open-viewer-handler', messageId: target.id };
+        }
+        const result = await options.openViewerFromMessage(target.id, current.mode, {
+            startAtEnd: delta < 0,
+            message: target,
+        });
+        if (result && result.ok !== false) {
+            writeToast(delta > 0 ? '已切到下一轮' : '已切到上一轮');
+            return { ok: true, moved: true, messageId: target.id, reader: result.reader };
+        }
+        return {
+            ok: false,
+            moved: false,
+            reason: result && result.reason || 'turn-open-failed',
+            messageId: target.id,
+        };
+    }
+
+    async function regenerateCurrentImage() {
+        const current = state.activeReader;
+        if (!current) return { ok: false, reason: 'reader-not-open' };
+        if (typeof options.regenerateImage !== 'function') {
+            writeToast('当前未接入图片重画能力。');
+            return { ok: false, reason: 'provider-not-enabled' };
+        }
+
+        const result = await options.regenerateImage(buildImageActionContext(
+            current,
+            resolveBridgeConfigSnapshot({ mode: current.mode }),
+        ));
+        if (result && result.imageState && state.activeReader) {
+            state.activeReader.payload.imageState = cloneData(result.imageState);
+            rerenderActiveReader();
+        }
+        writeToast(resolveReaderActionToast(result, {
+            success: '背景图已更新。',
+            fallback: '当前未检测到新的背景图。',
+        }));
+        return result;
+    }
+
+    async function saveCurrentImage() {
+        const current = state.activeReader;
+        if (!current) return { ok: false, reason: 'reader-not-open' };
+        const context = buildImageActionContext(
+            current,
+            resolveBridgeConfigSnapshot({ mode: current.mode }),
+        );
+        const saveImage = typeof options.saveImage === 'function'
+            ? options.saveImage
+            : async () => ({ ok: false, reason: 'missing-save-handler' });
+        const result = await saveImage({
+            ...context,
+            url: context.currentUrl,
+        });
+        writeToast(resolveReaderActionToast(result, {
+            success: '背景图保存命令已发出。',
+            fallback: '当前背景图不可保存。',
+        }));
+        return result;
+    }
+
     function buildReaderSnapshot(payload, mode, readerSettings, index = 0) {
         const scene = cloneData(payload.scene || (payload.render && payload.render.scene) || {});
         const render = payload.render || {};
@@ -607,14 +695,16 @@ export function createVisualNovelReaderHost(options = {}) {
         ));
         const segments = buildTextSegments(text);
         const normalizedIndex = Math.max(0, Math.min(segments.length - 1, Number(index) || 0));
+        const imageState = normalizeSnapshotImageState(payload.imageState, normalizedIndex);
         const currentText = segments[normalizedIndex] || text;
         const displayText = scene.speaker && currentText
             ? `${scene.speaker}: ${currentText}`
             : currentText;
         const backgroundImage = firstDefined(
+            imageState.currentUrl,
             scene.generatedImage && scene.generatedImage.value,
-            stage.layers && stage.layers.generated && stage.layers.generated.value,
-            stage.layers && stage.layers.background && stage.layers.background.url,
+            stage.layers && stage.layers.generated && stage.layers.generated.resource && stage.layers.generated.resource.value,
+            stage.layers && stage.layers.background && stage.layers.background.resource && stage.layers.background.resource.url,
             '',
         );
         const overlayClasses = ['vnm-mode-' + mode];
@@ -654,8 +744,13 @@ export function createVisualNovelReaderHost(options = {}) {
                 displayText,
                 segments: cloneData(segments),
                 currentIndex: normalizedIndex,
-                progress: `${normalizedIndex + 1} / ${segments.length}`,
+                progress: buildProgressText(normalizedIndex, segments.length, imageState),
                 backgroundImage,
+                images: cloneData(imageState.images),
+                imageCount: imageState.count,
+                imageSignature: imageState.signature,
+                activeImageIndex: imageState.currentIndex,
+                currentImageUrl: imageState.currentUrl,
                 sourceKind: firstDefined(scene.sourceKind, payload.sourceKind, 'raw-text'),
                 warnings: extracted.warnings,
                 errors: extracted.errors,
@@ -667,7 +762,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.2.13'),
+            source: getOriginalReaderSource(options.version || '0.2.14'),
         };
     }
 
@@ -692,7 +787,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.2.13'),
+                version: esc(options.version || '0.2.14'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -953,10 +1048,15 @@ export function createVisualNovelReaderHost(options = {}) {
 
         if (bg && snapshot.content.backgroundImage) {
             bg.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
+        } else if (bg) {
+            bg.style.backgroundImage = '';
         }
         if (bgBlur && snapshot.content.backgroundImage) {
             bgBlur.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
             bgBlur.style.opacity = '0.72';
+        } else if (bgBlur) {
+            bgBlur.style.backgroundImage = '';
+            bgBlur.style.opacity = '0';
         }
         if (textEl) {
             textEl.textContent = snapshot.content.displayText;
@@ -1032,7 +1132,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.2.13' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.2.14' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1043,7 +1143,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.2.13',
+            version: snapshot.version || options.version || '0.2.14',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -1323,6 +1423,75 @@ function writeToast(message) {
     if (!message) return;
 }
 
+function buildProgressText(currentIndex, totalSegments, imageState) {
+    const segmentProgress = `${currentIndex + 1} / ${totalSegments}`;
+    if (!imageState || !imageState.count) return segmentProgress;
+    return `${segmentProgress}   [${imageState.currentIndex + 1}/${imageState.count} 图]`;
+}
+
+function normalizeSnapshotImageState(imageState, fallbackIndex = 0) {
+    const images = Array.isArray(imageState && imageState.images)
+        ? imageState.images.map((image) => ({
+            url: String(image && image.url || '').trim(),
+            providerId: String(image && image.providerId || '').trim(),
+            source: String(image && image.source || '').trim(),
+            filename: String(image && image.filename || '').trim(),
+        })).filter((image) => image.url)
+        : [];
+    const activeIndex = images.length
+        ? Math.max(0, Math.min(images.length - 1, normalizeFiniteIndex(
+            firstDefined(imageState && imageState.currentIndex, fallbackIndex),
+        )))
+        : 0;
+    return {
+        images,
+        count: images.length,
+        signature: String(imageState && imageState.signature || ''),
+        currentIndex: activeIndex,
+        currentUrl: images[activeIndex] ? images[activeIndex].url : '',
+    };
+}
+
+function buildImageActionContext(current, unifiedSettings = null) {
+    const snapshot = current && current.snapshot || {};
+    const content = snapshot.content || {};
+    return {
+        mode: current && current.mode || 'pc',
+        message: current && current.payload && current.payload.message || null,
+        messageId: snapshot.messageId,
+        prompt: content.text || '',
+        currentIndex: content.currentIndex || 0,
+        imageIndex: normalizeFiniteIndex(firstDefined(content.activeImageIndex, content.currentIndex, 0)),
+        imageState: {
+            images: cloneData(content.images || []),
+            count: Number(content.imageCount || 0) || 0,
+            signature: String(content.imageSignature || ''),
+            currentIndex: normalizeFiniteIndex(firstDefined(content.activeImageIndex, content.currentIndex, 0)),
+            currentUrl: String(content.currentImageUrl || content.backgroundImage || ''),
+        },
+        currentUrl: String(content.currentImageUrl || content.backgroundImage || ''),
+        scene: current && current.payload && current.payload.scene || null,
+        render: current && current.payload && current.payload.render || null,
+        unifiedSettings: unifiedSettings || null,
+    };
+}
+
+function resolveReaderActionToast(result, messages) {
+    if (!result) return messages.fallback;
+    if (result.ok === false) {
+        return result.reason || messages.fallback;
+    }
+    return messages.success;
+}
+
+function cloneReaderPayload(payload = {}) {
+    const clone = {};
+    for (const [key, value] of Object.entries(payload || {})) {
+        clone[key] = key === 'message' ? (value || null) : cloneData(value);
+    }
+    return clone;
+}
+
 function normalizeDisplayText(value) {
     const text = String(value || '').trim();
     return looksLikeHostUiHtml(text) ? '' : text;
@@ -1354,6 +1523,12 @@ function normalizeNullableNumber(value) {
     if (value === null || value === undefined || value === '' || value === 'null' || value === 'auto') return null;
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeFiniteIndex(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) return 0;
+    return Math.floor(numeric);
 }
 
 function firstDefined(...values) {

@@ -41,16 +41,17 @@ export function createVisualNovelCompatApi(app) {
             };
         },
 
-        async openViewerFromMessage(messageId, mode) {
+        async openViewerFromMessage(messageId, mode, openOptions = {}) {
             const normalizedId = normalizeMessageId(messageId);
-            const readerMode = resolveReaderMode({ mode }, getLegacySettings(app), app.getState().config || {});
+            const resolved = normalizeViewerRequest(mode, openOptions);
+            const readerMode = resolveReaderMode({ mode: resolved.mode }, getLegacySettings(app), app.getState().config || {});
             if (normalizedId == null) {
-                return { ok: false, reason: 'invalid-message-id', messageId, mode: readerMode };
+                return { ok: false, reason: 'invalid-message-id', messageId, mode: readerMode, options: cloneViewerOptions(resolved.options) };
             }
             if (!app.hostAdapter || typeof app.hostAdapter.getMessageById !== 'function') {
                 return { ok: false, reason: 'message-lookup-not-supported', messageId: normalizedId, mode: readerMode };
             }
-            const message = await app.hostAdapter.getMessageById(normalizedId);
+            const message = resolved.options.message || await app.hostAdapter.getMessageById(normalizedId);
             if (!message) {
                 return { ok: false, reason: 'message-not-found', messageId: normalizedId, mode: readerMode };
             }
@@ -61,10 +62,14 @@ export function createVisualNovelCompatApi(app) {
                 viewerMode: readerMode,
                 textScene: readerPayload.textScene,
             });
-            return openReaderUi(app, {
+            const payload = await enrichReaderPayload(app, {
                 ...readerPayload,
                 render: refreshed.render,
                 scene: refreshed.scene,
+                startAtEnd: resolved.options.startAtEnd === true,
+            });
+            return openReaderUi(app, {
+                ...payload,
             }, refreshed);
         },
 
@@ -84,14 +89,20 @@ export function createVisualNovelCompatApi(app) {
                 viewerMode: readerMode,
                 textScene: readerPayload.textScene,
             });
-            return openReaderUi(app, {
+            const payload = await enrichReaderPayload(app, {
                 ...readerPayload,
                 render: refreshed.render,
                 scene: refreshed.scene,
+            });
+            return openReaderUi(app, {
+                ...payload,
             }, refreshed);
         },
 
         generateImage(request, options = {}) {
+            if (typeof app.generateImage === 'function') {
+                return app.generateImage(request, options);
+            }
             return {
                 ok: false,
                 reason: 'provider-not-enabled',
@@ -171,6 +182,24 @@ function buildReaderPayload(app, message, messageId, readerMode) {
     };
 }
 
+async function enrichReaderPayload(app, payload) {
+    if (!app || typeof app.collectMessageImages !== 'function') {
+        return payload;
+    }
+    const imageState = await app.collectMessageImages({
+        message: payload.message,
+        messageId: payload.messageId,
+        scene: payload.scene,
+        render: payload.render,
+        currentIndex: payload.startAtEnd === true ? Number.MAX_SAFE_INTEGER : 0,
+        mode: payload.mode,
+    });
+    return {
+        ...payload,
+        imageState,
+    };
+}
+
 function openReaderUi(app, payload, refreshed) {
     if (!app.visualNovelUi || typeof app.visualNovelUi.openReader !== 'function') {
         return refreshed;
@@ -181,4 +210,25 @@ function openReaderUi(app, payload, refreshed) {
         ok: refreshed.ok !== false && reader.ok !== false,
         reader,
     };
+}
+
+function normalizeViewerRequest(mode, openOptions) {
+    if (mode && typeof mode === 'object' && !Array.isArray(mode)) {
+        return {
+            mode: mode.mode,
+            options: cloneViewerOptions(mode),
+        };
+    }
+    return {
+        mode,
+        options: cloneViewerOptions(openOptions || {}),
+    };
+}
+
+function cloneViewerOptions(options = {}) {
+    const clone = { ...options };
+    if (Object.prototype.hasOwnProperty.call(clone, 'message')) {
+        clone.message = options.message || null;
+    }
+    return clone;
 }

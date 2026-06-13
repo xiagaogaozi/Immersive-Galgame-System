@@ -15,12 +15,7 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
 
         async getCurrentMessage() {
             if (!helper) return null;
-            const lastId = getLastMessageId(helper);
-            const messages = getChatMessages(helper, 0, lastId);
-            const domMessageMap = createDomMessageMap(globalObject);
-            const normalizedMessages = messages
-                .map((message) => normalizeMessage(message, lastId, domMessageMap))
-                .filter(Boolean);
+            const normalizedMessages = getNormalizedMessages(helper, globalObject);
             return pickCurrentMessage(normalizedMessages) || normalizedMessages[normalizedMessages.length - 1] || null;
         },
 
@@ -42,6 +37,39 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
                     || normalizeMessageId(message && message.message_id) === normalizedId;
             });
             return normalizeMessage(fallback, normalizedId, domMessageMap);
+        },
+
+        async listMessages() {
+            if (!helper) return [];
+            return getNormalizedMessages(helper, globalObject);
+        },
+
+        async getAdjacentMessage(messageId, delta = 1) {
+            if (!helper) return null;
+            const normalizedId = normalizeMessageId(messageId);
+            if (normalizedId == null) return null;
+            const step = Number(delta) < 0 ? -1 : 1;
+            const messages = getNormalizedMessages(helper, globalObject).filter(isTurnCandidate);
+            const currentIndex = messages.findIndex((message) => message.id === normalizedId);
+            if (currentIndex < 0) return null;
+            return messages[currentIndex + step] || null;
+        },
+
+        async jumpToMessage(messageId) {
+            if (!helper) return { ok: false, reason: 'missing-tavern-helper' };
+            const normalizedId = normalizeMessageId(messageId);
+            if (normalizedId == null) return { ok: false, reason: 'invalid-message-id', messageId };
+            if (typeof helper.triggerSlash !== 'function') {
+                return { ok: false, reason: 'missing-trigger-slash', messageId: normalizedId };
+            }
+            await helper.triggerSlash(`/chat-jump ${normalizedId}`);
+            return { ok: true, messageId: normalizedId };
+        },
+
+        async findRegenerateButton(messageId, imageIndex = 0) {
+            const message = await this.getMessageById(messageId);
+            if (!message) return null;
+            return findMessageRegenerateButton(message, imageIndex);
         },
 
         async typeAndSend(text) {
@@ -102,6 +130,16 @@ function normalizeMessage(message, fallbackId, domMessageMap = new Map()) {
     };
 }
 
+function getNormalizedMessages(helper, globalObject) {
+    const lastId = getLastMessageId(helper);
+    const messages = getChatMessages(helper, 0, lastId);
+    const domMessageMap = createDomMessageMap(globalObject);
+    return messages
+        .map((message) => normalizeMessage(message, lastId, domMessageMap))
+        .filter(Boolean)
+        .sort((left, right) => (left.id ?? 0) - (right.id ?? 0));
+}
+
 function normalizeMessageId(value) {
     const id = Number(value);
     if (!Number.isFinite(id) || id < 0) return null;
@@ -114,12 +152,18 @@ function resolveMessageId(message, fallbackId) {
 
 function pickCurrentMessage(messages) {
     const readable = messages.filter((message) => {
-        return message
-            && !message.isSystem
-            && !message.isHidden
-            && !message.isUser;
+        return isTurnCandidate(message);
     });
     return readable[readable.length - 1] || null;
+}
+
+function isTurnCandidate(message) {
+    return Boolean(
+        message
+        && !message.isSystem
+        && !message.isHidden
+        && !message.isUser,
+    );
 }
 
 function createDomMessageMap(globalObject) {
@@ -170,6 +214,57 @@ function safeQueryAll(doc, selector) {
     } catch (error) {
         return [];
     }
+}
+
+function findMessageRegenerateButton(message, imageIndex) {
+    const targetIndex = Math.max(0, Math.floor(Number(imageIndex) || 0));
+    const roots = getMessageScopedRoots(message);
+    const selectors = [
+        'button.image-tag-button, button[class*="image-tag-button"], button[class*="st-chatu8-image"]',
+        '.tsp-regenerate-btn, .tsp-inline-gen-btn',
+    ];
+    const buttons = [];
+    const seen = new Set();
+
+    for (const selector of selectors) {
+        for (const root of roots) {
+            if (!root || typeof root.querySelectorAll !== 'function') continue;
+            let matches = [];
+            try {
+                matches = Array.from(root.querySelectorAll(selector));
+            } catch (error) {
+                matches = [];
+            }
+            for (const button of matches) {
+                if (!button || seen.has(button)) continue;
+                seen.add(button);
+                buttons.push(button);
+            }
+        }
+    }
+
+    return buttons[targetIndex] || null;
+}
+
+function getMessageScopedRoots(message) {
+    const roots = [];
+    const addRoot = (root) => {
+        if (!root || roots.includes(root)) return;
+        roots.push(root);
+    };
+
+    const element = message && message.element;
+    addRoot(element);
+
+    if (element && typeof element.querySelector === 'function') {
+        try {
+            addRoot(element.querySelector('.mes_text'));
+        } catch (error) {
+            // Ignore bad selectors in host shims.
+        }
+    }
+
+    return roots;
 }
 
 function getElementMessageId(element) {
