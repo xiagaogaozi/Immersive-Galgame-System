@@ -1,12 +1,13 @@
 const SETTINGS_STYLE_TEXT = `
-#vnm-unified-settings{position:fixed;inset:0;z-index:2147483200;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.46);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:rgba(255,255,255,.9);--vnm-settings-vleft:0px;--vnm-settings-vtop:0px;--vnm-settings-vw:100vw;--vnm-settings-vh:100vh;--vnm-settings-width:min(760px,calc(var(--vnm-settings-vw) - 48px));--vnm-settings-height:min(760px,calc(var(--vnm-settings-vh) - 48px));}
-.vnm-settings-shell{width:var(--vnm-settings-width);height:var(--vnm-settings-height);background:rgba(20,20,22,.86);border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.58);display:flex;flex-direction:column;overflow:hidden}
-.vnm-settings-head{height:54px;display:flex;align-items:center;gap:10px;padding:0 16px 0 20px;border-bottom:1px solid rgba(255,255,255,.09)}
+#vnm-unified-settings{--vnm-settings-vleft:0px;--vnm-settings-vtop:0px;--vnm-settings-vw:100vw;--vnm-settings-vh:100dvh;--vnm-settings-width:min(760px,calc(var(--vnm-settings-vw) - 48px));--vnm-settings-height:min(760px,calc(var(--vnm-settings-vh) - 48px));position:fixed;left:var(--vnm-settings-vleft);top:var(--vnm-settings-vtop);width:var(--vnm-settings-vw);height:var(--vnm-settings-vh);z-index:2147483200;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;overflow:hidden;background:rgba(0,0,0,.46);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:rgba(255,255,255,.9);}
+.vnm-settings-shell{width:var(--vnm-settings-width);height:var(--vnm-settings-height);max-height:none;background:rgba(20,20,22,.86);border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.58);display:flex;flex-direction:column;overflow:hidden;-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%)}
+.vnm-settings-head{height:54px;display:flex;align-items:center;gap:10px;padding:0 16px 0 20px;border-bottom:1px solid rgba(255,255,255,.09);flex-shrink:0}
 .vnm-settings-title{font-size:16px;font-weight:650;letter-spacing:.2px;flex:1}
-.vnm-settings-badge{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.56)}
-.vnm-settings-close{width:34px;height:34px;border:0;background:transparent;color:rgba(255,255,255,.62);font-size:18px;border-radius:12px;cursor:pointer}
-.vnm-settings-close:hover,.vnm-settings-close:focus{background:rgba(255,255,255,.13);color:#fff;outline:none}
-.vnm-settings-tabs{display:flex;gap:6px;padding:12px 20px 0}
+.vnm-settings-badge{font-size:11px;color:rgba(255,255,255,.48);border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:3px 8px}
+.vnm-settings-close,.vnm-settings-action{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.07);color:rgba(255,255,255,.72);border-radius:12px;height:34px;padding:0 12px;font:inherit;cursor:pointer}
+.vnm-settings-close{width:34px;padding:0;font-size:18px}
+.vnm-settings-close:hover,.vnm-settings-close:focus,.vnm-settings-action:hover,.vnm-settings-action:focus{background:rgba(255,255,255,.13);color:#fff;outline:none}
+.vnm-settings-tabs{display:flex;gap:6px;padding:10px 12px 8px;overflow-x:auto;flex-shrink:0;background:rgba(255,255,255,.025)}
 .vnm-settings-tab{border:0;background:transparent;color:rgba(255,255,255,.48);padding:7px 10px;border-radius:10px;font:inherit;font-size:12px;white-space:nowrap;cursor:pointer}
 .vnm-settings-tab.is-active{background:rgba(255,255,255,.14);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.22)}
 .vnm-settings-body{flex:1;min-height:0;overflow-y:auto;padding:14px 20px 16px}

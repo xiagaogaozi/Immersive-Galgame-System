@@ -182,7 +182,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.0');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.1');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -466,6 +466,69 @@ test('gate:simulation:visual-novel-ui-fullscreen-mode-requests-browser-fullscree
     assert.equal(igs.getState().visualNovelUi.activeReader, null);
 
     igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-settings-follows-visual-viewport-in-web-and-fullscreen', async () => {
+    for (const mode of ['web', 'fullscreen']) {
+        const document = createFakeDocument({
+            innerWidth: 1280,
+            innerHeight: 720,
+            visualViewport: {
+                width: 980,
+                height: 540,
+                offsetLeft: 36,
+                offsetTop: 22,
+            },
+        });
+        const globalObject = document.defaultView;
+        if (mode === 'fullscreen') {
+            document.documentElement.requestFullscreen = () => {
+                document.fullscreenElement = document.documentElement;
+                return Promise.resolve();
+            };
+        }
+        const igs = bootstrapIGS({
+            global: globalObject,
+            autoAttachMagicWand: false,
+            hostAdapter: {
+                getCurrentMessage: async () => ({
+                    id: 20,
+                    text: '[角色: 艾莉]\n艾莉: 第一段。 第二段。',
+                }),
+                typeAndSend: async () => ({ ok: true }),
+            },
+        });
+
+        const opened = await igs.openLatestAvailable(mode);
+        const settingsResult = await opened.reader.controller.invokeAction('settings');
+        const overlay = document.getElementById('vnm-unified-settings');
+
+        assert.equal(settingsResult.ok, true);
+        assert.ok(overlay, `${mode} should mount settings overlay`);
+        assert.ok(overlay.querySelector('.vnm-settings-shell'));
+        assert.ok(overlay.querySelector('.vnm-settings-head'));
+        assert.equal(overlay.querySelectorAll('.vnm-settings-tab').length, 4);
+        assert.ok(overlay.querySelector('.vnm-settings-body'));
+        assert.equal(overlay.style['--vnm-settings-vleft'], '36px');
+        assert.equal(overlay.style['--vnm-settings-vtop'], '22px');
+        assert.equal(overlay.style['--vnm-settings-vw'], '980px');
+        assert.equal(overlay.style['--vnm-settings-vh'], '540px');
+
+        globalObject.visualViewport.offsetLeft = 48;
+        globalObject.visualViewport.offsetTop = 40;
+        globalObject.visualViewport.width = 920;
+        globalObject.visualViewport.height = 500;
+        globalObject.visualViewport.dispatchEvent({ type: 'scroll' });
+
+        assert.equal(overlay.style['--vnm-settings-vleft'], '48px');
+        assert.equal(overlay.style['--vnm-settings-vtop'], '40px');
+        assert.equal(overlay.style['--vnm-settings-vw'], '920px');
+        assert.equal(overlay.style['--vnm-settings-vh'], '500px');
+
+        settingsResult.controller.close();
+        assert.equal(document.getElementById('vnm-unified-settings'), null);
+        igs.destroy();
+    }
 });
 
 test('gate:simulation:visual-novel-ui-hidden-state-can-be-restored-and-toast-shows-boundary-feedback', async () => {

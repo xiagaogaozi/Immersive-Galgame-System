@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前运行版本 `v0.3.0`：魔法棒入口显示名继续固定为 `沉浸式 Galgame 系统`，入口形态继续保留原版 `fa-book-open` 单入口；阅读器运行时已补齐原版 VN 的 `pc / mobile / web / fullscreen` 四模式闭环、隐藏恢复、toast 反馈和发送状态占位。
-- `v0.3.0` 已把“正文因空字符串 fallback 丢失”“pc/mobile 浮窗尺寸不对”“web 模式不锁滚动”“fullscreen 不请求浏览器全屏”“隐藏后无恢复入口”固定为回归闸门，后续每轮 `npm run gate` 都会卡住这类退化。
+- 当前运行版本 `v0.3.1`：修复网页全屏与浏览器全屏中打开设置页时只显示空壳、tabs/body 不可见的问题；魔法棒入口显示名继续固定为 `沉浸式 Galgame 系统`，入口形态继续保留原版 `fa-book-open` 单入口。
+- `v0.3.1` 已把“web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body”固定为回归闸门；`v0.3.0` 已固定正文 fallback、pc/mobile 浮窗几何、web 滚动锁定、fullscreen 请求全屏、隐藏恢复和 toast 边界反馈。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,14 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.1 - 2026-06-13
+
+- 修复 `web` 网页全屏与 `fullscreen` 浏览器全屏模式下打开设置页时设置面板只剩顶部空壳、tabs/body 不显示或落在可视区外的问题。
+- `app/src/visual/visual-novel-ui/settings-style.js` 恢复原版 Visual Novel 的 `#vnm-unified-settings` viewport 盒模型：使用 `--vnm-settings-vleft / --vnm-settings-vtop / --vnm-settings-vw / --vnm-settings-vh` 控制 `left / top / width / height`，并保留原版设置页按钮、tabs 和毛玻璃面板样式。
+- `app/src/visual/visual-novel-ui/reader-host.js` 为设置面板补回 `visualViewport.resize / visualViewport.scroll / resize / orientationchange` 监听，关闭设置页时会清理事件和 RAF；Node 模拟环境增加设置页 fallback DOM，用于稳定断言 shell/head/tabs/body。
+- 扩展 `app/tests/gate-contract.test.js` 与 `app/tests/simulate.test.js`：新增设置 CSS viewport 变量契约，以及 `web/fullscreen` 打开设置后完整渲染并随 visualViewport 偏移更新的回归测试。
+- `app/package.json`、`app/src/core/bootstrap.js`、阅读器源码默认版本与 `loader/igs-loader.js` 默认标签同步提升到 `v0.3.1`；本轮发布需重新生成 `app/dist/manifest.json` 与 `loader/igs-loader.json`。
 
 ### v0.3.0 - 2026-06-13
 

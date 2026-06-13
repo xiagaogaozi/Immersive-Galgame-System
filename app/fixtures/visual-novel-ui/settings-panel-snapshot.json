@@ -77,6 +77,10 @@
     }
   ],
   "styleChecks": {
+    "viewportLeft": "left:var(--vnm-settings-vleft)",
+    "viewportTop": "top:var(--vnm-settings-vtop)",
+    "viewportWidth": "width:var(--vnm-settings-vw)",
+    "viewportHeight": "height:var(--vnm-settings-vh)",
     "shellWidth": "width:var(--vnm-settings-width)",
     "headerHeight": "height:54px",
     "segmentedHeight": "height:40px",

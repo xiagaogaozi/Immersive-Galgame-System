@@ -277,6 +277,9 @@ export function createVisualNovelReaderHost(options = {}) {
     function closeSettings() {
         const current = state.activeSettings;
         if (!current) return { ok: true, reason: 'settings-not-open' };
+        if (current.dom && typeof current.dom.dispose === 'function') {
+            current.dom.dispose();
+        }
         unmountNode(current.dom && current.dom.root);
         state.activeSettings = null;
         return { ok: true };
@@ -769,7 +772,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.0'),
+            source: getOriginalReaderSource(options.version || '0.3.1'),
         };
     }
 
@@ -794,7 +797,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.0'),
+                version: esc(options.version || '0.3.1'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1028,10 +1031,18 @@ export function createVisualNovelReaderHost(options = {}) {
             }
         });
 
-        return {
+        const domState = {
             root,
             doc,
+            overlay: null,
+            viewportHandler: null,
+            viewportWindow: null,
+            viewportRaf: null,
+            dispose() {
+                detachSettingsViewportEvents(domState);
+            },
         };
+        return domState;
     }
 
     function updateMountedReader(snapshot) {
@@ -1176,14 +1187,77 @@ export function createVisualNovelReaderHost(options = {}) {
         return button;
     }
 
+    function buildFallbackSettingsOverlay(doc, snapshot) {
+        if (!doc || typeof doc.createElement !== 'function') return null;
+        const overlay = doc.createElement('div');
+        overlay.id = 'vnm-unified-settings';
+        overlay.setAttribute('data-igs-vn-ui', 'true');
+
+        const shell = doc.createElement('div');
+        shell.className = 'vnm-settings-shell';
+        shell.setAttribute('role', 'dialog');
+        shell.setAttribute('aria-modal', 'true');
+        shell.setAttribute('aria-label', '设置');
+        overlay.appendChild(shell);
+
+        const head = doc.createElement('div');
+        head.className = 'vnm-settings-head';
+        shell.appendChild(head);
+
+        const title = doc.createElement('div');
+        title.className = 'vnm-settings-title';
+        title.textContent = '设置';
+        head.appendChild(title);
+
+        const badge = doc.createElement('div');
+        badge.className = 'vnm-settings-badge';
+        badge.textContent = options.version || '0.3.1';
+        head.appendChild(badge);
+
+        const close = doc.createElement('button');
+        close.className = 'vnm-settings-close';
+        close.type = 'button';
+        close.setAttribute('data-action', 'close');
+        close.setAttribute('aria-label', '关闭');
+        close.textContent = '×';
+        head.appendChild(close);
+
+        const tabs = doc.createElement('div');
+        tabs.className = 'vnm-settings-tabs';
+        shell.appendChild(tabs);
+        for (const tab of snapshot.tabs || []) {
+            const button = doc.createElement('button');
+            button.className = `vnm-settings-tab${tab.active ? ' is-active' : ''}`;
+            button.type = 'button';
+            button.setAttribute('data-tab', tab.id);
+            button.textContent = tab.label;
+            tabs.appendChild(button);
+        }
+
+        const body = doc.createElement('div');
+        body.className = 'vnm-settings-body';
+        body.innerHTML = renderSettingsBody(snapshot.tab, snapshot.draft, {
+            imageResult: snapshot.resultText && snapshot.resultText.image,
+            imageModelsMessage: snapshot.resultText && snapshot.resultText.imageModels,
+            virtualRegexPreview: snapshot.resultText && snapshot.resultText.virtualRegex,
+        });
+        shell.appendChild(body);
+        return overlay;
+    }
+
     function updateMountedSettings(snapshot) {
         const current = state.activeSettings;
         if (!current || !current.dom || !current.dom.root) return;
         const container = current.dom.root;
+        clearChildren(container);
         container.innerHTML = snapshot.html;
         current.dom.overlay = container.querySelector('#vnm-unified-settings');
+        if (!current.dom.overlay) {
+            current.dom.overlay = buildFallbackSettingsOverlay(container.ownerDocument || getRootDocument(options.global), snapshot);
+            if (current.dom.overlay) container.appendChild(current.dom.overlay);
+        }
         if (current.dom.overlay) {
-            syncSettingsViewportVars(current.dom.overlay);
+            attachSettingsViewportEvents(current.dom, current.dom.overlay);
         }
     }
 
@@ -1596,7 +1670,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.0' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.1' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1607,7 +1681,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.0',
+            version: snapshot.version || options.version || '0.3.1',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -1832,13 +1906,80 @@ function unmountNode(node) {
     }
 }
 
+function attachSettingsViewportEvents(domState, root) {
+    if (!domState || !root) return;
+    detachSettingsViewportEvents(domState);
+    domState.overlay = root;
+    const win = getOwnerWindow(root);
+    domState.viewportWindow = win;
+    const schedule = () => {
+        if (!domState.overlay) return;
+        if (domState.viewportRaf !== null && domState.viewportRaf !== undefined) return;
+        const raf = win && typeof win.requestAnimationFrame === 'function'
+            ? win.requestAnimationFrame.bind(win)
+            : null;
+        if (!raf) {
+            syncSettingsViewportVars(domState.overlay);
+            return;
+        }
+        domState.viewportRaf = -1;
+        const nextRaf = raf(() => {
+            domState.viewportRaf = null;
+            if (domState.overlay) syncSettingsViewportVars(domState.overlay);
+        });
+        if (domState.viewportRaf === -1) domState.viewportRaf = nextRaf;
+    };
+    domState.viewportHandler = schedule;
+    syncSettingsViewportVars(root);
+    if (win && typeof win.addEventListener === 'function') {
+        win.addEventListener('resize', schedule, { passive: true });
+        win.addEventListener('orientationchange', schedule, { passive: true });
+    }
+    if (win && win.visualViewport && typeof win.visualViewport.addEventListener === 'function') {
+        win.visualViewport.addEventListener('resize', schedule, { passive: true });
+        win.visualViewport.addEventListener('scroll', schedule, { passive: true });
+    }
+}
+
+function detachSettingsViewportEvents(domState) {
+    if (!domState) return;
+    const win = domState.viewportWindow;
+    const handler = domState.viewportHandler;
+    if (win && handler && typeof win.removeEventListener === 'function') {
+        win.removeEventListener('resize', handler);
+        win.removeEventListener('orientationchange', handler);
+    }
+    if (win && win.visualViewport && handler && typeof win.visualViewport.removeEventListener === 'function') {
+        win.visualViewport.removeEventListener('resize', handler);
+        win.visualViewport.removeEventListener('scroll', handler);
+    }
+    if (domState.viewportRaf !== null && domState.viewportRaf !== undefined) {
+        const cancel = win && typeof win.cancelAnimationFrame === 'function'
+            ? win.cancelAnimationFrame.bind(win)
+            : null;
+        if (cancel) cancel(domState.viewportRaf);
+    }
+    domState.viewportHandler = null;
+    domState.viewportWindow = null;
+    domState.viewportRaf = null;
+}
+
 function syncSettingsViewportVars(root) {
     if (!root || !root.style) return;
     const doc = root.ownerDocument;
     const win = doc && doc.defaultView;
     const viewport = win && win.visualViewport;
-    const width = viewport && Number.isFinite(viewport.width) ? viewport.width : (win && win.innerWidth) || 0;
-    const height = viewport && Number.isFinite(viewport.height) ? viewport.height : (win && win.innerHeight) || 0;
+    const docEl = doc && doc.documentElement ? doc.documentElement : {};
+    const left = viewport && Number.isFinite(viewport.offsetLeft) ? viewport.offsetLeft : 0;
+    const top = viewport && Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0;
+    const width = viewport && Number.isFinite(viewport.width) && viewport.width > 0
+        ? viewport.width
+        : (win && win.innerWidth) || docEl.clientWidth || 320;
+    const height = viewport && Number.isFinite(viewport.height) && viewport.height > 0
+        ? viewport.height
+        : (win && win.innerHeight) || docEl.clientHeight || 480;
+    root.style.setProperty('--vnm-settings-vleft', `${Math.round(left)}px`);
+    root.style.setProperty('--vnm-settings-vtop', `${Math.round(top)}px`);
     root.style.setProperty('--vnm-settings-vw', `${Math.round(width)}px`);
     root.style.setProperty('--vnm-settings-vh', `${Math.round(height)}px`);
 }
