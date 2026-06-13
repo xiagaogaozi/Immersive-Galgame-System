@@ -748,7 +748,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const displayText = scene.speaker && currentText
             ? `${scene.speaker}: ${currentText}`
             : currentText;
-        const backgroundImage = firstDefined(
+        const backgroundImage = firstNonEmptyString(
             imageState.displayUrl,
             imageState.currentUrl,
             scene.generatedImage && scene.generatedImage.value,
@@ -814,7 +814,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.7'),
+            source: getOriginalReaderSource(options.version || '0.3.8'),
         };
     }
 
@@ -839,7 +839,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.7'),
+                version: esc(options.version || '0.3.8'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1253,7 +1253,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vnm-settings-badge';
-        badge.textContent = options.version || '0.3.7';
+        badge.textContent = options.version || '0.3.8';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1857,7 +1857,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.7' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.8' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1868,7 +1868,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.7',
+            version: snapshot.version || options.version || '0.3.8',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2300,6 +2300,11 @@ function buildProgressText(currentIndex, totalSegments, imageState) {
 }
 
 function normalizeSnapshotImageState(imageState, fallbackIndex = 0) {
+    const unboundImages = Array.isArray(imageState && imageState.unboundImages)
+        ? imageState.unboundImages
+            .map((image, index) => mapSnapshotImageEntry(image, index, true))
+            .filter(Boolean)
+        : [];
     const slots = Array.isArray(imageState && imageState.slots)
         ? imageState.slots
             .map((image, index) => mapSnapshotImageEntry(image, index, false))
@@ -2319,16 +2324,14 @@ function normalizeSnapshotImageState(imageState, fallbackIndex = 0) {
         )))
         : 0;
     const displayImage = slots.length
-        ? resolveSnapshotDisplayImage(slots, activeIndex)
+        ? resolveSnapshotDisplayImage(slots, activeIndex) || unboundImages[0] || mapSnapshotImageEntry({
+            url: firstNonEmptyString(imageState && imageState.displayUrl, imageState && imageState.currentUrl),
+        }, activeIndex, true)
         : images[activeIndex] || null;
     return {
         slots,
         images,
-        unboundImages: Array.isArray(imageState && imageState.unboundImages)
-            ? imageState.unboundImages
-                .map((image, index) => mapSnapshotImageEntry(image, index, true))
-                .filter(Boolean)
-            : [],
+        unboundImages,
         count: totalCount,
         signature: String(imageState && imageState.signature || ''),
         currentIndex: activeIndex,
@@ -2478,6 +2481,14 @@ function firstDefined(...values) {
         if (value !== undefined && value !== null) return value;
     }
     return undefined;
+}
+
+function firstNonEmptyString(...values) {
+    for (const value of values) {
+        const text = String(value || '').trim();
+        if (text) return text;
+    }
+    return '';
 }
 
 function esc(value) {

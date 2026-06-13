@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.7');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.8');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -1127,6 +1127,48 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-falls-back-to-scan-orde
     igs.destroy();
 });
 
+test('gate:simulation:visual-novel-ui-generic-message-image-displays-with-image-tags', async () => {
+    const document = createFakeDocument();
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const message = {
+        id: 39,
+        text: source,
+        element: createFakeMessageElement(document, {
+            genericNodes: [
+                createFakeMediaNode({
+                    ownerDocument: document,
+                    tagName: 'IMG',
+                    src: 'https://example.com/prism-generated.png',
+                }),
+            ],
+        }),
+    };
+    const igs = bootstrapIGS({
+        global: { document },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'auto',
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.reader.snapshot.content.imageCount, 6);
+    assert.equal(opened.reader.snapshot.content.progress, '1 / 3   [1/6 图]');
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/prism-generated.png');
+    assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/prism-generated.png');
+
+    igs.destroy();
+});
+
 test('gate:simulation:host-adapter-hide-state-skips-hidden-turns-in-real-bootstrap', async () => {
     const document = createFakeDocument();
     const jumps = [];
@@ -1724,7 +1766,10 @@ function createFakeMessageElement(ownerDocument, options = {}) {
                 return chamiButtons;
             }
             if (
-                selector === 'img[data-src]'
+                selector === '.mes_text img[src]'
+                || selector === '.mes_text img[data-src]'
+                || selector === 'img[src]'
+                || selector === 'img[data-src]'
                 || selector === 'img[src^="blob:"]'
                 || selector === 'img[src^="data:image"]'
                 || selector === 'video'

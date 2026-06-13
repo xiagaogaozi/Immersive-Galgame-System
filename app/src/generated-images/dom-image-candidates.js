@@ -33,6 +33,9 @@ const ADAPTER_SELECTORS = Object.freeze({
     }),
     generic: Object.freeze({
         images: Object.freeze([
+            '.mes_text img[src]',
+            '.mes_text img[data-src]',
+            'img[src]',
             'img[data-src]',
             'img[src^="blob:"]',
             'img[src^="data:image"]',
@@ -147,6 +150,7 @@ export function collectDomImageCandidates(roots, options = {}) {
         if (!node || seenNodes.has(node)) return;
         seenNodes.add(node);
         const imageNode = getImageElement(node) || node;
+        if (adapterKey === 'generic' && isLikelyHostDecorImage(node, imageNode)) return;
         const url = rawImageUrl(imageNode);
         if (!url) return;
         const groupKey = imageCandidateGroupKey(node, imageNode, url, order);
@@ -450,4 +454,16 @@ function hasImageSource(node) {
 
 function hasHref(node) {
     return Boolean(node && typeof node === 'object' && (node.href || safeGetAttribute(node, 'href')));
+}
+
+function isLikelyHostDecorImage(sourceNode, imageNode) {
+    const source = sourceNode && typeof sourceNode === 'object' ? sourceNode : imageNode;
+    const classText = [
+        safeGetAttribute(source, 'class'),
+        safeGetAttribute(imageNode, 'class'),
+        source && source.className,
+        imageNode && imageNode.className,
+    ].filter(Boolean).join(' ');
+    if (/(^|\s)(avatar|mesAvatar|mes_avatar|ch_name|name|timestamp)(\s|$)/i.test(classText)) return true;
+    return Boolean(safeClosest(source, '.avatar,.mesAvatar,.mes_avatar,.ch_name,.timestamp'));
 }

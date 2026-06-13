@@ -166,11 +166,11 @@ https://github.com/xiagaogaozi/immersive-galgame-system
 当前 loader 默认链路：
 
 ```text
-jsDelivr @main/app/dist/igs.bundle.js -> 探测可访问 -> 加载 jsDelivr @main/app/dist/igs.bundle.*
+jsDelivr @main/app/dist/igs.bundle.* -> 直接注入 CSS/JS
 ```
 
 loader 默认追踪 `main`，并对 `main` 加 cache bust，确保酒馆端导入一次后能继续拉取仓库最新 bundle，不再需要每次发版都修改 `loader/igs-loader.js` 的内置版本号。
-需要临时锁定旧版本或测试分支时，可由用户手动设置 `window.IGS_LOADER_REF = 'v0.3.6'`、`window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。如果手动指定的非 `main` ref 在 jsDelivr 上不可用，loader 会 fallback 到 `@main`，避免导入脚本直接失败。
+为了让魔法棒入口更早出现，loader 会在远程主程序加载完成前先注册一个临时入口；正式 IGS 运行时加载后会替换为正式入口。需要临时锁定旧版本或测试分支时，可由用户手动设置 `window.IGS_LOADER_REF = 'v0.3.6'`、`window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。如果手动指定的非 `main` ref 在 jsDelivr 上不可用，loader 会 fallback 到 `@main`，避免导入脚本直接失败。
 
 ## 推荐发布步骤
 

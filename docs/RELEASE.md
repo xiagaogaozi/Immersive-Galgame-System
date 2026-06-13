@@ -59,10 +59,10 @@
 默认远程加载策略：
 
 ```text
-jsDelivr @main/app/dist/igs.bundle.js -> 探测可访问 -> 加载 jsDelivr @main/app/dist/igs.bundle.*
+jsDelivr @main/app/dist/igs.bundle.* -> 直接注入 CSS/JS
 ```
 
-loader 默认追踪 `main`，并对 `main` 加 cache bust；酒馆端导入一次 loader 后，后续只要仓库 `main` 的 `app/dist` 更新，就会继续拉取最新 bundle，不再要求 loader 源码同步改版本号。需要临时锁定旧版本或测试分支时，也可以手动设置 `window.IGS_LOADER_REF` 或 `window.IGS_LOADER_CONFIG.ref`；指定的非 `main` ref 不可用时会 fallback 到 `@main`。
+loader 默认追踪 `main`，并对 `main` 加 cache bust；酒馆端导入一次 loader 后，后续只要仓库 `main` 的 `app/dist` 更新，就会继续拉取最新 bundle，不再要求 loader 源码同步改版本号。loader 会在远程主程序加载完成前先显示临时魔法棒入口，正式运行时加载后替换为正式入口。需要临时锁定旧版本或测试分支时，也可以手动设置 `window.IGS_LOADER_REF` 或 `window.IGS_LOADER_CONFIG.ref`；指定的非 `main` ref 不可用时会 fallback 到 `@main`。
 
 ## 后续建议命令
 

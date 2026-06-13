@@ -28,6 +28,7 @@ npm run build:loader
 
 - 阻止重复加载。
 - 选择远程 ref，默认追踪 `main` 最新 bundle。
+- 远程主程序加载完成前，先注册一个临时魔法棒入口。
 - 注入 `igs.bundle.css`。
 - 注入 `igs.bundle.js`。
 - 输出加载状态和失败原因。

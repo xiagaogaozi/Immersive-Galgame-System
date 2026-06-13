@@ -6,6 +6,8 @@
     const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
     const CSS_ID = 'igs-auto-loader-css';
     const SCRIPT_ID = 'igs-auto-loader-js';
+    const MAGIC_MENU_SELECTORS = ['#extensionsMenu', '#extensions_menu', '.extensions_block .list-group'];
+    const LOADER_ENTRY_SELECTOR = '[data-vnm-loader-entry="1"]';
     const TRACE_IDS = [CSS_ID, SCRIPT_ID, 'igs-root', 'igs-stage'];
 
     const root = resolveRootWindow();
@@ -25,6 +27,7 @@
         repository: REPOSITORY,
         loadedAt: Date.now(),
     };
+    scheduleLoaderMagicWandEntry();
 
     load().catch((error) => {
         console.error('[IGS Loader] 启动失败。', error);
@@ -60,11 +63,13 @@
         for (const attempt of attempts) {
             const cssUrl = withCacheBust(`${attempt.base}/app/dist/igs.bundle.css`, attempt);
             const scriptUrl = withCacheBust(`${attempt.base}/app/dist/igs.bundle.js`, attempt);
-            const probe = await probeBundleUrl(scriptUrl);
-            if (!probe.ok) {
-                lastError = probe.error || new Error(`remote bundle not available: ${scriptUrl}`);
-                console.warn('[IGS Loader] 远程 bundle 探测失败，尝试下一个地址。', attempt.ref, scriptUrl, lastError);
-                continue;
+            if (shouldProbeBundleAttempt(attempt, config)) {
+                const probe = await probeBundleUrl(scriptUrl);
+                if (!probe.ok) {
+                    lastError = probe.error || new Error(`remote bundle not available: ${scriptUrl}`);
+                    console.warn('[IGS Loader] 远程 bundle 探测失败，尝试下一个地址。', attempt.ref, scriptUrl, lastError);
+                    continue;
+                }
             }
             try {
                 injectCss(cssUrl);
@@ -110,6 +115,124 @@
             });
         }
         return attempts;
+    }
+
+    function shouldProbeBundleAttempt(attempt, config) {
+        if (config.hasCustomBase) return true;
+        return attempt.ref !== 'main';
+    }
+
+    function scheduleLoaderMagicWandEntry() {
+        let attempts = 0;
+        const maxAttempts = 24;
+        const tick = () => {
+            attempts += 1;
+            const result = ensureLoaderMagicWandEntry();
+            if (!result.ok && attempts < maxAttempts) {
+                setHostTimeout(tick, 250);
+            }
+        };
+        setHostTimeout(tick, 0);
+    }
+
+    function ensureLoaderMagicWandEntry() {
+        const api = root.IGS || root.ImmersiveGalgameSystem;
+        if (api && typeof api.ensureMagicWandEntry === 'function') {
+            return { ok: true, reason: 'runtime-ready' };
+        }
+        const menus = findMagicWandMenus();
+        if (!menus.length) return { ok: false, reason: 'menu-not-found' };
+        for (const found of menus) {
+            if (found.menu.querySelector(LOADER_ENTRY_SELECTOR)) continue;
+            found.menu.appendChild(createLoaderMagicEntry(found.doc));
+        }
+        return { ok: true, entries: menus.length };
+    }
+
+    function findMagicWandMenus() {
+        const found = [];
+        for (const candidateDoc of getCandidateDocuments()) {
+            for (const selector of MAGIC_MENU_SELECTORS) {
+                safeQueryAll(candidateDoc, selector).forEach((menu) => {
+                    if (menu && !found.some((item) => item.menu === menu)) {
+                        found.push({ doc: candidateDoc, menu });
+                    }
+                });
+            }
+        }
+        return found;
+    }
+
+    function createLoaderMagicEntry(candidateDoc) {
+        const button = candidateDoc.createElement('a');
+        button.className = 'list-group-item vnm-magic-entry is-loading';
+        button.href = 'javascript:void(0)';
+        button.setAttribute('data-vnm-magic-entry', '1');
+        button.setAttribute('data-vnm-loader-entry', '1');
+        button.setAttribute('data-vnm-version', 'loader');
+        button.setAttribute('title', '沉浸式 Galgame 系统正在加载');
+        button.setAttribute('aria-label', '沉浸式 Galgame 系统正在加载');
+        button.innerHTML = '<span class="fa-solid fa-book-open" aria-hidden="true"></span> 沉浸式 Galgame 系统';
+        button.addEventListener('click', (event) => {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const api = root.IGS || root.ImmersiveGalgameSystem;
+            if (api && typeof api.openLatestAvailable === 'function') {
+                api.openLatestAvailable();
+                return;
+            }
+            notifyLoaderPending();
+        });
+        return button;
+    }
+
+    function getCandidateDocuments() {
+        const docs = [];
+        const addDoc = (candidateDoc) => {
+            if (candidateDoc && !docs.includes(candidateDoc)) docs.push(candidateDoc);
+        };
+        addDoc(doc);
+        try {
+            addDoc(root.document);
+        } catch (error) {
+            // Cross-origin documents are ignored.
+        }
+        try {
+            addDoc(root.top && root.top.document);
+        } catch (error) {
+            // Cross-origin top window is ignored.
+        }
+        if (typeof document !== 'undefined') addDoc(document);
+        return docs;
+    }
+
+    function safeQueryAll(candidateDoc, selector) {
+        try {
+            return candidateDoc && typeof candidateDoc.querySelectorAll === 'function'
+                ? Array.from(candidateDoc.querySelectorAll(selector))
+                : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function notifyLoaderPending() {
+        const message = '沉浸式 Galgame 系统仍在加载远程脚本，请稍等几秒后再点。';
+        try {
+            if (root.toastr && typeof root.toastr.info === 'function') {
+                root.toastr.info(message, 'IGS');
+                return;
+            }
+            if (typeof root.alert === 'function') {
+                root.alert(message);
+                return;
+            }
+        } catch (error) {
+            // Fall through to console.
+        }
+        console.info('[IGS Loader]', message);
     }
 
     function getObject(value) {

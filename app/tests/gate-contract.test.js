@@ -125,6 +125,41 @@ test('gate:loader-json:repeated enable rescans magic wand without alerting', () 
     assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.reused, true);
 });
 
+test('gate:loader-json:adds-temporary-magic-wand-entry-before-remote-bundle-loads', () => {
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const documentLike = createLoaderDocumentLike({ magicMenu: true });
+    const alerts = [];
+    const root = {
+        document: documentLike,
+        parent: null,
+        alert: (message) => alerts.push(message),
+        console,
+        setTimeout: (callback) => {
+            callback();
+            return 1;
+        },
+        fetch: async () => ({ ok: true, status: 200 }),
+    };
+    root.parent = root;
+    root.top = root;
+
+    const context = vm.createContext({
+        window: root,
+        document: documentLike,
+        console,
+        setTimeout: root.setTimeout,
+        fetch: root.fetch,
+    });
+    vm.runInContext(loaderJson.content, context);
+
+    const entry = documentLike.magicMenu.querySelector('[data-vnm-loader-entry="1"]');
+    assert.ok(entry);
+    assert.equal(entry.getAttribute('data-vnm-magic-entry'), '1');
+    assert.equal(entry.getAttribute('data-vnm-version'), 'loader');
+    assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
+    assert.deepEqual(alerts, []);
+});
+
 test('gate:loader-json:loads-main-by-default-without-manifest-version-lock', async () => {
     const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
     const scripts = [];
@@ -164,7 +199,7 @@ test('gate:loader-json:loads-main-by-default-without-manifest-version-lock', asy
     assert.deepEqual(alerts, []);
     assert.equal(scripts.length, 1);
     assert.match(scripts[0], /@main\/app\/dist\/igs\.bundle\.js/);
-    assert.ok(fetched.every((url) => !url.includes('manifest.json')));
+    assert.deepEqual(fetched, []);
 });
 
 test('gate:loader-json:explicit-fixed-ref-falls-back-to-main-when-cdn-is-missing', async () => {
@@ -209,7 +244,6 @@ test('gate:loader-json:explicit-fixed-ref-falls-back-to-main-when-cdn-is-missing
 
     assert.deepEqual(alerts, []);
     assert.ok(fetched.some((url) => url.includes('@v9.9.9/app/dist/igs.bundle.js')));
-    assert.ok(fetched.some((url) => url.includes('@main/app/dist/igs.bundle.js')));
     assert.equal(scripts.length, 1);
     assert.match(scripts[0], /@main\/app\/dist\/igs\.bundle\.js/);
 });
@@ -283,7 +317,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.7');
+    const source = getOriginalReaderSource('0.3.8');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));
@@ -366,6 +400,8 @@ function readJson(relativePath) {
 }
 
 function createLoaderDocumentLike(options = {}) {
+    const magicMenu = options.magicMenu ? createLoaderElement('div') : null;
+    if (magicMenu) magicMenu.id = 'extensionsMenu';
     const head = {
         children: [],
         appendChild(element) {
@@ -376,24 +412,66 @@ function createLoaderDocumentLike(options = {}) {
     };
     return {
         head,
+        body: createLoaderElement('body'),
+        magicMenu,
         querySelector(selector) {
-            const idMatch = String(selector || '').match(/^#(.+)$/);
-            if (!idMatch) return null;
-            return head.children.find((element) => element.id === idMatch[1] && !element.removed) || null;
+            return this.querySelectorAll(selector)[0] || null;
+        },
+        querySelectorAll(selector) {
+            const normalized = String(selector || '');
+            if (normalized === '#extensionsMenu') return magicMenu && !magicMenu.removed ? [magicMenu] : [];
+            const idMatch = normalized.match(/^#(.+)$/);
+            if (!idMatch) return [];
+            const headMatch = head.children.find((element) => element.id === idMatch[1] && !element.removed);
+            return headMatch ? [headMatch] : [];
         },
         createElement(tagName) {
-            return {
-                tagName: String(tagName).toUpperCase(),
-                set id(value) {
-                    this._id = value;
-                },
-                get id() {
-                    return this._id;
-                },
-                remove() {
-                    this.removed = true;
-                },
-            };
+            return createLoaderElement(tagName);
+        },
+    };
+}
+
+function createLoaderElement(tagName) {
+    const attributes = new Map();
+    return {
+        tagName: String(tagName || '').toUpperCase(),
+        children: [],
+        parentNode: null,
+        innerHTML: '',
+        className: '',
+        href: '',
+        set id(value) {
+            this._id = value;
+            attributes.set('id', String(value));
+        },
+        get id() {
+            return this._id;
+        },
+        setAttribute(name, value) {
+            attributes.set(String(name), String(value));
+            if (name === 'id') this._id = String(value);
+        },
+        getAttribute(name) {
+            return attributes.has(String(name)) ? attributes.get(String(name)) : null;
+        },
+        appendChild(child) {
+            child.parentNode = this;
+            this.children.push(child);
+            return child;
+        },
+        addEventListener() {},
+        removeEventListener() {},
+        querySelector(selector) {
+            return this.querySelectorAll(selector)[0] || null;
+        },
+        querySelectorAll(selector) {
+            const normalized = String(selector || '');
+            const dataMatch = normalized.match(/^\[([^=]+)="([^"]+)"\]$/);
+            if (!dataMatch) return [];
+            return this.children.filter((child) => child.getAttribute && child.getAttribute(dataMatch[1]) === dataMatch[2] && !child.removed);
+        },
+        remove() {
+            this.removed = true;
         },
     };
 }

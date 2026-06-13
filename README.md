@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.7`：自动更新 loader 默认追踪 jsDelivr `@main` 最新 bundle，不再要求每次发版都修改 `loader/igs-loader.js` 的内置版本号。
-- `v0.3.7` 已把“loader 默认不得写死 `vX.Y.Z`、不得依赖 manifest 解析版本、默认加载 `@main`、固定 ref 失败时回退 `@main`”固定为回归闸门；`v0.3.6` 已补齐 `<image>` 图位绑定与图片轮询修复。
+- 当前项目版本 `v0.3.8`：补齐 loader 临时魔法棒入口与普通楼层图片扫描，修复远程包加载期间入口出现慢、普通 `img[src]` 插图不显示导致阅读器黑屏的问题。
+- `v0.3.8` 已把“远程 bundle 未加载完成前也先显示临时魔法棒入口”“普通楼层 img 可作为当前图位图片显示”固定为回归闸门；`v0.3.7` 已固定 loader 默认追踪 `@main` 最新 bundle。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,14 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.8 - 2026-06-13
+
+- 优化自动更新 loader 的入口体感速度：`loader/igs-loader.js` 现在会在远程 `igs.bundle.js` 下载完成前先向酒馆魔法棒菜单注入临时入口；正式 IGS 运行时加载完成后，`createMagicWandEntry()` 会清理该临时入口并替换为正式入口。
+- 默认 `@main` 加载路径不再额外做一次 HEAD 探测，减少一次远程请求；手动指定旧 tag、测试分支或自定义 base 时仍保留探测和 `@main` fallback，避免坏 ref 直接弹失败框。
+- 修复截图同类图片黑屏问题：`dom-image-candidates.js` 现在会在楼层范围内识别普通 `img[src] / img[data-src]`，并过滤明显的头像/宿主装饰图；`reader-host.js` 在当前 `<image>` 图位暂未绑定 URL 时，会用已扫到的未绑定插图或 `currentUrl` 兜底显示，不再只显示黑底。
+- 新增回归测试：loader 在远程 bundle 未完成前必须先显示临时魔法棒入口；含 `<image>` 图位且楼层只有普通图片节点时，阅读器必须显示该图片为背景。
+- 本轮已通过 `npm run test`、`npm run simulate`、`npm run gate`、`npm run build:loader` 与 loader JSON 反解校验。
 
 ### v0.3.7 - 2026-06-13
 
