@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前运行版本 `v0.3.2`：修复 jsDelivr 新标签短时 404 时 loader 直接弹出“远程脚本加载失败”的问题；loader 会先尝试 `@v<version>`，失败后自动回退到 `@main`。
+- 当前项目版本 `v0.3.3`：归档原版 VN 分页、拖拽、AI-only 楼层、长文本滚动与四模式选择器修复施工图；运行时行为仍继承 `v0.3.2`，本轮不包含功能修复。
 - `v0.3.2` 已把“manifest 指向新版本但版本 tag CDN 暂不可用时，不弹失败框并改用 `@main` bundle”固定为回归闸门；`v0.3.1` 已固定 web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
@@ -128,6 +128,12 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.3 - 2026-06-13
+
+- 新增 `plan/v0.3.3-原版VN分页拖拽与AI楼层修复施工图.md`，将当前发现的 VN parity 差异固化为可执行施工图。
+- 施工图明确下一轮需要修复：一段一页分页、PC/手机浮窗拖拽、上一轮/下一轮跳过用户层、浮窗长文本滚动、四模式选择器文字溢出。
+- 本版本是计划归档回退点，不包含运行时代码修复；实现轮需要重新核对施工图列出的源码位置并运行 `npm run gate` 与 `npm run build:loader`。
 
 ### v0.3.2 - 2026-06-13
 
