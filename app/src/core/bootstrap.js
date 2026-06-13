@@ -47,7 +47,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.3.10',
+        version: '0.3.11',
         global: globalObject,
         events,
         hostAdapter,

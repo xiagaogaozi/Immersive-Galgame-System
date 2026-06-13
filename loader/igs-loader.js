@@ -3,6 +3,8 @@
 
     const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
     const DEFAULT_REF = 'main';
+    const MAIN_BASE = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@main`;
+    const MAIN_MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/app/dist/manifest.json`;
     const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
     const CSS_ID = 'igs-auto-loader-css';
     const SCRIPT_ID = 'igs-auto-loader-js';
@@ -90,12 +92,16 @@
     async function resolveLoaderConfig() {
         const userConfig = getObject(root.IGS_LOADER_CONFIG);
         const explicitRef = String(userConfig.ref || root.IGS_LOADER_REF || '').trim();
-        const ref = explicitRef || DEFAULT_REF;
+        const latestManifest = !explicitRef && !userConfig.base && !root.IGS_LOADER_BASE
+            ? await fetchLatestManifest()
+            : null;
+        const latestRef = normalizeManifestRef(latestManifest);
+        const ref = explicitRef || latestRef || DEFAULT_REF;
         const defaultBase = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${ref}`;
         const hasCustomBase = Boolean(userConfig.base || root.IGS_LOADER_BASE);
         const base = String(userConfig.base || root.IGS_LOADER_BASE || defaultBase).replace(/\/+$/, '');
         const cacheBust = userConfig.cacheBust === undefined ? ref === 'main' || Boolean(explicitRef && !/^v\d+\.\d+\.\d+$/.test(ref)) : userConfig.cacheBust !== false;
-        return { ref, base, cacheBust, hasCustomBase };
+        return { ref, base, cacheBust, hasCustomBase, latestRef };
     }
 
     function buildLoadAttempts(config) {
@@ -106,20 +112,74 @@
                 cacheBust: config.cacheBust,
             },
         ];
+        if (!config.hasCustomBase && config.latestRef && config.latestRef !== config.ref) {
+            attempts.push({
+                ref: config.latestRef,
+                base: `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${config.latestRef}`,
+                cacheBust: false,
+                fallbackOf: config.ref,
+            });
+        }
         if (!config.hasCustomBase && config.ref !== 'main') {
             attempts.push({
                 ref: 'main',
-                base: `https://cdn.jsdelivr.net/gh/${REPOSITORY}@main`,
+                base: MAIN_BASE,
                 cacheBust: true,
                 fallbackOf: config.ref,
             });
         }
-        return attempts;
+        return dedupeAttempts(attempts);
     }
 
     function shouldProbeBundleAttempt(attempt, config) {
         if (config.hasCustomBase) return true;
         return attempt.ref !== 'main';
+    }
+
+    async function fetchLatestManifest() {
+        const fetchFn = getFetch();
+        if (!fetchFn) return null;
+        const manifestUrl = withTimestamp(MAIN_MANIFEST_URL);
+        try {
+            const response = await fetchFn(manifestUrl, { cache: 'no-store' });
+            if (!response || !response.ok) {
+                console.warn('[IGS Loader] 最新 manifest 读取失败，改用 @main。', response && response.status || 'unknown');
+                return null;
+            }
+            const manifest = await readResponseJson(response);
+            const ref = normalizeManifestRef(manifest);
+            if (ref) {
+                console.info('[IGS Loader] 发现最新远程版本。', ref, manifestUrl);
+            }
+            return manifest;
+        } catch (error) {
+            console.warn('[IGS Loader] 最新 manifest 读取异常，改用 @main。', error);
+            return null;
+        }
+    }
+
+    async function readResponseJson(response) {
+        if (response && typeof response.json === 'function') return response.json();
+        if (response && typeof response.text === 'function') {
+            const text = await response.text();
+            return JSON.parse(text);
+        }
+        return null;
+    }
+
+    function normalizeManifestRef(manifest) {
+        const version = String(manifest && manifest.version || '').trim();
+        return /^\d+\.\d+\.\d+$/.test(version) ? `v${version}` : '';
+    }
+
+    function dedupeAttempts(attempts) {
+        const seen = new Set();
+        return attempts.filter((attempt) => {
+            const key = `${attempt.ref}|${attempt.base}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
     }
 
     function scheduleLoaderMagicWandEntry() {
@@ -246,9 +306,7 @@
     }
 
     async function probeBundleUrl(url) {
-        const fetchFn = root.fetch
-            ? root.fetch.bind(root)
-            : (typeof fetch === 'function' ? fetch : null);
+        const fetchFn = getFetch();
         if (!fetchFn) return { ok: true, skipped: true };
         try {
             const response = await fetchFn(url, { method: 'HEAD', cache: 'no-store' });
@@ -258,6 +316,17 @@
         } catch (error) {
             return { ok: false, error };
         }
+    }
+
+    function getFetch() {
+        return root.fetch
+            ? root.fetch.bind(root)
+            : (typeof fetch === 'function' ? fetch : null);
+    }
+
+    function withTimestamp(url) {
+        const mark = `igs_t=${Date.now()}`;
+        return `${url}${url.includes('?') ? '&' : '?'}${mark}`;
     }
 
     function injectCss(href) {

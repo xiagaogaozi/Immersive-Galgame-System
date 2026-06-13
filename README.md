@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.10`：修复远程自动更新 bundle 仍转发到 `app/src` 子模块的问题，确保酒馆加载到的远程文件自包含并包含 `<image>` 图位翻页同步修复。
-- `v0.3.10` 已把 dist bundle 自包含固定为回归闸门；`v0.3.9` 已把“第 1 页不能偷显示后续图位图片”“普通 DOM 图片按 `<image>` 顺序填槽并随正文翻页”固定为回归闸门。
+- 当前项目版本 `v0.3.11`：自动更新 loader 改为先读取 raw manifest 的最新版本，再优先加载 jsDelivr `@v版本` 自包含 bundle，绕开 `@main` 分支文件缓存。
+- `v0.3.11` 已把 manifest-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门；`v0.3.9` 已把 `<image>` 图位翻页同步固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,12 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.11 - 2026-06-13
+
+- 修复 jsDelivr `@main` 分支缓存继续返回旧 267 字节入口的问题：`loader/igs-loader.js` 现在默认先读取 `raw.githubusercontent.com/.../main/app/dist/manifest.json`，从最新 manifest 得到 `vX.Y.Z` 后优先加载 `https://cdn.jsdelivr.net/gh/...@vX.Y.Z/app/dist/igs.bundle.*`。
+- 保留自动更新：以后发布新版本只需要更新仓库 `main` 的 manifest 和打版本标签，loader 不需要再手改内置版本号；manifest 或版本标签不可用时才回退 `@main`。
+- 更新 loader VM 回归测试：默认加载必须先走 manifest 指向的版本标签，坏固定 ref 仍能 fallback，避免酒馆端继续吃 `@main` 旧缓存导致 `<image>` 绑定修复不生效。
 
 ### v0.3.10 - 2026-06-13
 

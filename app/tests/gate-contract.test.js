@@ -79,7 +79,8 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /DEFAULT_REF = 'main'/);
     assert.doesNotMatch(loaderJson.content, /DEFAULT_REF = 'v\d+\.\d+\.\d+'/);
-    assert.doesNotMatch(loaderJson.content, /RAW_MANIFEST_URL/);
+    assert.match(loaderJson.content, /MAIN_MANIFEST_URL/);
+    assert.match(loaderJson.content, /fetchLatestManifest/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -93,7 +94,7 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0\.3\.10/);
+    assert.match(bundle, /IGS version: 0\.3\.11/);
     assert.match(bundle, /resolveSegmentImageIndex/);
 });
 
@@ -182,7 +183,7 @@ test('gate:loader-json:adds-temporary-magic-wand-entry-before-remote-bundle-load
     assert.deepEqual(alerts, []);
 });
 
-test('gate:loader-json:loads-main-by-default-without-manifest-version-lock', async () => {
+test('gate:loader-json:loads-manifest-version-by-default-with-main-fallback', async () => {
     const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
     const scripts = [];
     const alerts = [];
@@ -200,9 +201,16 @@ test('gate:loader-json:loads-main-by-default-without-manifest-version-lock', asy
         alert: (message) => alerts.push(message),
         console,
         setTimeout,
-        fetch: async (url) => {
+        fetch: async (url, options = {}) => {
             const text = String(url);
             fetched.push(text);
+            if (text.includes('/main/app/dist/manifest.json')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ version: '7.8.9' }),
+                };
+            }
             return { ok: true, status: 200 };
         },
     };
@@ -220,8 +228,9 @@ test('gate:loader-json:loads-main-by-default-without-manifest-version-lock', asy
 
     assert.deepEqual(alerts, []);
     assert.equal(scripts.length, 1);
-    assert.match(scripts[0], /@main\/app\/dist\/igs\.bundle\.js/);
-    assert.deepEqual(fetched, []);
+    assert.match(scripts[0], /@v7\.8\.9\/app\/dist\/igs\.bundle\.js/);
+    assert.ok(fetched.some((url) => url.includes('/main/app/dist/manifest.json')));
+    assert.ok(fetched.some((url) => url.includes('@v7.8.9/app/dist/igs.bundle.js')));
 });
 
 test('gate:loader-json:explicit-fixed-ref-falls-back-to-main-when-cdn-is-missing', async () => {
@@ -339,7 +348,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.10');
+    const source = getOriginalReaderSource('0.3.11');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));
