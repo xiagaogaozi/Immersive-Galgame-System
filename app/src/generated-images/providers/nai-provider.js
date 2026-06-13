@@ -1,3 +1,8 @@
+import {
+    fetchModels as fetchImageModelsFromApi,
+    generateImage as generateImageFromApi,
+} from '../image-api-client.js';
+
 export const naiProvider = {
     id: 'igs.provider.nai',
     type: 'image-provider',
@@ -6,14 +11,25 @@ export const naiProvider = {
     permissions: ['network'],
 
     async detect(context = {}) {
-        return !!(context.settings && context.settings.nai);
+        return resolveImageApiSettings(context).mode === 'nai';
     },
 
-    async generate(request) {
+    async fetchModels(_request = {}, context = {}) {
+        const imageApi = resolveImageApiSettings(context);
+        return fetchImageModelsFromApi(imageApi, buildNetworkDependencies(context));
+    },
+
+    async generate(request = {}, context = {}) {
+        const imageApi = resolveImageApiSettings(context);
+        if (imageApi.mode !== 'nai') {
+            return { ok: false, reason: 'provider-not-enabled', request };
+        }
+        const result = await generateImageFromApi(request, imageApi, buildNetworkDependencies(context));
         return {
-            ok: false,
-            reason: 'not-implemented',
-            request,
+            ok: true,
+            ...result,
+            providerId: 'igs.provider.nai',
+            source: 'generated-image',
         };
     },
 
@@ -25,3 +41,29 @@ export const naiProvider = {
         return [];
     },
 };
+
+function resolveImageApiSettings(context = {}) {
+    const unifiedSettings = context.unifiedSettings || context.settings || {};
+    const bridge = unifiedSettings.bridge && typeof unifiedSettings.bridge === 'object'
+        ? unifiedSettings.bridge
+        : {};
+    const imageApi = unifiedSettings.imageApi && typeof unifiedSettings.imageApi === 'object'
+        ? unifiedSettings.imageApi
+        : bridge.imageApi && typeof bridge.imageApi === 'object'
+            ? bridge.imageApi
+            : {};
+    return {
+        mode: String(imageApi.mode || 'nai').trim() || 'nai',
+        ...imageApi,
+    };
+}
+
+function buildNetworkDependencies(context = {}) {
+    return {
+        fetch: context.fetch,
+        AbortController: context.AbortController,
+        setTimeout: context.setTimeout,
+        clearTimeout: context.clearTimeout,
+        global: context.global,
+    };
+}

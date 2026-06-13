@@ -492,20 +492,44 @@ export function createVisualNovelReaderHost(options = {}) {
         }
 
         if (normalizedAction === 'fetch-image-models') {
-            settingsState.draft.bridge.imageApi.availableModels = [
-                'nai-diffusion-3',
-                'nai-diffusion-4-curated-preview',
-            ];
-            settingsState.draft.bridge.imageApi.modelsFetchedAt = new Date().toISOString();
-            settingsState.asyncState.imageModelsMessage = '已通过模拟 provider 拉取 2 个模型。';
+            if (typeof options.fetchImageModels !== 'function') {
+                settingsState.asyncState.imageModelsMessage = '当前未接入内置图像模型拉取能力。';
+                return rerenderSettings();
+            }
+            const result = await options.fetchImageModels({
+                settings: cloneData(settingsState.draft),
+                message: state.activeReader && state.activeReader.payload && state.activeReader.payload.message || null,
+                mode: settingsState.readerMode,
+            });
+            if (!result || result.ok === false) {
+                settingsState.asyncState.imageModelsMessage = String(result && result.reason || '图像模型拉取失败');
+                return rerenderSettings();
+            }
+            settingsState.draft.bridge.imageApi.availableModels = Array.isArray(result.models)
+                ? result.models.filter(Boolean)
+                : [];
+            settingsState.draft.bridge.imageApi.modelsFetchedAt = String(result.modelsFetchedAt || new Date().toISOString());
+            settingsState.asyncState.imageModelsMessage = String(result.message || `已拉取 ${settingsState.draft.bridge.imageApi.availableModels.length} 个模型。`);
             persistSettingsDraft();
             return rerenderSettings();
         }
 
         if (normalizedAction === 'test-image') {
-            settingsState.asyncState.imageResult = settingsState.draft.bridge.imageApi.mode === 'nai'
-                ? '已通过 fake NAI provider 验证请求链路。'
-                : '已通过 fake 外部插图扩展验证检测链路。';
+            if (typeof options.testImageApi !== 'function') {
+                settingsState.asyncState.imageResult = '当前未接入图像测试能力。';
+                return rerenderSettings();
+            }
+            const result = await options.testImageApi({
+                settings: cloneData(settingsState.draft),
+                message: state.activeReader && state.activeReader.payload && state.activeReader.payload.message || null,
+                mode: settingsState.readerMode,
+            });
+            settingsState.asyncState.imageResult = String(
+                result && (result.message || result.reason)
+                || (settingsState.draft.bridge.imageApi.mode === 'nai'
+                    ? '图像 API 生成测试失败。'
+                    : '插图扩展检测失败。'),
+            );
             return rerenderSettings();
         }
 
@@ -780,7 +804,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.4'),
+            source: getOriginalReaderSource(options.version || '0.3.5'),
         };
     }
 
@@ -805,7 +829,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.4'),
+                version: esc(options.version || '0.3.5'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -888,7 +912,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 promptPrefixField: field('bridge.imageApi.promptPrefix', '图像提示词前缀', promptPrefixInput),
                 imageModelsMessage: esc(asyncState.imageModelsMessage || (apiDisabled ? '使用现有插图扩展时无需拉取内置 API 模型；检测插件会检查 chatu8 / chami 链路。' : '可手填模型，也可点击拉取模型获取候选列表。')),
                 imageTestActionLabel: imageApi.mode === 'nai' ? '测试生成' : '检测插件',
-                imageTestHelp: esc(asyncState.imageResult || (imageApi.mode === 'nai' ? '测试会使用 fake provider 验证返回格式。' : '检测当前页面可用的外部插图扩展与图片/按钮链路。')),
+                imageTestHelp: esc(asyncState.imageResult || (imageApi.mode === 'nai' ? '测试会对当前内置 API 发起真实生成请求；建议先填写 endpoint、模型和 key。' : '检测当前页面可用的外部插图扩展与图片/按钮链路。')),
             });
         }
 
@@ -1219,7 +1243,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vnm-settings-badge';
-        badge.textContent = options.version || '0.3.4';
+        badge.textContent = options.version || '0.3.5';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1823,7 +1847,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.4' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.5' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1834,7 +1858,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.4',
+            version: snapshot.version || options.version || '0.3.5',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,

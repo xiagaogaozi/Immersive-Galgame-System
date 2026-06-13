@@ -3,59 +3,55 @@ import {
     getVisibleMessageTextFromElement,
     looksLikeHostUiHtml,
 } from '../scene/message-source.js';
+import { findDomRegenerateButtons } from '../generated-images/dom-image-candidates.js';
+
+const INTERNAL_READER_ATTR = 'data-vnm-internal-reader';
+const HIDDEN_CACHE_WINDOW_MS = 300;
 
 export function createTavernHelperAdapter(globalObject = globalThis.window || globalThis) {
-    const helper = globalObject && globalObject.TavernHelper;
+    let hiddenMessageCache = { at: 0, ids: null };
 
     return {
         async getLastMessageId() {
-            if (!helper) return null;
-            return getLastMessageId(helper);
+            return getLastMessageId(globalObject);
         },
 
         async getCurrentMessage() {
-            if (!helper) return null;
-            const normalizedMessages = getNormalizedMessages(helper, globalObject);
+            const normalizedMessages = getNormalizedMessages(globalObject, hiddenMessageCache);
             return pickCurrentMessage(normalizedMessages) || normalizedMessages[normalizedMessages.length - 1] || null;
         },
 
         async getMessageById(messageId) {
-            if (!helper) return null;
             const normalizedId = normalizeMessageId(messageId);
             if (normalizedId == null) return null;
             const domMessageMap = createDomMessageMap(globalObject);
-            const direct = getChatMessages(helper, normalizedId, normalizedId).find((message) => {
-                return normalizeMessageId(message && message.id) === normalizedId
-                    || normalizeMessageId(message && message.message_id) === normalizedId;
+            const hiddenIds = getHiddenMessageIdSet(globalObject, hiddenMessageCache);
+            const direct = getChatMessages(globalObject, normalizedId, normalizedId).find((message, index) => {
+                return resolveMessageId(message, normalizedId + index) === normalizedId;
             });
-            if (direct) return normalizeMessage(direct, normalizedId, domMessageMap);
+            if (direct) return normalizeMessage(direct, normalizedId, domMessageMap, hiddenIds);
 
-            const lastId = getLastMessageId(helper);
-            const messages = getChatMessages(helper, 0, lastId);
-            const fallback = messages.find((message) => {
-                return normalizeMessageId(message && message.id) === normalizedId
-                    || normalizeMessageId(message && message.message_id) === normalizedId;
-            });
-            return normalizeMessage(fallback, normalizedId, domMessageMap);
+            const entries = getChatMessageEntries(globalObject);
+            const fallback = entries.find((item) => item.id === normalizedId);
+            return normalizeMessage(fallback && fallback.message, normalizedId, domMessageMap, hiddenIds);
         },
 
         async listMessages() {
-            if (!helper) return [];
-            return getNormalizedMessages(helper, globalObject);
+            return getNormalizedMessages(globalObject, hiddenMessageCache);
         },
 
         async getAdjacentMessage(messageId, delta = 1) {
-            if (!helper) return null;
             const normalizedId = normalizeMessageId(messageId);
             if (normalizedId == null) return null;
             const step = Number(delta) < 0 ? -1 : 1;
-            const messages = getNormalizedMessages(helper, globalObject).filter(isTurnCandidate);
+            const messages = getNormalizedMessages(globalObject, hiddenMessageCache).filter(isTurnCandidate);
             const currentIndex = messages.findIndex((message) => message.id === normalizedId);
             if (currentIndex < 0) return null;
             return messages[currentIndex + step] || null;
         },
 
         async jumpToMessage(messageId) {
+            const helper = getTavernHelper(globalObject);
             if (!helper) return { ok: false, reason: 'missing-tavern-helper' };
             const normalizedId = normalizeMessageId(messageId);
             if (normalizedId == null) return { ok: false, reason: 'invalid-message-id', messageId };
@@ -73,6 +69,7 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
         },
 
         async typeAndSend(text) {
+            const helper = getTavernHelper(globalObject);
             if (!helper) return { ok: false, reason: 'missing-tavern-helper' };
             if (typeof helper.typeAndSend === 'function') {
                 await helper.typeAndSend(text);
@@ -88,26 +85,141 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
     };
 }
 
-function getLastMessageId(helper) {
-    if (typeof helper.getLastMessageId === 'function') {
-        return helper.getLastMessageId();
+export function getTavernHelper(globalObject = globalThis.window || globalThis) {
+    try {
+        return globalObject && globalObject.TavernHelper
+            || globalObject && globalObject.top && globalObject.top.TavernHelper
+            || (typeof window !== 'undefined' ? window.TavernHelper : null)
+            || null;
+    } catch (error) {
+        return null;
     }
-    return null;
 }
 
-function getChatMessages(helper, startId, endId) {
-    if (typeof helper.getChatMessages !== 'function') return [];
+export function getSillyTavernContext(globalObject = globalThis.window || globalThis) {
+    return (
+        getContextFromTarget(globalObject) ||
+        getContextFromTarget(globalObject && globalObject.parent) ||
+        getContextFromTarget(globalObject && globalObject.top) ||
+        null
+    );
+}
+
+export function getChatFromContext(globalObject = globalThis.window || globalThis) {
+    const context = getSillyTavernContext(globalObject);
+    return context && Array.isArray(context.chat) ? context.chat : null;
+}
+
+export function getCandidateDocuments(globalObject = globalThis.window || globalThis) {
+    const docs = [];
+    const addDoc = (doc) => {
+        if (doc && !docs.includes(doc)) docs.push(doc);
+    };
+
+    addDoc(safeDocument(globalObject));
+    try {
+        addDoc(safeDocument(globalObject && globalObject.top));
+    } catch (error) {
+        // Cross-origin top windows are ignored.
+    }
+    if (typeof document !== 'undefined') addDoc(document);
+    return docs;
+}
+
+export function getMessageScopedRoots(message, targetDocument = null) {
+    const roots = [];
+    const seen = new Set();
+    const addRoot = (root) => {
+        if (!root || typeof root.querySelectorAll !== 'function' || seen.has(root)) return;
+        seen.add(root);
+        roots.push(root);
+    };
+
+    const element = message && message.element;
+    if (element) {
+        addRoot(element);
+        addRoot(getMessageTextRoot(element));
+        getMessageScopedDocs(element).forEach(addRoot);
+        if (targetDocument && documentBelongsToMessage(targetDocument, element)) {
+            addRoot(targetDocument);
+        }
+        return roots;
+    }
+
+    addRoot(targetDocument);
+    return roots;
+}
+
+function getLastMessageId(globalObject) {
+    const helper = getTavernHelper(globalObject);
+    if (helper && typeof helper.getLastMessageId === 'function') {
+        try {
+            return normalizeMessageId(helper.getLastMessageId());
+        } catch (error) {
+            return resolveContextLastMessageId(globalObject);
+        }
+    }
+    return resolveContextLastMessageId(globalObject);
+}
+
+function resolveContextLastMessageId(globalObject) {
+    const chat = getChatFromContext(globalObject);
+    return Array.isArray(chat) && chat.length ? chat.length - 1 : null;
+}
+
+function getChatMessages(globalObject, startId, endId, extraOptions = {}) {
+    const helper = getTavernHelper(globalObject);
     const safeStart = normalizeMessageId(startId) ?? 0;
     const safeEnd = normalizeMessageId(endId) ?? safeStart;
-    const range = `${Math.min(safeStart, safeEnd)}-${Math.max(safeStart, safeEnd)}`;
-    const messages = helper.getChatMessages(range, { include_swipes: false });
-    return Array.isArray(messages) ? messages : [];
+    if (helper && typeof helper.getChatMessages === 'function') {
+        try {
+            const range = `${Math.min(safeStart, safeEnd)}-${Math.max(safeStart, safeEnd)}`;
+            const messages = helper.getChatMessages(range, {
+                include_swipes: false,
+                ...extraOptions,
+            });
+            return Array.isArray(messages) ? messages : [];
+        } catch (error) {
+            return [];
+        }
+    }
+    const chat = getChatFromContext(globalObject);
+    if (!Array.isArray(chat)) return [];
+    return chat.slice(Math.min(safeStart, safeEnd), Math.max(safeStart, safeEnd) + 1);
 }
 
-function normalizeMessage(message, fallbackId, domMessageMap = new Map()) {
-    if (typeof message === 'string') return { id: fallbackId, text: message, rawHtml: message, raw: message };
+function getChatMessageEntries(globalObject, extraOptions = {}) {
+    const output = [];
+    const seen = new Set();
+    const lastId = getLastMessageId(globalObject);
+    const helperMessages = lastId != null ? getChatMessages(globalObject, 0, lastId, extraOptions) : [];
+
+    helperMessages.forEach((message, index) => {
+        const id = resolveMessageId(message, index);
+        if (id == null || seen.has(id)) return;
+        seen.add(id);
+        output.push({ id, message, index });
+    });
+    if (output.length) return output;
+
+    const chat = getChatFromContext(globalObject);
+    if (!Array.isArray(chat)) return output;
+    chat.forEach((message, index) => {
+        const id = resolveMessageId(message, index);
+        if (id == null || seen.has(id)) return;
+        seen.add(id);
+        output.push({ id, message, index });
+    });
+    return output;
+}
+
+function normalizeMessage(message, fallbackId, domMessageMap = new Map(), hiddenIds = null) {
+    if (typeof message === 'string') {
+        return { id: fallbackId, text: message, rawHtml: message, raw: message };
+    }
     if (!message || typeof message !== 'object') return null;
     const id = resolveMessageId(message, fallbackId);
+    if (id == null) return null;
     const element = resolveMessageElement(message, id, domMessageMap);
     const rawText = getMessagePrimaryText(message);
     const visibleText = normalizeText(
@@ -123,37 +235,78 @@ function normalizeMessage(message, fallbackId, domMessageMap = new Map()) {
         visibleText,
         looksLikeHostUiHtml: looksLikeHostUiHtml(rawText),
         element,
-        isUser: isUserMessage(message),
-        isSystem: isSystemMessage(message),
-        isHidden: isHiddenMessage(message),
+        isUser: isUserMessage(message, element),
+        isSystem: isSystemMessage(message, element),
+        isHidden: isHiddenMessage(message, id, element, hiddenIds),
         raw: message,
     };
 }
 
-function getNormalizedMessages(helper, globalObject) {
-    const lastId = getLastMessageId(helper);
-    const messages = getChatMessages(helper, 0, lastId);
+function getNormalizedMessages(globalObject, hiddenMessageCache) {
     const domMessageMap = createDomMessageMap(globalObject);
-    return messages
-        .map((message) => normalizeMessage(message, lastId, domMessageMap))
+    const hiddenIds = getHiddenMessageIdSet(globalObject, hiddenMessageCache);
+    return getChatMessageEntries(globalObject)
+        .map((entry) => normalizeMessage(entry.message, entry.id, domMessageMap, hiddenIds))
         .filter(Boolean)
         .sort((left, right) => (left.id ?? 0) - (right.id ?? 0));
 }
 
-function normalizeMessageId(value) {
-    const id = Number(value);
-    if (!Number.isFinite(id) || id < 0) return null;
-    return id;
+function createDomMessageMap(globalObject) {
+    const map = new Map();
+    for (const doc of getCandidateDocuments(globalObject)) {
+        const nodes = safeQueryAll(doc, '#chat .mes, .mes');
+        for (const node of nodes) {
+            const id = getElementMessageId(node);
+            if (id == null || map.has(id)) continue;
+            map.set(id, node);
+        }
+    }
+    return map;
 }
 
-function resolveMessageId(message, fallbackId) {
-    return normalizeMessageId(message && (message.id ?? message.message_id ?? fallbackId));
+function getContextFromTarget(target) {
+    try {
+        if (target && target.SillyTavern && typeof target.SillyTavern.getContext === 'function') {
+            return target.SillyTavern.getContext();
+        }
+    } catch (error) {
+        return null;
+    }
+    return null;
+}
+
+function readHiddenMessageIdsFromTavernHelper(globalObject) {
+    const helper = getTavernHelper(globalObject);
+    if (!helper || typeof helper.getChatMessages !== 'function') return null;
+    const lastId = getLastMessageId(globalObject);
+    if (lastId == null) return null;
+    try {
+        const messages = helper.getChatMessages(`0-${lastId}`, { hide_state: 'hidden', include_swipes: false });
+        if (!Array.isArray(messages)) return null;
+        const ids = new Set();
+        messages.forEach((entry) => {
+            const id = resolveMessageId(entry);
+            if (id != null) ids.add(id);
+        });
+        return ids;
+    } catch (error) {
+        return null;
+    }
+}
+
+function getHiddenMessageIdSet(globalObject, hiddenMessageCache) {
+    const now = Date.now();
+    if (hiddenMessageCache.ids && now - hiddenMessageCache.at < HIDDEN_CACHE_WINDOW_MS) {
+        return hiddenMessageCache.ids;
+    }
+    const ids = readHiddenMessageIdsFromTavernHelper(globalObject);
+    hiddenMessageCache.at = now;
+    hiddenMessageCache.ids = ids;
+    return ids;
 }
 
 function pickCurrentMessage(messages) {
-    const readable = messages.filter((message) => {
-        return isTurnCandidate(message);
-    });
+    const readable = messages.filter(isTurnCandidate);
     return readable[readable.length - 1] || null;
 }
 
@@ -166,105 +319,68 @@ function isTurnCandidate(message) {
     );
 }
 
-function createDomMessageMap(globalObject) {
-    const docs = getCandidateDocuments(globalObject);
-    const map = new Map();
-
-    for (const doc of docs) {
-        const nodes = safeQueryAll(doc, '#chat .mes, .mes');
-        for (const node of nodes) {
-            const id = getElementMessageId(node);
-            if (id == null || map.has(id)) continue;
-            map.set(id, node);
-        }
-    }
-
-    return map;
+function findMessageRegenerateButton(message, imageIndex) {
+    const buttons = findDomRegenerateButtons(getMessageScopedRoots(message));
+    const targetIndex = Math.max(0, Math.floor(Number(imageIndex) || 0));
+    return buttons[targetIndex] || null;
 }
 
-function getCandidateDocuments(globalObject) {
+function getMessageScopedDocs(messageElement) {
     const docs = [];
-    const addDoc = (doc) => {
-        if (doc && !docs.includes(doc)) docs.push(doc);
-    };
-
-    addDoc(safeDocument(globalObject));
-    try {
-        addDoc(safeDocument(globalObject.top));
-    } catch (error) {
-        // Cross-origin top windows are ignored.
+    const seen = new Set();
+    for (const frame of safeQueryAll(messageElement, 'iframe')) {
+        const doc = getFrameDocument(frame);
+        if (doc && !seen.has(doc)) {
+            seen.add(doc);
+            docs.push(doc);
+        }
     }
-    if (typeof document !== 'undefined') addDoc(document);
     return docs;
 }
 
-function safeDocument(target) {
+function getFrameDocument(frame) {
+    if (!frame || isInternalReaderFrame(frame)) return null;
     try {
-        return target && target.document || null;
+        return frame.contentDocument || frame.contentWindow && frame.contentWindow.document || null;
     } catch (error) {
         return null;
     }
 }
 
-function safeQueryAll(doc, selector) {
+function isInternalReaderFrame(frame) {
+    return Boolean(frame && typeof frame.getAttribute === 'function' && frame.getAttribute(INTERNAL_READER_ATTR) === '1');
+}
+
+function documentBelongsToMessage(doc, messageElement) {
+    if (!doc || !messageElement) return false;
+    if (getMessageScopedDocs(messageElement).includes(doc)) return true;
     try {
-        return doc && typeof doc.querySelectorAll === 'function'
-            ? Array.from(doc.querySelectorAll(selector))
-            : [];
+        const frame = doc.defaultView && doc.defaultView.frameElement;
+        const owner = frame && !isInternalReaderFrame(frame) && typeof frame.closest === 'function'
+            ? frame.closest('.mes[mesid]')
+            : null;
+        return Boolean(owner && sameMessageByMesId(owner, messageElement));
     } catch (error) {
-        return [];
+        return false;
     }
 }
 
-function findMessageRegenerateButton(message, imageIndex) {
-    const targetIndex = Math.max(0, Math.floor(Number(imageIndex) || 0));
-    const roots = getMessageScopedRoots(message);
-    const selectors = [
-        'button.image-tag-button, button[class*="image-tag-button"], button[class*="st-chatu8-image"]',
-        '.tsp-regenerate-btn, .tsp-inline-gen-btn',
-    ];
-    const buttons = [];
-    const seen = new Set();
-
-    for (const selector of selectors) {
-        for (const root of roots) {
-            if (!root || typeof root.querySelectorAll !== 'function') continue;
-            let matches = [];
-            try {
-                matches = Array.from(root.querySelectorAll(selector));
-            } catch (error) {
-                matches = [];
-            }
-            for (const button of matches) {
-                if (!button || seen.has(button)) continue;
-                seen.add(button);
-                buttons.push(button);
-            }
-        }
-    }
-
-    return buttons[targetIndex] || null;
+function sameMessageByMesId(left, right) {
+    if (!left || !right) return left === right;
+    if (left === right) return true;
+    const leftId = getElementMessageId(left);
+    const rightId = getElementMessageId(right);
+    return leftId != null && rightId != null && leftId === rightId;
 }
 
-function getMessageScopedRoots(message) {
-    const roots = [];
-    const addRoot = (root) => {
-        if (!root || roots.includes(root)) return;
-        roots.push(root);
-    };
-
-    const element = message && message.element;
-    addRoot(element);
-
-    if (element && typeof element.querySelector === 'function') {
-        try {
-            addRoot(element.querySelector('.mes_text'));
-        } catch (error) {
-            // Ignore bad selectors in host shims.
-        }
+function getMessageTextRoot(element) {
+    try {
+        return element && typeof element.querySelector === 'function'
+            ? element.querySelector('.mes_text')
+            : null;
+    } catch (error) {
+        return null;
     }
-
-    return roots;
 }
 
 function getElementMessageId(element) {
@@ -291,52 +407,74 @@ function getMessageDomElement(message) {
 }
 
 function isDomLikeMessageElement(value) {
-    return Boolean(
-        value
-        && typeof value === 'object'
-        && typeof value.getAttribute === 'function',
-    );
+    return Boolean(value && typeof value === 'object' && typeof value.getAttribute === 'function');
 }
 
-function isUserMessage(message) {
-    const element = getMessageDomElement(message);
+function resolveMessageId(message, fallbackId) {
+    return normalizeMessageId(message && (message.id ?? message.message_id ?? message.mesid ?? fallbackId));
+}
+
+function normalizeMessageId(value) {
+    const id = Number(value);
+    if (!Number.isFinite(id) || id < 0) return null;
+    return id;
+}
+
+function isUserMessage(message, element) {
     return Boolean(
         message && (
             isTruthyFlag(message.is_user)
             || isTruthyFlag(message.isUser)
             || isTruthyFlag(message.user)
             || message.role === 'user'
-            || (element && element.getAttribute('is_user') === 'true')
+            || element && element.getAttribute('is_user') === 'true'
         ),
     );
 }
 
-function isSystemMessage(message) {
-    const element = getMessageDomElement(message);
+function isSystemMessage(message, element) {
     return Boolean(
         message && (
             isTruthyFlag(message.is_system)
             || isTruthyFlag(message.isSystem)
             || isTruthyFlag(message.system)
-            || (element && element.getAttribute('is_system') === 'true')
+            || element && element.getAttribute('is_system') === 'true'
         ),
     );
 }
 
-function isHiddenMessage(message) {
-    const element = getMessageDomElement(message);
+function isHiddenMessage(message, messageId, element, hiddenIds) {
     return Boolean(
         message && (
             isTruthyFlag(message.is_hidden)
             || isTruthyFlag(message.isHidden)
             || isTruthyFlag(message.hidden)
-            || (element && element.getAttribute('is_hidden') === 'true')
+            || element && element.getAttribute('is_hidden') === 'true'
+            || hiddenIds instanceof Set && hiddenIds.has(messageId)
         ),
     );
 }
 
 function isTruthyFlag(value) {
     return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function safeDocument(target) {
+    try {
+        return target && target.document || null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function safeQueryAll(root, selector) {
+    try {
+        return root && typeof root.querySelectorAll === 'function'
+            ? Array.from(root.querySelectorAll(selector))
+            : [];
+    } catch (error) {
+        return [];
+    }
 }
 
 function normalizeText(value) {

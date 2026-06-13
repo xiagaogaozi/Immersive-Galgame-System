@@ -1,15 +1,19 @@
+import { collectDomImageCandidates, resolveDomRoots } from '../dom-image-candidates.js';
+
 export const chamiProvider = Object.freeze({
     id: 'builtin.chami',
     label: 'chami_tavern-scene-plugin',
     type: 'image-provider',
+    providerType: 'extension-dom',
+    adapterKey: 'chami',
     builtin: true,
     detachable: true,
     defaultPresetType: 'image-provider-preset',
     permissions: [],
     async detect(context) {
-        const root = context && context.root;
-        if (!root || typeof root.querySelector !== 'function') return false;
-        return !!root.querySelector('.tsp-generated-image, .tsp-inline-image, .tsp-image-slot img, img[src*="tsp-images"], [data-image-id], [data-location-hash]');
+        return collectDomImageCandidates(resolveDomRoots(context), {
+            adapterKeys: ['chami'],
+        }).length > 0;
     },
     async generate() {
         return { ok: false, reason: 'external-provider' };
@@ -18,10 +22,12 @@ export const chamiProvider = Object.freeze({
         return task || null;
     },
     extractImages(messageContext) {
-        const root = messageContext && messageContext.root;
-        if (!root || typeof root.querySelectorAll !== 'function') return [];
-        return Array.from(root.querySelectorAll('.tsp-generated-image, .tsp-inline-image, .tsp-image-slot img, img[src*="tsp-images"], [data-image-id] img, img[data-image-id], [data-location-hash] img, img[data-location-hash]'))
-            .map((img) => ({ url: img.currentSrc || img.src, providerId: 'builtin.chami' }))
-            .filter((image) => image.url);
+        return collectDomImageCandidates(resolveDomRoots(messageContext), {
+            adapterKeys: ['chami'],
+        }).map((candidate) => ({
+            url: candidate.url,
+            providerId: 'builtin.chami',
+            source: 'provider-dom',
+        }));
     },
 });

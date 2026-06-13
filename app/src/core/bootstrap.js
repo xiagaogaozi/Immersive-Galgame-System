@@ -35,6 +35,7 @@ export function bootstrapIGS(options = {}) {
         hostAdapter,
         imageGenerator: options.imageGenerator,
         providers: options.imageProviders,
+        fetch: options.fetch,
     });
     const state = {
         status: 'booting',
@@ -46,7 +47,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.3.4',
+        version: '0.3.5',
         global: globalObject,
         events,
         hostAdapter,
@@ -85,6 +86,20 @@ export function bootstrapIGS(options = {}) {
                 ...context,
                 providers: getImageProviders(),
                 unifiedSettings: getUnifiedSettingsSnapshot({ mode: context.mode }),
+            });
+        },
+        fetchImageModels(context = {}) {
+            return readerImageService.fetchModels({
+                ...context,
+                providers: getImageProviders(),
+                unifiedSettings: context.settings || context.unifiedSettings || getUnifiedSettingsSnapshot({ mode: context.mode }),
+            });
+        },
+        testImageApi(context = {}) {
+            return readerImageService.test({
+                ...context,
+                providers: getImageProviders(),
+                unifiedSettings: context.settings || context.unifiedSettings || getUnifiedSettingsSnapshot({ mode: context.mode }),
             });
         },
         regenerateImage(context = {}) {
@@ -162,15 +177,18 @@ export function bootstrapIGS(options = {}) {
     }
 
     function generateImage(request, generateOptions = {}) {
-        if (typeof options.imageGenerator !== 'function') {
-            return {
-                ok: false,
-                reason: 'provider-not-enabled',
-                request: cloneData(request),
-                options: cloneData(generateOptions),
-            };
-        }
-        return options.imageGenerator(request, generateOptions);
+        return readerImageService.generate({
+            request: typeof request === 'string' ? { prompt: request } : cloneData(request),
+            prompt: typeof request === 'string'
+                ? request
+                : request && (request.prompt || request.input) || '',
+            message: generateOptions.message || request && request.message || null,
+            messageId: generateOptions.messageId || request && request.messageId || null,
+            mode: generateOptions.mode,
+            unifiedSettings: generateOptions.unifiedSettings || getUnifiedSettingsSnapshot({ mode: generateOptions.mode }),
+            providers: getImageProviders(),
+            generateOptions: cloneData(generateOptions),
+        });
     }
 
     async function collectMessageImages(context = {}) {

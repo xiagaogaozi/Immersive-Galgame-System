@@ -77,7 +77,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.4'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.5'/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -152,12 +152,12 @@ test('gate:loader-json:falls-back-to-main-when-version-cdn-is-missing', async ()
             if (text.includes('manifest.json')) {
                 return {
                     ok: true,
-                    json: async () => ({ version: '0.3.4' }),
+                    json: async () => ({ version: '0.3.5' }),
                 };
             }
             return {
-                ok: !text.includes('@v0.3.4/'),
-                status: text.includes('@v0.3.4/') ? 404 : 200,
+                ok: !text.includes('@v0.3.5/'),
+                status: text.includes('@v0.3.5/') ? 404 : 200,
             };
         },
     };
@@ -204,7 +204,7 @@ test('gate:visual-novel-compat:legacy-storage', () => {
     assert.equal(invalidResult.reason, 'invalid-legacy-json');
 });
 
-test('gate:visual-novel-compat:api-shape', () => {
+test('gate:visual-novel-compat:api-shape', async () => {
     const contract = readJson('fixtures/visual-novel/api-contract.json');
     const legacyStorage = readJson('fixtures/visual-novel/legacy-storage.json');
     const globalObject = {
@@ -232,18 +232,22 @@ test('gate:visual-novel-compat:api-shape', () => {
     }
     assert.equal(unifiedSettings.readerMode, 'pc');
     assert.equal(unifiedSettings.bridge.imageApi.mode, 'nai');
-    const settingsResult = igs.openSettings({ tab: 'basic' });
-    assert.equal(settingsResult.ok, true);
-    assert.equal(settingsResult.snapshot.tabs.length, 4);
-    assert.equal(settingsResult.snapshot.tabs[0].label, '基础');
-    assert.equal(igs.generateImage({ prompt: 'moon' }).reason, 'provider-not-enabled');
-
-    igs.destroy();
+    try {
+        const settingsResult = igs.openSettings({ tab: 'basic' });
+        assert.equal(settingsResult.ok, true);
+        assert.equal(settingsResult.snapshot.tabs.length, 4);
+        assert.equal(settingsResult.snapshot.tabs[0].label, '基础');
+        const generated = await igs.generateImage({ prompt: 'moon' });
+        assert.equal(generated.ok, false);
+        assert.equal(generated.reason, '请先在设置中填写图像 API 地址');
+    } finally {
+        igs.destroy();
+    }
 });
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.4');
+    const source = getOriginalReaderSource('0.3.5');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

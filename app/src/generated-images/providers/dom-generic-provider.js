@@ -1,32 +1,35 @@
 import { collectDomImageCandidates, resolveDomRoots } from '../dom-image-candidates.js';
 
-export const stChatu8Provider = Object.freeze({
-    id: 'builtin.st-chatu8',
-    label: 'st-chatu8',
+export const domGenericProvider = Object.freeze({
+    id: 'builtin.dom-generic',
+    label: 'dom-generic',
     type: 'image-provider',
     providerType: 'extension-dom',
-    adapterKey: 'chatu8',
+    adapterKey: 'generic',
     builtin: true,
-    detachable: true,
-    defaultPresetType: 'image-provider-preset',
+    detachable: false,
     permissions: [],
+
     async detect(context) {
         return collectDomImageCandidates(resolveDomRoots(context), {
-            adapterKeys: ['chatu8'],
+            adapterKeys: ['generic'],
         }).length > 0;
     },
+
     async generate() {
         return { ok: false, reason: 'external-provider' };
     },
+
     async poll(task) {
         return task || null;
     },
+
     extractImages(messageContext) {
         return collectDomImageCandidates(resolveDomRoots(messageContext), {
-            adapterKeys: ['chatu8'],
+            adapterKeys: ['generic'],
         }).map((candidate) => ({
             url: candidate.url,
-            providerId: 'builtin.st-chatu8',
+            providerId: 'builtin.dom-generic',
             source: 'provider-dom',
         }));
     },

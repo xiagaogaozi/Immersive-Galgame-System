@@ -1,5 +1,11 @@
 import { collectProviderImages, listBuiltinImageProviders } from './provider-runtime.js';
 import { createMessageImageCache } from '../media/message-image-cache.js';
+import {
+    detectExternalImageAdapter,
+    getGlobalDetectionRoots,
+    findDomRegenerateButtons,
+} from './dom-image-candidates.js';
+import { getMessageScopedRoots } from '../host/tavern-helper-adapter.js';
 
 export function createReaderImageService(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
@@ -7,6 +13,7 @@ export function createReaderImageService(options = {}) {
     const cache = options.cache || createMessageImageCache();
     const builtinProviders = normalizeProviders(options.providers || listBuiltinImageProviders());
     const imageGenerator = typeof options.imageGenerator === 'function' ? options.imageGenerator : null;
+    const fetchFn = typeof options.fetch === 'function' ? options.fetch : null;
 
     return {
         registerProviders(registry) {
@@ -26,13 +33,19 @@ export function createReaderImageService(options = {}) {
                 return emptyImageState({ ok: false, reason: 'invalid-message-id' });
             }
 
+            const message = await resolveMessageContext(context, hostAdapter, messageId);
+            const unifiedSettings = context.unifiedSettings || {};
+            const imageApi = resolveImageApi(unifiedSettings);
+            const roots = resolveContextRoots(message, globalObject);
             const cachedEntry = cache.get(messageId);
-            const providerImages = await collectProviderImages({
-                message: context.message || null,
-                root: context.message && context.message.element || null,
-                document: context.message && context.message.element && context.message.element.ownerDocument || null,
-                settings: context.unifiedSettings || null,
-            }, resolveActiveProviders(context.providers, builtinProviders));
+            const providerImages = await collectProviderImages(buildProviderContext({
+                context,
+                message,
+                unifiedSettings,
+                roots,
+                globalObject,
+                fetchFn,
+            }), resolveActiveProviders(context.providers, builtinProviders, imageApi));
             const sceneImages = collectSceneImages(context.scene, context.render);
             const cachedImages = cachedEntry && Array.isArray(cachedEntry.images) ? cachedEntry.images : [];
             const images = uniqueImages([
@@ -43,6 +56,106 @@ export function createReaderImageService(options = {}) {
             const stored = cache.remember(messageId, images);
             if (stored.ok === false) return emptyImageState(stored);
             return buildImageState(stored.entry, context.currentIndex);
+        },
+
+        async generate(context = {}) {
+            const message = await resolveMessageContext(context, hostAdapter, normalizeMessageId(context.messageId));
+            const unifiedSettings = context.unifiedSettings || {};
+            const imageApi = resolveImageApi(unifiedSettings);
+            const roots = resolveContextRoots(message, globalObject);
+            const request = buildGenerationRequest(context);
+            const override = typeof context.imageGenerator === 'function' ? context.imageGenerator : imageGenerator;
+
+            if (typeof override === 'function') {
+                try {
+                    const generated = await override(request, {
+                        ...cloneData(context.generateOptions || {}),
+                        message,
+                        unifiedSettings,
+                        imageApi,
+                    });
+                    return normalizeGeneratedResult(generated, request);
+                } catch (error) {
+                    return buildErrorResult(error, 'provider-not-enabled', { request });
+                }
+            }
+
+            const provider = resolveGenerationProvider(
+                resolveActiveProviders(context.providers, builtinProviders, imageApi),
+                imageApi,
+            );
+            if (!provider || typeof provider.generate !== 'function') {
+                return { ok: false, reason: 'provider-not-enabled', request };
+            }
+
+            try {
+                const result = await provider.generate(request, buildProviderContext({
+                    context,
+                    message,
+                    unifiedSettings,
+                    roots,
+                    globalObject,
+                    fetchFn,
+                }));
+                return normalizeGeneratedResult(result, request);
+            } catch (error) {
+                return buildErrorResult(error, 'image-generate-failed', { request });
+            }
+        },
+
+        async fetchModels(context = {}) {
+            const unifiedSettings = context.unifiedSettings || context.settings || {};
+            const imageApi = resolveImageApi(unifiedSettings);
+            const provider = resolveGenerationProvider(
+                resolveActiveProviders(context.providers, builtinProviders, imageApi),
+                imageApi,
+            );
+            if (!provider || typeof provider.fetchModels !== 'function') {
+                return { ok: false, reason: 'provider-not-enabled' };
+            }
+            try {
+                return await provider.fetchModels(context.request || {}, buildProviderContext({
+                    context,
+                    message: context.message || null,
+                    unifiedSettings,
+                    roots: resolveContextRoots(context.message || null, globalObject),
+                    globalObject,
+                    fetchFn,
+                }));
+            } catch (error) {
+                return buildErrorResult(error, 'fetch-models-failed');
+            }
+        },
+
+        async test(context = {}) {
+            const message = context.message || null;
+            const unifiedSettings = context.unifiedSettings || context.settings || {};
+            const imageApi = resolveImageApi(unifiedSettings);
+            if (imageApi.mode === 'nai') {
+                const result = await this.generate({
+                    ...context,
+                    message,
+                    unifiedSettings,
+                    prompt: String(context.prompt || 'simple visual novel background, soft light, no text').trim(),
+                    request: context.request || {},
+                });
+                if (result.ok === false) return result;
+                return {
+                    ok: true,
+                    message: '图像 API 真实生成测试成功',
+                    url: result.url,
+                    providerId: result.providerId,
+                };
+            }
+
+            const roots = message
+                ? resolveContextRoots(message, globalObject)
+                : getGlobalDetectionRoots(globalObject);
+            return detectExternalImageAdapter({
+                roots,
+                imageApi,
+                global: globalObject,
+            });
         },
 
         async regenerate(context = {}) {
@@ -56,19 +169,21 @@ export function createReaderImageService(options = {}) {
 
             const currentIndex = normalizeIndex(context.currentIndex);
             const unifiedSettings = context.unifiedSettings || {};
-            const imageApi = unifiedSettings.imageApi || unifiedSettings.bridge && unifiedSettings.bridge.imageApi || {};
-            const currentState = context.imageState || await this.collect({ ...context, currentIndex, providers: context.providers });
+            const imageApi = resolveImageApi(unifiedSettings);
+            const currentState = context.imageState || await this.collect({
+                ...context,
+                currentIndex,
+                providers: context.providers,
+            });
 
-            if (String(imageApi.mode || '').trim() === 'nai') {
-                if (!imageGenerator) {
-                    return { ok: false, reason: 'provider-not-enabled', imageState: currentState };
-                }
-                const generated = await imageGenerator({
-                    prompt: String(context.prompt || '').trim(),
-                    message: context.message || null,
+            if (imageApi.mode === 'nai') {
+                const generated = await this.generate({
+                    ...context,
                     messageId,
-                    imageIndex: currentIndex,
+                    currentIndex,
                     unifiedSettings,
+                    prompt: String(context.prompt || '').trim(),
+                    request: context.request || {},
                 });
                 if (!generated || generated.ok === false || !generated.url) {
                     return {
@@ -223,11 +338,110 @@ function emptyImageState(extra = {}) {
     };
 }
 
-function resolveActiveProviders(explicitProviders, builtinProviders) {
-    if (Array.isArray(explicitProviders) && explicitProviders.length) {
-        return normalizeProviders(explicitProviders);
+function resolveActiveProviders(explicitProviders, builtinProviders, imageApi = {}) {
+    const sourceProviders = Array.isArray(explicitProviders) && explicitProviders.length
+        ? normalizeProviders(explicitProviders)
+        : builtinProviders;
+    const mode = String(imageApi.mode || 'extension').trim();
+    const requestedAdapter = String(imageApi.externalAdapter || 'auto').trim().toLowerCase();
+    return sourceProviders.filter((provider) => {
+        if (!provider || typeof provider !== 'object') return false;
+        if (mode === 'nai') {
+            return String(provider.providerType || '').trim() === 'nai';
+        }
+        if (String(provider.providerType || '').trim() === 'nai') {
+            return false;
+        }
+        const adapterKey = String(provider.adapterKey || '').trim().toLowerCase();
+        if (!adapterKey) return true;
+        if (requestedAdapter === 'auto') return true;
+        return adapterKey === requestedAdapter || adapterKey === 'generic';
+    });
+}
+
+function resolveGenerationProvider(providers, imageApi = {}) {
+    const mode = String(imageApi.mode || 'extension').trim();
+    if (mode !== 'nai') return null;
+    return normalizeProviders(providers).find((provider) => String(provider.providerType || '').trim() === 'nai') || null;
+}
+
+function resolveImageApi(unifiedSettings = {}) {
+    const bridge = unifiedSettings.bridge && typeof unifiedSettings.bridge === 'object'
+        ? unifiedSettings.bridge
+        : {};
+    const imageApi = unifiedSettings.imageApi && typeof unifiedSettings.imageApi === 'object'
+        ? unifiedSettings.imageApi
+        : bridge.imageApi && typeof bridge.imageApi === 'object'
+            ? bridge.imageApi
+            : {};
+    return {
+        mode: String(imageApi.mode || 'extension').trim() || 'extension',
+        ...imageApi,
+    };
+}
+
+function buildProviderContext({ context, message, unifiedSettings, roots, globalObject, fetchFn }) {
+    return {
+        ...context,
+        message: message || null,
+        messageId: firstDefined(context.messageId, message && message.id),
+        root: roots[0] || message && message.element || null,
+        roots,
+        document: message && message.element && message.element.ownerDocument || context.document || null,
+        settings: unifiedSettings,
+        unifiedSettings,
+        imageApi: resolveImageApi(unifiedSettings),
+        global: globalObject,
+        fetch: context.fetch || fetchFn || globalObject && globalObject.fetch || globalThis.fetch,
+        AbortController: context.AbortController || globalObject && globalObject.AbortController || globalThis.AbortController,
+        setTimeout: context.setTimeout || globalObject && globalObject.setTimeout || globalThis.setTimeout,
+        clearTimeout: context.clearTimeout || globalObject && globalObject.clearTimeout || globalThis.clearTimeout,
+    };
+}
+
+function buildGenerationRequest(context = {}) {
+    const request = isPlainObject(context.request) ? cloneData(context.request) : {};
+    const prompt = String(firstDefined(context.prompt, request.prompt, request.input, '') || '').trim();
+    if (prompt && !request.prompt && !request.input) {
+        request.prompt = prompt;
     }
-    return builtinProviders;
+    return request;
+}
+
+function normalizeGeneratedResult(result, request) {
+    if (!result) return { ok: false, reason: 'provider-not-enabled', request };
+    if (result.ok === false) return result;
+    if (!result.url) return { ok: false, reason: 'provider-not-enabled', request };
+    return {
+        ok: true,
+        ...result,
+        providerId: String(result.providerId || '').trim(),
+        source: String(result.source || 'generated-image').trim(),
+        filename: String(result.filename || '').trim(),
+    };
+}
+
+function buildErrorResult(error, fallbackReason, extra = {}) {
+    return {
+        ok: false,
+        reason: error && error.message ? error.message : fallbackReason,
+        error,
+        ...extra,
+    };
+}
+
+function resolveContextRoots(message, globalObject) {
+    const roots = message ? getMessageScopedRoots(message) : [];
+    if (roots.length) return roots;
+    return getGlobalDetectionRoots(globalObject);
+}
+
+async function resolveMessageContext(context, hostAdapter, messageId) {
+    if (context.message) return context.message;
+    if (messageId == null || !hostAdapter || typeof hostAdapter.getMessageById !== 'function') {
+        return null;
+    }
+    return hostAdapter.getMessageById(messageId);
 }
 
 function replaceImageAtIndex(images, index, image) {
@@ -321,49 +535,10 @@ async function resolveRegenerateButton(hostAdapter, context, messageId, imageInd
         const button = await hostAdapter.findRegenerateButton(messageId, imageIndex);
         if (button) return button;
     }
-    return findScopedRegenerateButton(context && context.message, imageIndex);
-}
-
-function findScopedRegenerateButton(message, imageIndex) {
-    const targetIndex = normalizeIndex(imageIndex);
-    const roots = [];
-    const element = message && message.element;
-    if (element) roots.push(element);
-    if (element && typeof element.querySelector === 'function') {
-        try {
-            const textRoot = element.querySelector('.mes_text');
-            if (textRoot && !roots.includes(textRoot)) roots.push(textRoot);
-        } catch (error) {
-            // Ignore host DOM shim selector failures.
-        }
-    }
-    if (!roots.length) return null;
-
-    const selectors = [
-        'button.image-tag-button, button[class*="image-tag-button"], button[class*="st-chatu8-image"]',
-        '.tsp-regenerate-btn, .tsp-inline-gen-btn',
-    ];
-    const buttons = [];
-    const seen = new Set();
-
-    for (const selector of selectors) {
-        for (const root of roots) {
-            if (!root || typeof root.querySelectorAll !== 'function') continue;
-            let matches = [];
-            try {
-                matches = Array.from(root.querySelectorAll(selector));
-            } catch (error) {
-                matches = [];
-            }
-            for (const button of matches) {
-                if (!button || seen.has(button)) continue;
-                seen.add(button);
-                buttons.push(button);
-            }
-        }
-    }
-
-    return buttons[targetIndex] || null;
+    const message = context && context.message;
+    if (!message) return null;
+    const buttons = findDomRegenerateButtons(getMessageScopedRoots(message));
+    return buttons[normalizeIndex(imageIndex)] || null;
 }
 
 function wait(duration, globalObject) {
@@ -389,4 +564,8 @@ function cloneData(value) {
         return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));
     }
     return value;
+}
+
+function isPlainObject(value) {
+    return value && typeof value === 'object' && !Array.isArray(value);
 }

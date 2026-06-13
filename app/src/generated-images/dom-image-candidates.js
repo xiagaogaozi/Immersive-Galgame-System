@@ -1,0 +1,403 @@
+const ADAPTER_SELECTORS = Object.freeze({
+    chatu8: Object.freeze({
+        images: Object.freeze([
+            'img.st-chatu8-image-tag-image',
+            '[class*="st-chatu8"] img',
+            '[class*="chatu8"] img',
+        ]),
+        buttons: Object.freeze([
+            'button.image-tag-button',
+            'button[class*="image-tag-button"]',
+            'button[class*="st-chatu8-image"]',
+        ]),
+    }),
+    chami: Object.freeze({
+        images: Object.freeze([
+            '.tsp-generated-image',
+            '.tsp-inline-image',
+            '.tsp-image-slot img',
+            'img[src*="tsp-images"]',
+        ]),
+        buttons: Object.freeze([
+            '.tsp-inline-gen-btn',
+            '.tsp-regenerate-btn',
+        ]),
+        metadata: Object.freeze([
+            '[data-image-id]',
+            '[data-location-hash]',
+            'img[data-image-id]',
+            'img[data-location-hash]',
+            '[data-image-id] img',
+            '[data-location-hash] img',
+        ]),
+    }),
+    generic: Object.freeze({
+        images: Object.freeze([
+            'img[data-src]',
+            'img[src^="blob:"]',
+            'img[src^="data:image"]',
+            'video',
+            'a[href^="blob:"]',
+            'a[href^="data:image"]',
+            '[style*="background-image"]',
+        ]),
+    }),
+});
+
+export function getAdapterSelectors() {
+    return ADAPTER_SELECTORS;
+}
+
+export function resolveDomRoots(input = {}) {
+    const roots = [];
+    const seen = new Set();
+
+    function add(root) {
+        if (!root || typeof root.querySelectorAll !== 'function' || seen.has(root)) return;
+        seen.add(root);
+        roots.push(root);
+    }
+
+    const sourceRoots = Array.isArray(input.roots) ? input.roots : [];
+    sourceRoots.forEach(add);
+    add(input.root);
+    add(input.document);
+    return roots;
+}
+
+export function getGlobalDetectionRoots(globalObject = globalThis.window || globalThis) {
+    const roots = [];
+    const seen = new Set();
+    const add = (root) => {
+        if (!root || typeof root.querySelectorAll !== 'function' || seen.has(root)) return;
+        seen.add(root);
+        roots.push(root);
+    };
+
+    add(safeDocument(globalObject));
+    try {
+        add(safeDocument(globalObject.top));
+    } catch (error) {
+        // Cross-origin parents are ignored.
+    }
+    if (typeof document !== 'undefined') add(document);
+    return roots;
+}
+
+export function detectExternalImageAdapter(context = {}) {
+    const roots = resolveDomRoots(context);
+    const globalObject = context.global || globalThis.window || globalThis;
+    const selectors = getAdapterSelectors();
+    const chatu8Images = countMatches(roots, selectors.chatu8.images);
+    const chatu8Buttons = countMatches(roots, selectors.chatu8.buttons);
+    const chamiImages = countMatches(roots, selectors.chami.images);
+    const chamiButtons = countMatches(roots, selectors.chami.buttons);
+    const chamiMetadata = countMatches(roots, selectors.chami.metadata);
+    const topWindow = resolveTopWindow(globalObject);
+    const hasEventSource = Boolean(topWindow && topWindow.eventSource && typeof topWindow.eventSource.emit === 'function');
+    const hasChamiApi = Boolean(topWindow && (topWindow.TSP || topWindow.tsp || topWindow.tspPlugin || topWindow.TavernScenePlugin));
+    const requested = normalizeAdapterSelection(context.imageApi && context.imageApi.externalAdapter);
+
+    let adapter = 'none';
+    if (requested === 'chami') {
+        adapter = chamiImages || chamiButtons || chamiMetadata || hasEventSource || hasChamiApi ? 'chami' : 'none';
+    } else if (requested === 'chatu8') {
+        adapter = chatu8Images || chatu8Buttons ? 'chatu8' : 'none';
+    } else if (chamiImages || chamiButtons || chamiMetadata || hasEventSource || hasChamiApi) {
+        adapter = 'chami';
+    } else if (chatu8Images || chatu8Buttons) {
+        adapter = 'chatu8';
+    }
+
+    const summary = [];
+    if (chamiImages || chamiButtons || chamiMetadata || hasEventSource || hasChamiApi) {
+        summary.push(`chami: 图片 ${chamiImages}，按钮 ${chamiButtons}，元数据 ${chamiMetadata}${hasEventSource ? '，事件可用' : ''}${hasChamiApi ? '，页面对象可见' : ''}`);
+    }
+    if (chatu8Images || chatu8Buttons) {
+        summary.push(`chatu8: 图片 ${chatu8Images}，按钮 ${chatu8Buttons}`);
+    }
+
+    return {
+        ok: adapter !== 'none',
+        adapter,
+        details: {
+            chamiImages,
+            chamiButtons,
+            chamiMetadata,
+            chatu8Images,
+            chatu8Buttons,
+            hasEventSource,
+            hasChamiApi,
+        },
+        message: adapter === 'none'
+            ? `未检测到可用插图扩展。${summary.length ? ` 当前探测：${summary.join('；')}` : ''}`
+            : `已检测到 ${adapter} 插图扩展。${summary.length ? ` ${summary.join('；')}` : ''}`,
+    };
+}
+
+export function collectDomImageCandidates(roots, options = {}) {
+    const adapterKeys = normalizeAdapterKeyList(options.adapterKeys);
+    const selectors = buildCandidateSelectorList(adapterKeys);
+    const seenNodes = new Set();
+    const grouped = new Map();
+    const plain = [];
+    let order = 0;
+
+    function add(node, adapterKey) {
+        if (!node || seenNodes.has(node)) return;
+        seenNodes.add(node);
+        const imageNode = getImageElement(node) || node;
+        const url = rawImageUrl(imageNode);
+        if (!url) return;
+        const groupKey = imageCandidateGroupKey(node, imageNode, url, order);
+        const candidate = {
+            url,
+            groupKey,
+            order: order + 1,
+            adapterKey,
+        };
+        order += 1;
+        if (groupKey.startsWith('node:')) {
+            plain.push(candidate);
+            return;
+        }
+        const previous = grouped.get(groupKey);
+        if (!previous || candidate.order >= previous.order) {
+            grouped.set(groupKey, candidate);
+        }
+    }
+
+    for (const entry of selectors) {
+        for (const root of Array.isArray(roots) ? roots : []) {
+            for (const node of safeQueryAll(root, entry.selector)) {
+                add(node, entry.adapterKey);
+            }
+        }
+    }
+
+    return plain.concat(Array.from(grouped.values())).sort((left, right) => left.order - right.order);
+}
+
+export function findDomRegenerateButtons(roots) {
+    const selectors = [
+        ...ADAPTER_SELECTORS.chatu8.buttons,
+        ...ADAPTER_SELECTORS.chami.buttons,
+    ];
+    const buttons = [];
+    const seen = new Set();
+    for (const selector of selectors) {
+        for (const root of Array.isArray(roots) ? roots : []) {
+            for (const button of safeQueryAll(root, selector)) {
+                if (!button || seen.has(button)) continue;
+                seen.add(button);
+                buttons.push(button);
+            }
+        }
+    }
+    return buttons;
+}
+
+export function normalizeImageUrl(value, key) {
+    let url = decodeImageUrlText(value);
+    if (!url || (/\s/.test(url) && !/^data:image\//i.test(url))) return '';
+    url = url.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+    if (/^data:image\//i.test(url) || /^blob:/i.test(url)) return url;
+    const imageish = /\.(?:png|jpe?g|webp|gif|bmp|svg|avif)(?:[?#].*)?$/i.test(url)
+        || /(?:\/|=)(?:image|img|thumbnail|thumb|cover|photo|picture|tsp-images|chatu8|scene)(?:[\/._=?&-]|$)/i.test(url)
+        || imageKeyHint(key);
+    if (/^https?:\/\//i.test(url)) return imageish ? url : '';
+    if (/^(?:\/|\.\.?\/)[^\s"'<>]+/i.test(url)) return imageish ? url : '';
+    if (/^(?:[A-Za-z0-9_.~%-]+\/)*[A-Za-z0-9_.~%-]+\.(?:png|jpe?g|webp|gif|bmp|svg|avif)(?:[?#].*)?$/i.test(url)) return url;
+    return '';
+}
+
+function normalizeAdapterKeyList(value) {
+    const keys = Array.isArray(value) ? value : [];
+    if (!keys.length) return ['chatu8', 'chami', 'generic'];
+    const output = [];
+    for (const key of keys) {
+        const normalized = normalizeAdapterSelection(key);
+        if (!normalized || output.includes(normalized)) continue;
+        output.push(normalized);
+    }
+    return output.length ? output : ['chatu8', 'chami', 'generic'];
+}
+
+function buildCandidateSelectorList(adapterKeys) {
+    const output = [];
+    for (const key of adapterKeys) {
+        const config = ADAPTER_SELECTORS[key];
+        if (!config) continue;
+        for (const selector of config.images || []) {
+            output.push({ adapterKey: key, selector });
+        }
+        if (key === 'chami') {
+            for (const selector of config.metadata || []) {
+                output.push({ adapterKey: key, selector });
+            }
+        }
+    }
+    return output;
+}
+
+function countMatches(roots, selectors) {
+    const seen = new Set();
+    for (const selector of Array.isArray(selectors) ? selectors : []) {
+        for (const root of Array.isArray(roots) ? roots : []) {
+            for (const node of safeQueryAll(root, selector)) {
+                seen.add(node);
+            }
+        }
+    }
+    return seen.size;
+}
+
+function getImageElement(node) {
+    if (!node) return null;
+    if (isImageLikeNode(node)) return node;
+    return typeof node.querySelector === 'function'
+        ? node.querySelector('img[src], img[data-src]')
+        : null;
+}
+
+function rawImageUrl(node) {
+    if (!node) return '';
+    if (node.tagName === 'IMG' || hasImageSource(node)) {
+        return normalizeImageUrl(node.currentSrc || node.src || safeGetAttribute(node, 'data-src') || '', 'src');
+    }
+    if (node.tagName === 'VIDEO') {
+        return normalizeImageUrl(node.currentSrc || node.src || '', 'src');
+    }
+    if (node.tagName === 'A' || hasHref(node)) {
+        return normalizeImageUrl(node.href || safeGetAttribute(node, 'href') || '', 'href');
+    }
+    const backgroundImage = node.style && node.style.backgroundImage;
+    if (backgroundImage && backgroundImage !== 'none') {
+        const match = backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
+        if (match) return normalizeImageUrl(match[1], 'backgroundImage');
+    }
+    const nested = getImageElement(node);
+    return nested ? rawImageUrl(nested) : '';
+}
+
+function imageCandidateGroupKey(sourceNode, imageNode, url, order) {
+    const source = sourceNode && typeof sourceNode === 'object' ? sourceNode : imageNode;
+    const slot = safeClosest(source, '.tsp-image-slot,[class*="tsp-image-slot"]');
+    if (slot) return `slot:${nodePathKey(slot)}`;
+    const metadataNode = safeClosest(source, '[data-location-hash],[data-image-id]');
+    const locationHash = safeGetAttribute(source, 'data-location-hash')
+        || safeGetAttribute(imageNode, 'data-location-hash')
+        || safeGetAttribute(metadataNode, 'data-location-hash')
+        || '';
+    if (locationHash) return `loc:${locationHash}`;
+    const imageId = safeGetAttribute(source, 'data-image-id')
+        || safeGetAttribute(imageNode, 'data-image-id')
+        || safeGetAttribute(metadataNode, 'data-image-id')
+        || '';
+    if (imageId) return `id:${imageId}`;
+    const isChami = Boolean(safeClosest(source, '[class*="tsp-"],[data-location-hash],[data-image-id]'));
+    if (isChami) return `chami-url:${url}`;
+    return `node:${order}`;
+}
+
+function nodePathKey(node) {
+    const parts = [];
+    let cursor = node;
+    let depth = 0;
+    while (cursor && depth < 8) {
+        const parent = cursor.parentElement;
+        let index = 0;
+        if (parent && Array.isArray(parent.children)) {
+            index = Math.max(0, parent.children.indexOf(cursor));
+        }
+        parts.unshift(`${String(cursor.tagName || 'node').toLowerCase()}:${index}`);
+        if (cursor.classList && cursor.classList.contains('mes')) break;
+        cursor = parent;
+        depth += 1;
+    }
+    return parts.join('/');
+}
+
+function decodeImageUrlText(text) {
+    return String(text || '')
+        .trim()
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, '\'')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+}
+
+function imageKeyHint(key) {
+    const name = String(key || '');
+    if (/(?:api|base|endpoint|model|prompt|negative|token|key|authorization)/i.test(name)) return false;
+    return /(?:image|img|src|href|url|thumbnail|thumb|cover|background|bg|avatar|picture|photo)/i.test(name);
+}
+
+function normalizeAdapterSelection(value) {
+    const normalized = String(value || 'auto').trim().toLowerCase();
+    if (normalized === 'chatu8' || normalized === 'chami' || normalized === 'generic') return normalized;
+    return normalized === 'auto' ? 'auto' : normalized;
+}
+
+function safeQueryAll(root, selector) {
+    try {
+        return root && typeof root.querySelectorAll === 'function'
+            ? Array.from(root.querySelectorAll(selector))
+            : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function safeClosest(node, selector) {
+    try {
+        return node && typeof node.closest === 'function' ? node.closest(selector) : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function safeGetAttribute(node, name) {
+    try {
+        return node && typeof node.getAttribute === 'function' ? node.getAttribute(name) : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function safeDocument(target) {
+    try {
+        return target && target.document ? target.document : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function resolveTopWindow(globalObject) {
+    try {
+        return globalObject && globalObject.top ? globalObject.top : globalObject;
+    } catch (error) {
+        return globalObject;
+    }
+}
+
+function isImageLikeNode(node) {
+    return Boolean(
+        node
+        && typeof node === 'object'
+        && (
+            node.tagName === 'IMG'
+            || node.tagName === 'VIDEO'
+            || node.tagName === 'A'
+        ),
+    );
+}
+
+function hasImageSource(node) {
+    return Boolean(node && typeof node === 'object' && (node.currentSrc || node.src || safeGetAttribute(node, 'data-src')));
+}
+
+function hasHref(node) {
+    return Boolean(node && typeof node === 'object' && (node.href || safeGetAttribute(node, 'href')));
+}

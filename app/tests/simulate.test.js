@@ -182,7 +182,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.4');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.5');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -830,6 +830,241 @@ test('gate:simulation:visual-novel-ui-regen-polls-external-provider-and-updates-
     igs.destroy();
 });
 
+test('gate:simulation:visual-novel-ui-image-settings-fetch-models-and-test-nai-use-real-service-chain', async () => {
+    const document = createFakeDocument();
+    const message = {
+        id: 34,
+        text: '[角色: 玉子]\n玉子: 帮我生成一张夜景。',
+    };
+    const base64Image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Zq4cAAAAASUVORK5CYII=';
+    const calls = [];
+    const igs = bootstrapIGS({
+        global: {
+            document,
+            fetch: async (url, options = {}) => {
+                calls.push({ url, options });
+                if (String(url).endsWith('/models')) {
+                    return new Response(JSON.stringify({
+                        data: [
+                            { id: 'nai-diffusion-3' },
+                            { name: 'nai-diffusion-4-curated-preview' },
+                        ],
+                    }), {
+                        status: 200,
+                        headers: { 'content-type': 'application/json' },
+                    });
+                }
+                return new Response(JSON.stringify({
+                    data: [{ b64_json: base64Image }],
+                }), {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                });
+            },
+            setTimeout(callback) {
+                callback();
+                return 1;
+            },
+            clearTimeout() {},
+        },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'nai',
+                endpoint: 'https://example.com/v1',
+                apiKey: 'demo-token',
+                model: 'nai-diffusion-3',
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const settings = igs.openSettings({ tab: 'image', mode: 'pc' });
+    const modelsResult = await settings.controller.invoke('fetch-image-models');
+    const testResult = await settings.controller.invoke('test-image');
+    const snapshot = settings.controller.getSnapshot();
+
+    assert.equal(modelsResult.ok, true);
+    assert.equal(testResult.ok, true);
+    assert.deepEqual(snapshot.draft.bridge.imageApi.availableModels, [
+        'nai-diffusion-3',
+        'nai-diffusion-4-curated-preview',
+    ]);
+    assert.match(snapshot.resultText.imageModels, /已拉取 2 个模型/);
+    assert.match(snapshot.resultText.image, /图像 API 真实生成测试成功/);
+    assert.equal(calls[0].url, 'https://example.com/v1/models');
+    assert.equal(calls[1].url, 'https://example.com/v1/images/generations');
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-external-adapter-filter-and-detection-use-real-provider-counts', async () => {
+    const document = createFakeDocument();
+    const message = {
+        id: 35,
+        text: '[角色: 玉子]\n玉子: 看看当前插图。',
+        element: createFakeMessageElement(document, {
+            imageUrls: ['https://example.com/chatu8-scene.png'],
+            chamiImageUrls: ['https://example.com/chami-scene.png'],
+            chamiButtons: [createFakeRegenerateButton(() => {})],
+        }),
+    };
+    const igs = bootstrapIGS({
+        global: { document },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'chami',
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const settings = opened.reader.controller.openSettings('image');
+    await settings.controller.invoke('test-image');
+    const snapshot = settings.controller.getSnapshot();
+
+    assert.equal(opened.reader.snapshot.content.imageCount, 1);
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/chami-scene.png');
+    assert.match(snapshot.resultText.image, /已检测到 chami 插图扩展/);
+    assert.match(snapshot.resultText.image, /图片 1/);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-collects-iframe-data-src-images-and-finds-regen-buttons', async () => {
+    const document = createFakeDocument();
+    const frameImage = createFakeMediaNode({
+        ownerDocument: document,
+        tagName: 'IMG',
+        dataSrc: 'https://example.com/frame-scene-old.png',
+    });
+    const frameButton = createFakeRegenerateButton(() => {
+        frameImage.setAttribute('data-src', 'https://example.com/frame-scene-new.png');
+    });
+    const iframeDoc = createFakeScopedRoot({
+        'img[data-src]': [frameImage],
+        '.tsp-regenerate-btn': [frameButton],
+    });
+    const message = {
+        id: 36,
+        text: '[角色: 玉子]\n玉子: 这张图在 iframe 里。',
+        element: createFakeMessageElement(document, {
+            frameDocuments: [iframeDoc],
+        }),
+    };
+    const igs = bootstrapIGS({
+        global: {
+            document,
+            setTimeout(callback) {
+                callback();
+                return 1;
+            },
+            clearTimeout() {},
+        },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'auto',
+                pollIntervalMs: 1,
+                pollAttempts: 3,
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const regenResult = await opened.reader.controller.invokeAction('regen');
+
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/frame-scene-old.png');
+    assert.equal(opened.reader.snapshot.content.imageCount, 1);
+    assert.equal(regenResult.ok, true);
+    assert.equal(regenResult.reason, 'external-image-updated');
+    assert.equal(regenResult.imageState.currentUrl, 'https://example.com/frame-scene-new.png');
+    assert.equal(frameButton.clickCount, 1);
+
+    igs.destroy();
+});
+
+test('gate:simulation:host-adapter-hide-state-skips-hidden-turns-in-real-bootstrap', async () => {
+    const document = createFakeDocument();
+    const jumps = [];
+    const messages = [
+        { message_id: 0, mes: '玩家发言', is_user: true },
+        { message_id: 1, mes: '第一条 AI 楼层' },
+        { message_id: 2, mes: '隐藏楼层' },
+        { message_id: 3, mes: '第二条 AI 楼层' },
+    ];
+    const igs = bootstrapIGS({
+        global: {
+            document,
+            TavernHelper: {
+                getLastMessageId: () => 3,
+                getChatMessages(_range, options = {}) {
+                    if (options.hide_state === 'hidden') return [messages[2]];
+                    return messages;
+                },
+                triggerSlash: async (command) => {
+                    jumps.push(command);
+                    return { ok: true };
+                },
+            },
+        },
+        autoAttachMagicWand: false,
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+    const prevTurn = await opened.reader.controller.invokeAction('prev-turn');
+
+    assert.equal(opened.reader.snapshot.messageId, 3);
+    assert.equal(prevTurn.ok, true);
+    assert.equal(prevTurn.messageId, 1);
+    assert.deepEqual(jumps, ['/chat-jump 1']);
+
+    igs.destroy();
+});
+
+test('gate:simulation:host-adapter-opens-reader-from-sillytavern-context-without-tavernhelper', async () => {
+    const document = createFakeDocument();
+    const igs = bootstrapIGS({
+        global: {
+            document,
+            SillyTavern: {
+                getContext() {
+                    return {
+                        chat: [
+                            { mes: '玩家发言', is_user: true },
+                            { mes: '第一条 AI 楼层' },
+                            { mes: '第二条 AI 楼层' },
+                        ],
+                    };
+                },
+            },
+        },
+        autoAttachMagicWand: false,
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.reader.snapshot.messageId, 2);
+    assert.match(opened.reader.snapshot.content.text, /第二条 AI 楼层/);
+
+    igs.destroy();
+});
+
 test('gate:simulation:visual-novel-ui-long-text-scrolls-not-overlaps-input', async () => {
     const latestMessage = {
         id: 33,
@@ -1299,28 +1534,76 @@ function readNumeric(value) {
 }
 
 function createFakeMessageElement(ownerDocument, options = {}) {
-    const images = (options.imageUrls || []).map((url) => ({
-        currentSrc: url,
+    const images = (options.imageUrls || []).map((url) => createFakeMediaNode({
+        ownerDocument,
+        tagName: 'IMG',
         src: url,
     }));
-    const regenButtons = [];
+    const chamiImages = (options.chamiImageUrls || []).map((url) => createFakeMediaNode({
+        ownerDocument,
+        tagName: 'IMG',
+        src: url,
+        attributes: { 'data-image-id': `image-${Math.random().toString(36).slice(2, 8)}` },
+    }));
+    const genericNodes = Array.isArray(options.genericNodes) ? options.genericNodes : [];
+    const regenButtons = Array.isArray(options.regenButtons) ? options.regenButtons : [];
+    const chamiButtons = Array.isArray(options.chamiButtons) ? options.chamiButtons : [];
+    const frameDocuments = Array.isArray(options.frameDocuments) ? options.frameDocuments : [];
     return {
         ownerDocument,
         __images: images,
+        __chamiImages: chamiImages,
+        __genericNodes: genericNodes,
         __regenButtons: regenButtons,
+        __chamiButtons: chamiButtons,
+        __frameDocuments: frameDocuments,
         querySelector(selector) {
             if (selector === '.mes_text') return null;
             return this.querySelectorAll(selector)[0] || null;
         },
         querySelectorAll(selector) {
-            if (selector === 'img.st-chatu8-image-tag-image, [class*="st-chatu8"] img, [class*="chatu8"] img') {
+            if (selector === 'img.st-chatu8-image-tag-image' || selector === '[class*="st-chatu8"] img' || selector === '[class*="chatu8"] img') {
                 return images;
             }
-            if (selector === 'button.image-tag-button, button[class*="image-tag-button"], button[class*="st-chatu8-image"]') {
+            if (selector === 'button.image-tag-button' || selector === 'button[class*="image-tag-button"]' || selector === 'button[class*="st-chatu8-image"]') {
                 return regenButtons;
             }
-            if (selector === '.tsp-regenerate-btn, .tsp-inline-gen-btn') {
-                return [];
+            if (
+                selector === '.tsp-generated-image'
+                || selector === '.tsp-inline-image'
+                || selector === '.tsp-image-slot img'
+                || selector === 'img[src*="tsp-images"]'
+                || selector === '[data-image-id]'
+                || selector === '[data-location-hash]'
+                || selector === 'img[data-image-id]'
+                || selector === 'img[data-location-hash]'
+                || selector === '[data-image-id] img'
+                || selector === '[data-location-hash] img'
+            ) {
+                return chamiImages;
+            }
+            if (selector === '.tsp-regenerate-btn' || selector === '.tsp-inline-gen-btn') {
+                return chamiButtons;
+            }
+            if (
+                selector === 'img[data-src]'
+                || selector === 'img[src^="blob:"]'
+                || selector === 'img[src^="data:image"]'
+                || selector === 'video'
+                || selector === 'a[href^="blob:"]'
+                || selector === 'a[href^="data:image"]'
+                || selector === '[style*="background-image"]'
+            ) {
+                return genericNodes;
+            }
+            if (selector === 'iframe') {
+                return frameDocuments.map((doc) => ({
+                    contentDocument: doc,
+                    contentWindow: { document: doc },
+                    getAttribute() {
+                        return null;
+                    },
+                }));
             }
             return [];
         },
@@ -1333,6 +1616,50 @@ function createFakeRegenerateButton(onClick) {
         click() {
             this.clickCount += 1;
             onClick();
+        },
+    };
+}
+
+function createFakeMediaNode(options = {}) {
+    const attributes = new Map(Object.entries(options.attributes || {}));
+    return {
+        ownerDocument: options.ownerDocument || null,
+        tagName: String(options.tagName || 'IMG').toUpperCase(),
+        currentSrc: options.currentSrc || options.src || '',
+        src: options.src || options.currentSrc || '',
+        href: options.href || '',
+        style: {
+            backgroundImage: options.backgroundImage || '',
+        },
+        getAttribute(name) {
+            if (name === 'data-src') return attributes.get('data-src') || options.dataSrc || null;
+            if (name === 'href') return attributes.get('href') || options.href || null;
+            return attributes.has(name) ? attributes.get(name) : null;
+        },
+        setAttribute(name, value) {
+            attributes.set(name, String(value));
+            if (name === 'data-src') {
+                this.currentSrc = '';
+                this.src = '';
+            }
+        },
+        closest() {
+            return null;
+        },
+        querySelector() {
+            return null;
+        },
+    };
+}
+
+function createFakeScopedRoot(map = {}) {
+    return {
+        querySelector(selector) {
+            const matches = this.querySelectorAll(selector);
+            return matches[0] || null;
+        },
+        querySelectorAll(selector) {
+            return Array.isArray(map[selector]) ? map[selector] : [];
         },
     };
 }

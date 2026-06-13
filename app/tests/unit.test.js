@@ -20,6 +20,7 @@ import { createStageModel } from '../src/visual/stage-model.js';
 import { resolveVisualMode, VISUAL_MODES } from '../src/visual/visual-mode.js';
 import { createPromptAdapter } from '../src/prompts/adapters/prompt-adapter.js';
 import { naiRequestBuilder } from '../src/generated-images/request-builders/nai-builder.js';
+import { fetchModels as fetchImageModels, generateImage as generateImageFromApi } from '../src/generated-images/image-api-client.js';
 import { createPublicApi, attachPublicApi } from '../src/api/public-api.js';
 import { createTavernHelperAdapter } from '../src/host/tavern-helper-adapter.js';
 import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
@@ -210,7 +211,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.4',
+            version: '0.3.5',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -237,7 +238,7 @@ test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.4',
+            version: '0.3.5',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -263,7 +264,7 @@ test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-mul
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.4',
+            version: '0.3.5',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -365,7 +366,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.4',
+        version: '0.3.5',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -416,6 +417,168 @@ test('gate:host:tavern-helper-adapter-detects-user-messages-from-role-flags-and-
     assert.equal(normalized[3].isUser, false);
 });
 
+test('gate:generated-images:image-api-client-fetch-models-parses-nested-payload', async () => {
+    const calls = [];
+    const result = await fetchImageModels({
+        endpoint: 'https://example.com/v1',
+        apiKey: 'demo-token',
+    }, {
+        fetch: async (url, options = {}) => {
+            calls.push({ url, options });
+            return new Response(JSON.stringify({
+                data: [
+                    { id: 'nai-diffusion-3' },
+                    { name: 'nai-diffusion-4-curated-preview' },
+                ],
+            }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            });
+        },
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.count, 2);
+    assert.deepEqual(result.models, ['nai-diffusion-3', 'nai-diffusion-4-curated-preview']);
+    assert.equal(calls[0].url, 'https://example.com/v1/models');
+    assert.equal(calls[0].options.headers.Authorization, 'Bearer demo-token');
+});
+
+test('gate:generated-images:image-api-client-generates-and-polls-pending-task', async () => {
+    const base64Image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Zq4cAAAAASUVORK5CYII=';
+    const calls = [];
+    const result = await generateImageFromApi({
+        prompt: 'moon lake',
+    }, {
+        endpoint: 'https://example.com/v1',
+        apiKey: 'demo-token',
+        mode: 'nai',
+        pollIntervalMs: 1,
+        pollAttempts: 2,
+    }, {
+        fetch: async (url, options = {}) => {
+            calls.push({ url, options });
+            if (String(url).endsWith('/images/generations')) {
+                return new Response(JSON.stringify({
+                    status: 'pending',
+                    status_url: '/tasks/1',
+                }), {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                });
+            }
+            return new Response(JSON.stringify({
+                data: [
+                    { b64_json: base64Image },
+                ],
+            }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            });
+        },
+        setTimeout(callback) {
+            callback();
+            return 1;
+        },
+        clearTimeout() {},
+    });
+
+    assert.ok(result.url.startsWith('data:image/png;base64,'));
+    assert.equal(calls[0].url, 'https://example.com/v1/images/generations');
+    assert.equal(calls[1].url, 'https://example.com/tasks/1');
+});
+
+test('gate:generated-images:image-api-client-parses-zip-image-response', async () => {
+    const pngBytes = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63f8ffff3f0005fe02fea57d7fa60000000049454e44ae426082', 'hex');
+    const zipBytes = buildStoredZip('scene.png', pngBytes);
+    const result = await generateImageFromApi({
+        prompt: 'zip image',
+    }, {
+        endpoint: 'https://example.com/v1',
+        mode: 'nai',
+    }, {
+        fetch: async () => new Response(zipBytes, {
+            status: 200,
+            headers: { 'content-type': 'application/zip' },
+        }),
+    });
+
+    assert.ok(result.url.startsWith('data:image/png;base64,'));
+});
+
+test('gate:host:tavern-helper-adapter-uses-hide-state-fallback-for-hidden-messages', async () => {
+    const messages = [
+        { id: 0, text: '玩家', role: 'user' },
+        { id: 1, text: '隐藏楼层' },
+        { id: 2, text: '可见楼层' },
+    ];
+    const adapter = createTavernHelperAdapter({
+        TavernHelper: {
+            getLastMessageId: () => 2,
+            getChatMessages(_range, options = {}) {
+                if (options.hide_state === 'hidden') {
+                    return [{ message_id: 1 }];
+                }
+                return messages;
+            },
+        },
+        document: {
+            querySelectorAll: () => [],
+        },
+    });
+
+    const normalized = await adapter.listMessages();
+    const current = await adapter.getCurrentMessage();
+
+    assert.equal(normalized[1].isHidden, true);
+    assert.equal(current.id, 2);
+});
+
+test('gate:host:tavern-helper-adapter-falls-back-to-sillytavern-context-chat', async () => {
+    const adapter = createTavernHelperAdapter({
+        SillyTavern: {
+            getContext() {
+                return {
+                    chat: [
+                        { mes: '玩家发言', is_user: true },
+                        { mes: '第一条 AI 楼层' },
+                        { mes: '隐藏楼层', is_hidden: true },
+                        { mes: '第二条 AI 楼层' },
+                    ],
+                };
+            },
+        },
+        document: {
+            querySelectorAll: () => [],
+        },
+    });
+
+    const current = await adapter.getCurrentMessage();
+    const hidden = await adapter.getMessageById(2);
+
+    assert.equal(current.id, 3);
+    assert.equal(current.text, '第二条 AI 楼层');
+    assert.equal(hidden.isHidden, true);
+});
+
 function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
+}
+
+function buildStoredZip(filename, bytes) {
+    const nameBytes = Buffer.from(String(filename || ''), 'utf8');
+    const dataBytes = Buffer.from(bytes);
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(0, 6);
+    header.writeUInt16LE(0, 8);
+    header.writeUInt16LE(0, 10);
+    header.writeUInt16LE(0, 12);
+    header.writeUInt32LE(0, 14);
+    header.writeUInt32LE(dataBytes.length, 18);
+    header.writeUInt32LE(dataBytes.length, 22);
+    header.writeUInt16LE(nameBytes.length, 26);
+    header.writeUInt16LE(0, 28);
+    return Buffer.concat([header, nameBytes, dataBytes]);
 }

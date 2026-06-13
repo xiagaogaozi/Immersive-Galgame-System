@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.4`：已按 `plan/v0.3.3-原版VN分页拖拽与AI楼层修复施工图.md` 完成实现，修复原版 VN 分页、PC/手机浮窗拖拽、AI-only 楼层切换、长文本滚动与四模式选择器溢出，并已通过 `npm run gate` 与 `npm run build:loader`。
+- 当前项目版本 `v0.3.5`：已按 `plan/v0.3.5-原版VN剩余重构审计与补全策划书.md` 补齐原版 VN 剩余 parity 缺口，实现真实 NAI 生图链路、外部插图适配过滤、DOM 图片探测、隐藏楼层兼容与 SillyTavern context fallback，并已通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
 - `v0.3.2` 已把“manifest 指向新版本但版本 tag CDN 暂不可用时，不弹失败框并改用 `@main` bundle”固定为回归闸门；`v0.3.1` 已固定 web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
@@ -128,6 +128,13 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.5 - 2026-06-13
+
+- 按 `plan/v0.3.5-原版VN剩余重构审计与补全策划书.md` 补齐原版 VN 剩余重构缺口：新增 `app/src/generated-images/image-api-client.js`、`dom-image-candidates.js` 与 `providers/dom-generic-provider.js`，把原版的模型读取、真实 NAI 生图、DOM 插图探测和通用外部适配收口到 `generated-images` 运行时。
+- `app/src/generated-images/providers/nai-provider.js`、`provider-runtime.js`、`reader-image-service.js` 与 `app/src/core/bootstrap.js` 现已打通真实 `fetchImageModels` / `testImageApi` / `generateImage` / `regenerate` / `save` 链路，不再用占位结果伪装原版 VN 的图像设置页。
+- `app/src/host/tavern-helper-adapter.js` 与 `app/src/visual/visual-novel-ui/reader-host.js` 补回隐藏楼层 `hide_state` 兜底、`SillyTavern.getContext()` fallback、iframe `data-src` 图片源扫描、重绘按钮定位和版本同步，确保原版阅读器在更多宿主环境下仍可打开最新楼层并读取插图。
+- `app/tests/unit.test.js`、`app/tests/simulate.test.js` 与 `app/tests/gate-contract.test.js` 扩展了 NAI zip/base64 返回、图像设置页真实调用、外部适配过滤、iframe 探测、隐藏楼层跳转与 SillyTavern context fallback 的回归闸门；本轮已同步重建 `app/dist/manifest.json` 与 `loader/igs-loader.json`，并通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
 
 ### v0.3.4 - 2026-06-13
 
