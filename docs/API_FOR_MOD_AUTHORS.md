@@ -1,6 +1,6 @@
 # 二创作者 API 草案
 
-沉浸式 Galgame 系统的二创 API 面向会写 JS 的作者。Mod 默认从对应能力页导入，不提供独立总 Mod 管理页。
+Visual Novel 的二创 API 面向会写 JS 的作者。Mod 默认从对应能力页导入，不提供独立总 Mod 管理页。
 
 ## 全局对象
 
@@ -57,7 +57,7 @@ IGS.api.promptPresets.register(preset);
 - provider 配置预设：保存选择器、轮询、优先级和按钮匹配规则。
 - UI Skin：提供完整换皮 CSS、布局槽位和可被设置页控制的 `settingsSchema`。
 - 可选组件：新增对话框、工具栏、状态块、画廊等 UI 组件。
-- 选项组件：新增 Galgame 选项浮窗样式和交互。
+- 选项组件：新增 Visual Novel 选项浮窗样式和交互。
 - 动作：给按钮、快捷键或组件提供可调用行为。
 - 场景规则：根据正文、shujuku 数据或自定义状态切换背景、立绘和环境效果。
 - 资源包：提供背景、立绘、头像和默认匹配规则。

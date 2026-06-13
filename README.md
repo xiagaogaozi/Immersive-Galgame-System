@@ -1,11 +1,11 @@
-# 沉浸式galgame系统
+# Visual Novel
 
-JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
+JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 ## 当前定位
 
-- 中文名：沉浸式 Galgame 系统
-- 英文缩写：IGS（Immersive Galgame System）
+- 显示名：Visual Novel
+- 内部代号：IGS
 - 全局对象：`window.IGS`
 - 完整对象：`window.ImmersiveGalgameSystem`
 - CSS 前缀：`.igs-`
@@ -19,20 +19,20 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.15`：IGS 发布名、运行时公开名、dist manifest 和用户可见导入文件已统一为 `沉浸式 Galgame 系统`。
+- 当前项目版本 `v0.3.16`：发布名、运行时公开名、dist manifest、用户可见导入文件和项目目录均为 `Visual Novel`。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v0.3.15.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.16.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
 - 当前验收策略：`npm run gate`，fixtures 驱动的模拟测试，不要求安装版实机校验。
-- GitHub 仓库：`https://github.com/xiagaogaozi/immersive-galgame-system`
+- GitHub 仓库：`https://github.com/xiagaogaozi/Visual-Novel`
 
 ## 项目目标
 
-本项目目标是把原 Visual Novel 脚本升级为一个可扩展的沉浸式 Galgame 运行时：
+本项目目标是把原 Visual Novel 脚本升级为一个可扩展的 Visual Novel 运行时：
 
 - 继续保留 Visual Novel 已有的阅读器、魔法棒入口、正文解析、图像 API、外部插图扩展适配和移动/桌面阅读模式。
 - 使用 GitHub 远程 bundle 发布主程序，酒馆内只导入小型自动更新 loader。
@@ -44,7 +44,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 ## 目录约定
 
 ```text
-projects/沉浸式galgame系统/
+projects/Visual Novel/
 ├── README.md
 ├── AGENTS.md                        项目级 AI 协作流程
 ├── 功能总集表.md
@@ -109,7 +109,7 @@ projects/沉浸式galgame系统/
 
 ## 修改流程
 
-本项目当前绕过奶龙工具箱发布项目结构，只保留已确认的沉浸式 Galgame 系统架构：
+本项目当前绕过奶龙工具箱发布项目结构，只保留已确认的 Visual Novel 架构：
 
 1. 修改前先读 `AGENTS.md`、`docs/AI_WORKFLOW.md`、`功能总集表.md` 和目标模块的 `CONTRACT.md`。
 2. 每次形成或更新版本策划书时，必须放入 `plan/`，文件名使用 `v版本号-主题.md`，例如 `plan/v0.1.5-验收闸门策划书.md`。
@@ -129,17 +129,11 @@ projects/沉浸式galgame系统/
 
 ## 更新日志
 
-### v0.3.15 - 2026-06-13
-
-- 修复：IGS 运行时公开 API `name` 改为 `沉浸式 Galgame 系统`，不再只暴露英文 `Immersive Galgame System`。
-- 修复：`app/dist/manifest.json` 的发布名改为 `沉浸式 Galgame 系统`，版本同步升至 `0.3.15`。
-- 修复：`app/scripts/build-loader.js` 现在会额外生成 `loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v0.3.15.json`，作为给用户导入的中文发布文件；`loader/igs-loader.json` 继续作为固定内部入口。
-- 验收：测试合约新增版本化中文发布文件、dist manifest 中文名与版本号断言，防止只改源码不改发布层。
-
 ### v0.3.14 - 2026-06-13
 
 - 同步原版参考路径：活文档、AI 工作流、发布说明和 Visual Novel UI 契约中的原版来源目录已改为 `projects/Visual Novel 原版备份`。
-- 本轮不改 IGS 运行时逻辑，只更新原版备份定位，避免后续迁移、验收和打包文档继续指向旧目录名。
+- 统一 Visual Novel 对外形态：项目目录、魔法棒入口、运行时公开名、dist manifest 和用户可见导入文件均使用 `Visual Novel`。
+- 最终导入件固定为 `loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`；`loader/igs-loader.json` 继续作为固定内部入口和自动化校验基准。
 
 ### v0.3.13 - 2026-06-13
 
@@ -186,7 +180,7 @@ projects/沉浸式galgame系统/
 
 ### v0.3.7 - 2026-06-13
 
-- 修复自动更新 loader 的发布逻辑：`loader/igs-loader.js` 默认 ref 改为 `main`，直接加载 `https://cdn.jsdelivr.net/gh/xiagaogaozi/immersive-galgame-system@main/app/dist/igs.bundle.*` 并加 cache bust，不再通过 manifest 推导 `v<version>`。
+- 修复自动更新 loader 的发布逻辑：`loader/igs-loader.js` 默认 ref 改为 `main`，直接加载 `https://cdn.jsdelivr.net/gh/xiagaogaozi/Visual-Novel@main/app/dist/igs.bundle.*` 并加 cache bust，不再通过 manifest 推导 `v<version>`。
 - 保留手动锁版本能力：用户仍可通过 `window.IGS_LOADER_REF` 或 `window.IGS_LOADER_CONFIG.ref` 指向旧 tag、`main` 或测试分支；非 `main` ref 探测失败时会继续 fallback 到 `@main`。
 - 更新 `app/tests/gate-contract.test.js`，新增默认不读 manifest、默认加载 `@main`、固定 ref 404 后回退 `@main` 的 VM 回归测试，并防止 `DEFAULT_REF` 再被写回 `vX.Y.Z`。
 - `docs/PACKAGING_WORKFLOW.md`、`docs/RELEASE.md` 与 `loader/README.md` 已同步改写发布说明；`app/package.json`、运行时版本、阅读器版本显示与构建产物同步提升到 `v0.3.7`。
@@ -255,7 +249,7 @@ projects/沉浸式galgame系统/
 ### v0.2.13 - 2026-06-12
 
 - 修复阅读器控制器与 DOM 挂载参数错位导致的工具栏全失效问题：`settings`、`hide`、`toggle-bar`、`close` 现在会走真实 controller 行为，关闭会同时卸载阅读器和设置面板。
-- 魔法棒入口显示名固定为 `沉浸式 Galgame 系统`，继续保留原版 `data-vnm-magic-entry="1"`、`vnm-magic-entry`、`fa-book-open` 单入口契约，并清理旧 `[data-igs-magic-entry]` 残留。
+- 魔法棒入口显示名固定为 `Visual Novel`，继续保留原版 `data-vnm-magic-entry="1"`、`vnm-magic-entry`、`fa-book-open` 单入口契约，并清理旧 `[data-igs-magic-entry]` 残留。
 - 阅读器工具栏恢复原版 SVG 图标、`#vnm-bar-btns` 收纳区、`#vnm-bar-pinned` 常驻区、`toggle-bar` 与 `close` 常驻按钮；默认状态与原版一致为收纳。
 - 设置面板基础页的 `bridge.openMode` 四模式切换现在会即时同步 active reader mode；阅读器页补回常驻按钮配置并持久化到 `vnm-reader-settings-v9-<mode>`。
 - `prev` / `next` 不再是空占位，已能在当前楼层正文段落之间切换并刷新进度；`prev-turn` / `next-turn` 在模拟环境返回明确宿主消息列表需求，不再静默无响应。
@@ -266,14 +260,14 @@ projects/沉浸式galgame系统/
 
 - 新增 `app/src/scene/message-source.js`，迁移原版 Visual Novel 的 `DEFAULT_SOURCE_FILTER`、`DEFAULT_VIRTUAL_REGEX`、`getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 和强制 fallback 语义，统一正文提取、正文格式化和宿主 HTML 泄漏防护。
 - `app/src/api/visual-novel-compat.js` 现在在 `openLatestAvailable()` / `openViewerFromMessage()` 前先构建 VN 正文 payload，再把清洗后的 `textScene` 送入 `refresh()`，避免 reader 继续直接拿宿主原始 HTML 当正文。
-- `app/src/host/magic-wand-entry.js` 当时恢复了原版单一入口契约：`vnm-magic-entry`、`data-vnm-magic-entry="1"`、`fa-book-open`，并在重扫/销毁时主动清理旧 `[data-igs-magic-entry]` 残留；入口显示名误保留为 `Visual Novel`，已在 `v0.2.13` 改回 `沉浸式 Galgame 系统`。
+- `app/src/host/magic-wand-entry.js` 恢复原版单一入口契约：`vnm-magic-entry`、`data-vnm-magic-entry="1"`、`fa-book-open`，并在重扫/销毁时主动清理旧 `[data-igs-magic-entry]` 残留；入口显示名保持 `Visual Novel`。
 - `app/src/host/tavern-helper-adapter.js` 增加消息筛选和 DOM 可见正文回填，优先打开最近一条可读的非用户消息，并把 `.mes_text` 提取结果作为 `visibleText` 参与 fallback。
 - 新增 `app/fixtures/tavern/host-ui-leak-message.json`，扩展 `app/tests/unit.test.js`、`app/tests/simulate.test.js`、`app/tests/gate-contract.test.js`，固定“只有一个魔法棒入口”“图标必须是 `fa-book-open`”“宿主 UI HTML 不得进入 `.vnm-text`”的回归闸门。
 - runtime、manifest、loader 默认版本同步提升到 `v0.2.12`，本轮已通过 `npm run gate` 和 `npm run build:loader`。
 
 ### v0.2.12-plan - 2026-06-12
 
-- 归档 `plan/v0.2.12-原版VN可用性修复施工图.md`，当时目标是恢复原版 `fa-book-open` 魔法棒入口并修复阅读器把酒馆宿主 HTML 当正文显示的问题；该计划曾沿用 `Visual Novel` 入口文案，已在 `v0.2.13` 按项目名纠正。
+- 归档 `plan/v0.2.12-原版VN可用性修复施工图.md`，当时目标是恢复原版 `fa-book-open` 魔法棒入口并修复阅读器把酒馆宿主 HTML 当正文显示的问题；入口文案保持 `Visual Novel`。
 - 施工图要求迁移原版 `getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 的正文抽取和清洗语义，并补截图同款 host UI HTML 泄漏回归 fixture。
 - 本条为已执行归档；对应实现已在同日发布为 `v0.2.12`。
 
@@ -286,7 +280,7 @@ projects/沉浸式galgame系统/
 ### v0.2.10 - 2026-06-12
 
 - 修复 JS-Slash-Runner 导入报错：`loader/igs-loader.json` 恢复为 `button.enabled=false`、`button.buttons=[]`，不再生成缺少 `visible` 字段的按钮项。
-- 删除 `启动 IGS`、`重扫入口` 两个酒馆助手按钮；正式用户入口只保留酒馆魔法棒菜单里的 `沉浸式 Galgame`。
+- 删除 `启动 IGS`、`重扫入口` 两个酒馆助手按钮；正式用户入口只保留酒馆魔法棒菜单里的 `Visual Novel`。
 - 更新 loader 合约测试，强制要求自动更新脚本不提供额外按钮入口，防止后续偏离原版 Visual Novel 的入口形态。
 
 ### v0.2.9 - 2026-06-12
@@ -297,7 +291,7 @@ projects/沉浸式galgame系统/
 
 ### v0.2.8 - 2026-06-12
 
-- 新增 `app/src/host/magic-wand-entry.js`，启动后自动向酒馆魔法棒菜单 `#extensionsMenu`、`#extensions_menu`、`.extensions_block .list-group` 注入 `沉浸式 Galgame` 入口。
+- 新增 `app/src/host/magic-wand-entry.js`，启动后自动向酒馆魔法棒菜单 `#extensionsMenu`、`#extensions_menu`、`.extensions_block .list-group` 注入 `Visual Novel` 入口。
 - `bootstrapIGS()` 现在会自动挂载魔法棒入口，点击入口会调用 `openLatestAvailable()` 打开最新可用楼层阅读器，并在 `destroy()` 时清理菜单项、委托点击和观察器。
 - 公开 API 新增 `ensureMagicWandEntry()` 与 `getMagicWandEntryState()`，用于控制台手动重扫入口、诊断入口状态。
 - 新增模拟测试覆盖“魔法棒菜单存在 -> IGS 注入入口 -> 点击入口 -> 阅读器打开”的最小闭环；本轮仍不执行真实酒馆实机校验。
@@ -364,12 +358,12 @@ projects/沉浸式galgame系统/
 - 新增 `app/package.json` 和 `app/scripts/*`，提供 `npm run structure/static/test/simulate/perf/build/gate`。
 - 新增 `app/fixtures/` 分层样例和 `app/tests/` 原生 Node 测试，覆盖输入发送、场景解析、视觉模式、生图请求构建、导入契约、样式契约、fake shujuku 刷新和资源缓存。
 - `npm run gate` 已通过：structure、static、test、simulate、perf、build 全部成功；未执行真实酒馆、真实 provider 或安装版实机校验。
-- 新增独立 GitHub 上传流程，仓库目标为 `xiagaogaozi/immersive-galgame-system`，上传命令写入 `docs/RELEASE.md` 与 `docs/AI_WORKFLOW.md`。
+- 新增独立 GitHub 上传流程，仓库目标为 `xiagaogaozi/Visual-Novel`，上传命令写入 `docs/RELEASE.md` 与 `docs/AI_WORKFLOW.md`。
 
 ### v0.1.6 - 2026-06-12
 
 - 新增项目级 `AGENTS.md`，移植 NailongHub 的风险级别、执行清单、防结构腐化、技术债记录和交付说明流程。
-- 将 NailongHub 的安装版实机验真要求改写为沉浸式 Galgame 系统的 fixtures 驱动模拟测试策略。
+- 将 NailongHub 的安装版实机验真要求改写为 Visual Novel 的 fixtures 驱动模拟测试策略。
 - 新增 `docs/ARCHITECTURE.md`，用模块图和职责表补充 AI 读代码入口。
 - 新增 `docs/SCHEMA_AND_FIXTURES.md` 与 `app/src/schemas/CONTRACT.md`，明确跨模块 schema、fixtures 和 `S0-S10` 模拟测试矩阵。
 - 更新 README 与 AI 工作流索引，明确本项目仍不走奶龙工具箱发布壳和校验流程。
@@ -413,7 +407,7 @@ projects/沉浸式galgame系统/
 
 ### v0.1.0 - 2026-06-10
 
-- 新建沉浸式 Galgame 系统架构目录。
+- 新建 Visual Novel 架构目录。
 - 建立 `app/` 主工程模块契约、fixtures 与测试目录说明。
 - 建立 `docs/` 下的 AI 工作流、Mod API、预设格式、能力分组导入、场景规则与 shujuku 表格页说明。
 - 建立根目录 `功能总集表.md`，汇总 Visual Novel 既有能力、已确认新增目标与 UI 结构。

@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
+    const REPOSITORY = 'xiagaogaozi/Visual-Novel';
     const DEFAULT_REF = 'main';
     const MAIN_BASE = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@main`;
     const MAIN_BRANCH_URL = `https://api.github.com/repos/${REPOSITORY}/branches/main`;
@@ -16,7 +16,7 @@
     const doc = getRootDocument();
 
     if (!doc) {
-        console.warn('[IGS Loader] 未找到可访问的文档，无法加载沉浸式 Galgame 系统。');
+        console.warn('[IGS Loader] 未找到可访问的文档，无法加载 Visual Novel。');
         return;
     }
 
@@ -34,7 +34,7 @@
     load().catch((error) => {
         console.error('[IGS Loader] 启动失败。', error);
         try {
-            if (typeof root.alert === 'function') root.alert(`沉浸式 Galgame 系统启动失败：${error && error.message || String(error)}`);
+            if (typeof root.alert === 'function') root.alert(`Visual Novel 启动失败：${error && error.message || String(error)}`);
         } catch (alertError) {
             // Ignore blocked alert calls.
         }
@@ -86,7 +86,7 @@
             }
         }
 
-        throw lastError || new Error('没有可用的沉浸式 Galgame 系统远程 bundle。');
+        throw lastError || new Error('没有可用的 Visual Novel 远程 bundle。');
     }
 
     async function resolveLoaderConfig() {
@@ -229,9 +229,9 @@
         button.setAttribute('data-vnm-magic-entry', '1');
         button.setAttribute('data-vnm-loader-entry', '1');
         button.setAttribute('data-vnm-version', 'loader');
-        button.setAttribute('title', '沉浸式 Galgame 系统正在加载');
-        button.setAttribute('aria-label', '沉浸式 Galgame 系统正在加载');
-        button.innerHTML = '<span class="fa-solid fa-book-open" aria-hidden="true"></span> 沉浸式 Galgame 系统';
+        button.setAttribute('title', 'Visual Novel 正在加载');
+        button.setAttribute('aria-label', 'Visual Novel 正在加载');
+        button.innerHTML = '<span class="fa-solid fa-book-open" aria-hidden="true"></span> Visual Novel';
         button.addEventListener('click', (event) => {
             if (event) {
                 event.preventDefault();
@@ -278,7 +278,7 @@
     }
 
     function notifyLoaderPending() {
-        const message = '沉浸式 Galgame 系统仍在加载远程脚本，请稍等几秒后再点。';
+        const message = 'Visual Novel 仍在加载远程脚本，请稍等几秒后再点。';
         try {
             if (root.toastr && typeof root.toastr.info === 'function') {
                 root.toastr.info(message, 'IGS');
@@ -349,7 +349,7 @@
             script.type = 'module';
             script.src = src;
             script.onload = () => {
-                console.info('[IGS Loader] 沉浸式 Galgame 系统 bundle 已加载。', src);
+                console.info('[IGS Loader] Visual Novel bundle 已加载。', src);
                 resolve(script);
             };
             script.onerror = () => {
@@ -370,7 +370,7 @@
                 reused: true,
                 magicWandEntry: result,
             };
-            console.info('[IGS Loader] 沉浸式 Galgame 系统已加载，已重扫魔法棒入口。', result);
+            console.info('[IGS Loader] Visual Novel 已加载，已重扫魔法棒入口。', result);
             scheduleMagicWandEnsure();
             return { done: true, reason: 'reused-existing-runtime' };
         }

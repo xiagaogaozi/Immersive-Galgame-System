@@ -9,7 +9,7 @@ const LEGACY_ENTRY_SELECTOR = '[data-igs-magic-entry="1"]';
 
 export function createMagicWandEntry(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
-    const label = options.label || '沉浸式 Galgame 系统';
+    const label = options.label || 'Visual Novel';
     const version = String(options.version || '');
     const menuSelectors = options.menuSelectors || DEFAULT_MENU_SELECTORS;
     const retryIntervalMs = options.retryIntervalMs === false

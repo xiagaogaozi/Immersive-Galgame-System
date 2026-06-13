@@ -1,6 +1,6 @@
 # app 主工程
 
-`app/` 是沉浸式 Galgame 系统的主工程。后续发布到 GitHub 时，构建产物预计为 `app/dist/igs.bundle.js` 与 `app/dist/igs.bundle.css`。
+`app/` 是 Visual Novel 的主工程。后续发布到 GitHub 时，构建产物预计为 `app/dist/igs.bundle.js` 与 `app/dist/igs.bundle.css`。
 
 ## 工程目标
 
@@ -57,7 +57,7 @@ pnpm perf
 | `prompts/adapters` | 根据 provider 类型选择 request builder。 |
 | `prompts/schemas` | 不同模型提示词、参数和工作流 schema。 |
 | `schemas` | 跨模块共享的 SceneState、ImportManifest、权限和公开 API 结果 schema。 |
-| `choices` | Galgame 选项解析、浮窗、选择后输入框发送。 |
+| `choices` | Visual Novel 选项解析、浮窗、选择后输入框发送。 |
 | `shujuku-panel` | 内置 shujuku 表格可编辑前端。 |
 | `styles` | CSS 全量编辑、UI token、用户 CSS、主题预设。 |
 | `hotkeys` | 手动快捷键绑定和冲突检测。 |

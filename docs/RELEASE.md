@@ -5,9 +5,9 @@
 ## GitHub 仓库
 
 - GitHub 账号：`xiagaogaozi`
-- 仓库名：`immersive-galgame-system`
-- 仓库地址：`https://github.com/xiagaogaozi/immersive-galgame-system`
-- 本地仓库根目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`
+- 仓库名：`Visual-Novel`
+- 仓库地址：`https://github.com/xiagaogaozi/Visual-Novel`
+- 本地仓库根目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`
 - 默认分支：`main`
 - 当前可见性：public
 
@@ -19,7 +19,7 @@
 - `app/dist/igs.bundle.css`
 - `app/dist/manifest.json`
 - `loader/igs-loader.json`
-- `loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json`
+- `loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`
 - `loader/igs-loader.js`
 
 `app/dist/igs.bundle.js` 是给 loader 远程加载的自包含主程序文件。它不能只是 `import ../src/index.js` 的转发入口，否则 cache bust 只会刷新入口文件，浏览器或酒馆仍可能复用旧的源码子模块。
@@ -30,7 +30,7 @@
 - loader 只负责加载远程 bundle。
 - 主程序逻辑只来自 `app/`。
 - 原版 Visual Novel 只作为迁移来源和兼容参考，路径是 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
-- 最终给用户导入的是版本化中文发布文件 `loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json`，不是 `app/dist/igs.bundle.js`。`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终给用户导入的是版本化中文发布文件 `loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`，不是 `app/dist/igs.bundle.js`。`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
 
 ## loader JSON 格式
 
@@ -40,10 +40,10 @@
 {
   "type": "script",
   "enabled": false,
-  "name": "沉浸式 Galgame 系统（自动更新）",
+  "name": "Visual Novel（自动更新）",
   "id": "<固定 UUID>",
   "content": "<loader/igs-loader.js 的原文>",
-  "info": "沉浸式 Galgame 系统自动更新 loader。",
+  "info": "Visual Novel 自动更新 loader。",
   "button": {
     "enabled": false,
     "buttons": []
@@ -85,7 +85,7 @@ npm run perf
 
 ```powershell
 node -e "const fs=require('fs'); const js=fs.readFileSync('loader/igs-loader.js','utf8'); const j=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); if(j.type!=='script'||j.content!==js||!j.content.includes('igs.bundle.js')) throw new Error('bad loader json');"
-node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); const b=JSON.parse(fs.readFileSync('loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json','utf8')); if(a.content!==b.content||a.name!==b.name) throw new Error('release json mismatch');"
+node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); const b=JSON.parse(fs.readFileSync('loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json','utf8')); if(a.content!==b.content||a.name!==b.name) throw new Error('release json mismatch');"
 ```
 
 ## 上传流程
@@ -93,17 +93,17 @@ node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/igs-
 首次上传：
 
 ```powershell
-cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统"
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel"
 git init -b main
 git add .
-git commit -m "Initialize immersive galgame system"
-gh repo create xiagaogaozi/immersive-galgame-system --private --source . --remote origin --push
+git commit -m "Initialize Visual Novel"
+gh repo create xiagaogaozi/Visual-Novel --private --source . --remote origin --push
 ```
 
 后续更新：
 
 ```powershell
-cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统\app"
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel\app"
 npm run gate
 cd ..
 git status --short

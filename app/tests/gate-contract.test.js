@@ -73,7 +73,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
 
     assert.equal(loaderJson.type, 'script');
-    assert.equal(loaderJson.name, '沉浸式 Galgame 系统（自动更新）');
+    assert.equal(loaderJson.name, 'Visual Novel（自动更新）');
     assert.equal(loaderJson.content, loaderSource);
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
@@ -88,7 +88,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.equal(loaderJson.button.enabled, false);
     assert.deepEqual(loaderJson.button.buttons, []);
 
-    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', '酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v0.3.15.json'), 'utf8'));
+    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', '酒馆助手脚本-Visual Novel（自动更新） v0.3.16.json'), 'utf8'));
     assert.equal(releaseJson.name, loaderJson.name);
     assert.equal(releaseJson.content, loaderSource);
 });
@@ -99,11 +99,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0\.3\.15/);
+    assert.match(bundle, /IGS version: 0\.3\.16/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
-    assert.equal(manifest.name, '沉浸式 Galgame 系统');
-    assert.equal(manifest.version, '0.3.15');
+    assert.equal(manifest.name, 'Visual Novel');
+    assert.equal(manifest.version, '0.3.16');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -187,7 +187,7 @@ test('gate:loader-json:adds-temporary-magic-wand-entry-before-remote-bundle-load
     assert.ok(entry);
     assert.equal(entry.getAttribute('data-vnm-magic-entry'), '1');
     assert.equal(entry.getAttribute('data-vnm-version'), 'loader');
-    assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
+    assert.match(entry.innerHTML, /Visual Novel/);
     assert.deepEqual(alerts, []);
 });
 
@@ -356,7 +356,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.15');
+    const source = getOriginalReaderSource('0.3.16');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

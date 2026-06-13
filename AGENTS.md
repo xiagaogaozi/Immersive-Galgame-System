@@ -1,12 +1,12 @@
-# 沉浸式 Galgame 系统 AI 协作流程
+# Visual Novel AI 协作流程
 
-本文件是 `projects/沉浸式galgame系统/` 的项目级协作规则。上级分流仍以 `../../AGENTS.md` 与 `../../../AGENTS.md` 为准；本项目当前是独立 app 工程，最终发布为独立酒馆助手脚本 loader JSON，不默认接入奶龙工具箱发布壳。
+本文件是 `projects/Visual Novel/` 的项目级协作规则。上级分流仍以 `../../AGENTS.md` 与 `../../../AGENTS.md` 为准；本项目当前是独立 app 工程，最终发布为独立酒馆助手脚本 loader JSON，不默认接入奶龙工具箱发布壳。
 
 ## 基本约定
 
-- 默认项目目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`
+- 默认项目目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`
 - 默认工作形态：`loader/` 只放远程 bundle loader，主程序只放 `app/`。
-- 最终导入产物：`loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终导入产物：`loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 打包发布入口文档：`docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`。
 - 不新增 `project.json`、`latest/`、`archive/`、`tavern helper/` 等奶龙工具箱发布壳目录，除非用户明确要求重新接入工具箱流程。
@@ -26,7 +26,7 @@
 - `R4` loader、dist、发布流程、版本号或远程 bundle 链路修改：运行 `pnpm build`、`pnpm simulate`、`pnpm perf`，并保留模拟发布证据。
 - `R5` 真实 provider、真实 shujuku 写入、真实用户数据迁移或不可逆操作：先用 fake provider / fake shujuku / fixtures 做确定性模拟，真实链路必须等用户明确确认。
 
-本项目当前不要求安装版实机验真，也不要求 Computer Use 实机操作。NailongHub 工作流中的实机验真位置，在本项目一律替换为沉浸式 Galgame 系统模拟测试。
+本项目当前不要求安装版实机验真，也不要求 Computer Use 实机操作。NailongHub 工作流中的实机验真位置，在本项目一律替换为 Visual Novel 模拟测试。
 
 ## 执行清单规则
 
@@ -98,7 +98,7 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 - 每一轮产生文件改动后，结束前必须在本项目独立仓库执行 `git add .`、`git commit`、`git push origin main`。
 - 每一轮提交后必须创建版本标签并推送：`git tag -a v<当前版本> -m "<版本说明>"` 与 `git push origin v<当前版本>`。
 - 如果当前版本标签已存在，不得强推覆盖；应提升 patch 版本并更新 `app/package.json`、`README.md`、必要的运行时版本常量和 `app/dist/manifest.json`。
-- 上传前必须确认 `git rev-parse --show-toplevel` 指向 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`，禁止从上级 `nailongwang-main` 仓库提交本项目。
+- 上传前必须确认 `git rev-parse --show-toplevel` 指向 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`，禁止从上级 `nailongwang-main` 仓库提交本项目。
 - 上传后必须回查 `git status --short --branch`、`git ls-remote --heads origin main` 与 `git ls-remote --tags origin v<当前版本>`，确认远程分支和标签存在。
 - 只有用户明确要求“只本地修改/不要上传/不要打标签”时才能跳过；跳过必须写入最终回复和必要的 README/docs 技术债记录。
 

@@ -18,7 +18,7 @@
 生成命令：
 
 ```powershell
-cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统\app"
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel\app"
 npm run build:loader
 ```
 

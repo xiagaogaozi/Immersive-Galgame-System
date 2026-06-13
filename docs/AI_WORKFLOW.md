@@ -108,7 +108,7 @@ D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Nove
 本项目拥有独立 GitHub 仓库：
 
 ```text
-https://github.com/xiagaogaozi/immersive-galgame-system
+https://github.com/xiagaogaozi/Visual-Novel
 ```
 
 上传前必须在项目根目录运行：
@@ -125,7 +125,7 @@ git status --short
 每一轮只要产生文件改动，结束前必须上传并打标签。默认命令：
 
 ```powershell
-cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统\app"
+cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel\app"
 npm run gate
 cd ..
 git status --short

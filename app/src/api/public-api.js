@@ -32,7 +32,7 @@ export function createPublicApi(app) {
     const visualNovelCompatApi = createVisualNovelCompatApi(app);
 
     return {
-        name: '沉浸式 Galgame 系统',
+        name: 'Visual Novel',
         version: app.version,
         api: groupedApi,
 

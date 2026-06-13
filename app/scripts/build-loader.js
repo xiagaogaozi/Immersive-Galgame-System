@@ -7,7 +7,7 @@ const loaderRoot = path.join(projectRoot, 'loader');
 const jsPath = path.join(loaderRoot, 'igs-loader.js');
 const jsonPath = path.join(loaderRoot, 'igs-loader.json');
 const packageJson = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8'));
-const releaseJsonName = `酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v${packageJson.version}.json`;
+const releaseJsonName = `酒馆助手脚本-Visual Novel（自动更新） v${packageJson.version}.json`;
 const releaseJsonPath = path.join(loaderRoot, releaseJsonName);
 
 const content = fs.readFileSync(jsPath, 'utf8');
@@ -18,11 +18,11 @@ if (!content.includes('igs.bundle.js') || !content.includes('igs.bundle.css')) {
 const loaderJson = {
     type: 'script',
     enabled: false,
-    name: '沉浸式 Galgame 系统（自动更新）',
+    name: 'Visual Novel（自动更新）',
     id: 'dfb8828d-1687-4aff-84e3-e192def8d389',
     content,
     info: [
-        '沉浸式 Galgame 系统自动更新 loader。',
+        'Visual Novel 自动更新 loader。',
         '默认从 GitHub/jsDelivr 加载 app/dist/igs.bundle.css 与 app/dist/igs.bundle.js。',
         '测试前请确认仓库或发布资产为公开可访问。',
     ].join('\n'),
