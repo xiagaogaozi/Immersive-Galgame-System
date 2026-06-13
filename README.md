@@ -19,11 +19,11 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.17`：发布名、运行时公开名、dist manifest、用户可见导入文件和项目目录均为 `Visual Novel`。
+- 当前项目版本 `v0.3.18`：修复魔法棒入口在启动期重复删除并重建自身导致酒馆初始化卡住的问题。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.17.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.18.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -128,6 +128,12 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.18 - 2026-06-13
+
+- 修复魔法棒入口扫描的自删自建循环：入口扫描现在只清理版本不匹配、位置不正确或形状异常的 `data-vn-*` 菜单项，不再把当前正式入口当作旧入口无条件删除。
+- 新增回归验证：重复执行 `ensureMagicWandEntry()` 时必须复用同一个菜单节点，避免 DOM 监听器在酒馆初始化期被反复触发。
+- 发布产物同步提升到 `v0.3.18`，自动更新 loader 仍按 GitHub `main` 最新提交拉取远程 bundle。
 
 ### v0.3.17 - 2026-06-13
 

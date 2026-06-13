@@ -5,7 +5,6 @@ const DEFAULT_MENU_SELECTORS = Object.freeze([
 ]);
 
 const ENTRY_SELECTOR = '[data-vn-magic-entry="1"]';
-const LEGACY_ENTRY_SELECTOR = '[data-vn-magic-entry="1"]';
 
 export function createMagicWandEntry(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
@@ -266,19 +265,14 @@ export function createMagicWandEntry(options = {}) {
     }
 
     function cleanupMagicEntries(candidateDoc, menuElements) {
-        [ENTRY_SELECTOR, LEGACY_ENTRY_SELECTOR].forEach((selector) => {
-            safeQueryAll(candidateDoc, selector).forEach((button) => {
-                const isLegacy = selector === LEGACY_ENTRY_SELECTOR;
-                const versionAttr = isLegacy ? 'data-vn-version' : 'data-vn-version';
-                const shouldRemove = isLegacy
-                    || !menuElements.includes(button.parentNode)
-                    || !isMagicEntryListItem(button)
-                    || button.getAttribute(versionAttr) !== version;
-                if (shouldRemove) {
-                    button.removeEventListener('click', handleMagicEntryClick);
-                    button.remove();
-                }
-            });
+        safeQueryAll(candidateDoc, ENTRY_SELECTOR).forEach((button) => {
+            const shouldRemove = !menuElements.includes(button.parentNode)
+                || !isMagicEntryListItem(button)
+                || button.getAttribute('data-vn-version') !== version;
+            if (shouldRemove) {
+                button.removeEventListener('click', handleMagicEntryClick);
+                button.remove();
+            }
         });
     }
 }
