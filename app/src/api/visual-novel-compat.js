@@ -171,6 +171,9 @@ function buildReaderPayload(app, message, messageId, readerMode) {
         visualNovelText.formattedText || visualNovelText.visibleText || visualNovelText.cleanedRaw || '',
         { messageId },
     );
+    const readerText = Array.isArray(visualNovelText.textSegments) && visualNovelText.textSegments.length
+        ? visualNovelText.textSegments.join('\n')
+        : textScene.text;
 
     return {
         ...visualNovelText,
@@ -178,7 +181,12 @@ function buildReaderPayload(app, message, messageId, readerMode) {
         messageId,
         mode: readerMode,
         viewerMode: readerMode,
-        textScene,
+        sourceFilter: bridge.sourceFilter,
+        virtualRegex: bridge.virtualRegex,
+        textScene: {
+            ...textScene,
+            text: readerText,
+        },
     };
 }
 
@@ -186,12 +194,20 @@ async function enrichReaderPayload(app, payload) {
     if (!app || typeof app.collectMessageImages !== 'function') {
         return payload;
     }
+    const preferredImageIndex = resolvePreferredImageIndex(payload);
     const imageState = await app.collectMessageImages({
         message: payload.message,
         messageId: payload.messageId,
         scene: payload.scene,
         render: payload.render,
         currentIndex: payload.startAtEnd === true ? Number.MAX_SAFE_INTEGER : 0,
+        textIndex: payload.startAtEnd === true
+            ? resolveLastTextIndex(payload)
+            : 0,
+        preferredImageIndex,
+        imageSource: payload.imageSource,
+        imageSlots: payload.imageSlots,
+        segmentImageSlots: payload.segmentImageSlots,
         mode: payload.mode,
     });
     return {
@@ -231,4 +247,22 @@ function cloneViewerOptions(options = {}) {
         clone.message = options.message || null;
     }
     return clone;
+}
+
+function resolveLastTextIndex(payload) {
+    const textSegments = Array.isArray(payload && payload.textSegments) ? payload.textSegments : [];
+    return textSegments.length ? textSegments.length - 1 : 0;
+}
+
+function resolvePreferredImageIndex(payload) {
+    const segmentImageSlots = Array.isArray(payload && payload.segmentImageSlots)
+        ? payload.segmentImageSlots
+        : [];
+    if (!segmentImageSlots.length) return 0;
+    const textIndex = payload && payload.startAtEnd === true
+        ? segmentImageSlots.length - 1
+        : 0;
+    const preferred = Number(segmentImageSlots[textIndex]);
+    if (!Number.isFinite(preferred) || preferred < 0) return 0;
+    return Math.floor(preferred);
 }

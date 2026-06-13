@@ -28,6 +28,11 @@ export const chamiProvider = Object.freeze({
             url: candidate.url,
             providerId: 'builtin.chami',
             source: 'provider-dom',
+            imageId: candidate.imageId,
+            locationHash: candidate.locationHash,
+            slotIndex: candidate.slotIndex,
+            buttonIndex: candidate.buttonIndex,
+            order: candidate.order,
         }));
     },
 });

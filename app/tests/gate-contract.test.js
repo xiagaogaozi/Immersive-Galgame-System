@@ -77,7 +77,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.5'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.6'/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -152,12 +152,12 @@ test('gate:loader-json:falls-back-to-main-when-version-cdn-is-missing', async ()
             if (text.includes('manifest.json')) {
                 return {
                     ok: true,
-                    json: async () => ({ version: '0.3.5' }),
+                    json: async () => ({ version: '0.3.6' }),
                 };
             }
             return {
-                ok: !text.includes('@v0.3.5/'),
-                status: text.includes('@v0.3.5/') ? 404 : 200,
+                ok: !text.includes('@v0.3.6/'),
+                status: text.includes('@v0.3.6/') ? 404 : 200,
             };
         },
     };
@@ -247,7 +247,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.5');
+    const source = getOriginalReaderSource('0.3.6');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

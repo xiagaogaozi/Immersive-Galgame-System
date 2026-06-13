@@ -8,8 +8,13 @@ import { createPresetRegistry } from '../src/presets/preset-registry.js';
 import {
     buildVisualNovelTextPayload,
     cleanNarrativeSource,
+    DEFAULT_SOURCE_FILTER,
     DEFAULT_VIRTUAL_REGEX,
 } from '../src/scene/message-source.js';
+import {
+    buildSegmentImageMap,
+    parseImageSlots,
+} from '../src/scene/image-slots.js';
 import { parseSceneText } from '../src/scene/text-parser.js';
 import { runTextPipeline } from '../src/scene/text-pipeline.js';
 import { createMemoryStorage } from '../src/storage/preset-store.js';
@@ -21,6 +26,7 @@ import { resolveVisualMode, VISUAL_MODES } from '../src/visual/visual-mode.js';
 import { createPromptAdapter } from '../src/prompts/adapters/prompt-adapter.js';
 import { naiRequestBuilder } from '../src/generated-images/request-builders/nai-builder.js';
 import { fetchModels as fetchImageModels, generateImage as generateImageFromApi } from '../src/generated-images/image-api-client.js';
+import { createReaderImageService } from '../src/generated-images/reader-image-service.js';
 import { createPublicApi, attachPublicApi } from '../src/api/public-api.js';
 import { createTavernHelperAdapter } from '../src/host/tavern-helper-adapter.js';
 import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
@@ -196,6 +202,50 @@ test('gate:scene:visual-novel-message-source:extracts-readable-text-from-host-ui
     assert.equal(payload.usedFallback, true);
 });
 
+test('gate:scene:visual-novel-message-source:reader-segments-skip-scene-tags', () => {
+    const payload = buildVisualNovelTextPayload({
+        text: '[角色: 艾莉]\n艾莉: 第一句。 第二句。',
+    });
+
+    assert.deepEqual(payload.textSegments, ['第一句。 第二句。']);
+    assert.deepEqual(payload.segmentImageSlots, []);
+});
+
+test('gate:scene:image-slots:parses-image-tags-in-order', () => {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const slots = parseImageSlots(source, source, DEFAULT_SOURCE_FILTER);
+
+    assert.equal(slots.length, 6);
+    assert.deepEqual(slots.map((slot) => slot.title), [
+        '望月的抗拒背影',
+        '海斗的冷静观察',
+        '望月的不甘与动摇',
+        '致命的诱惑：海斗的笔记',
+        '海斗的离去与望月的注视',
+        '海斗的笔记本与指尖',
+    ]);
+    assert.deepEqual(slots.map((slot) => slot.promptText), [
+        'image###slot-1###',
+        'image###slot-2###',
+        'image###slot-3###',
+        'image###slot-4###',
+        'image###slot-5###',
+        'image###slot-6###',
+    ]);
+});
+
+test('gate:scene:image-slots:maps-reader-segments-to-slot-indexes', () => {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
+        sourceFilter: DEFAULT_SOURCE_FILTER,
+    });
+    const mapped = buildSegmentImageMap(source, payload.textSegments, payload.imageSlots);
+
+    assert.deepEqual(payload.textSegments, ['第一段正文。', '第二段正文。', '第三段正文。']);
+    assert.deepEqual(mapped, [0, 1, 2]);
+    assert.deepEqual(payload.segmentImageSlots, [0, 1, 2]);
+});
+
 test('gate:scene:visual-novel-message-source:formats-default-bubble-body', () => {
     const payload = buildVisualNovelTextPayload({
         text: '<content>@bubble:玉子|开心|[欢迎来到图书馆。]</content>',
@@ -211,7 +261,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.5',
+            version: '0.3.6',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -238,7 +288,7 @@ test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.5',
+            version: '0.3.6',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -264,7 +314,7 @@ test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-mul
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.5',
+            version: '0.3.6',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -366,7 +416,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.5',
+        version: '0.3.6',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -506,6 +556,43 @@ test('gate:generated-images:image-api-client-parses-zip-image-response', async (
     assert.ok(result.url.startsWith('data:image/png;base64,'));
 });
 
+test('gate:generated-images:reader-image-service-prefers-slot-binding-over-scan-order', async () => {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
+        sourceFilter: DEFAULT_SOURCE_FILTER,
+    });
+    const service = createReaderImageService({
+        providers: [
+            {
+                id: 'test.slot-provider',
+                async detect() {
+                    return true;
+                },
+                extractImages() {
+                    return [{
+                        url: 'https://example.com/slot-3.png',
+                    }];
+                },
+            },
+        ],
+    });
+
+    const imageState = await service.collect({
+        messageId: 77,
+        message: { id: 77, text: source },
+        imageSlots: payload.imageSlots,
+        preferredImageIndex: 2,
+    });
+
+    assert.equal(imageState.ok, true);
+    assert.equal(imageState.count, 6);
+    assert.equal(imageState.currentIndex, 2);
+    assert.equal(imageState.displayUrl, 'https://example.com/slot-3.png');
+    assert.equal(imageState.slots[2].url, 'https://example.com/slot-3.png');
+    assert.equal(imageState.slots.filter((slot) => slot.url).length, 1);
+    assert.equal(imageState.unboundImages.length, 0);
+});
+
 test('gate:host:tavern-helper-adapter-uses-hide-state-fallback-for-hidden-messages', async () => {
     const messages = [
         { id: 0, text: '玩家', role: 'user' },
@@ -563,6 +650,10 @@ test('gate:host:tavern-helper-adapter-falls-back-to-sillytavern-context-chat', a
 
 function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
+}
+
+function readText(relativePath) {
+    return fs.readFileSync(path.join(appRoot, relativePath), 'utf8');
 }
 
 function buildStoredZip(filename, bytes) {

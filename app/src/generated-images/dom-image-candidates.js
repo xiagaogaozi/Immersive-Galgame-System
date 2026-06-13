@@ -150,11 +150,16 @@ export function collectDomImageCandidates(roots, options = {}) {
         const url = rawImageUrl(imageNode);
         if (!url) return;
         const groupKey = imageCandidateGroupKey(node, imageNode, url, order);
+        const metadata = collectNodeMetadata(node, imageNode);
         const candidate = {
             url,
             groupKey,
             order: order + 1,
             adapterKey,
+            imageId: metadata.imageId,
+            locationHash: metadata.locationHash,
+            slotIndex: metadata.slotIndex,
+            buttonIndex: metadata.buttonIndex,
         };
         order += 1;
         if (groupKey.startsWith('node:')) {
@@ -179,18 +184,34 @@ export function collectDomImageCandidates(roots, options = {}) {
 }
 
 export function findDomRegenerateButtons(roots) {
+    return collectDomRegenerateButtonCandidates(roots).map((candidate) => candidate.button);
+}
+
+export function collectDomRegenerateButtonCandidates(roots) {
     const selectors = [
         ...ADAPTER_SELECTORS.chatu8.buttons,
         ...ADAPTER_SELECTORS.chami.buttons,
     ];
     const buttons = [];
     const seen = new Set();
+    let order = 0;
     for (const selector of selectors) {
+        const adapterKey = ADAPTER_SELECTORS.chatu8.buttons.includes(selector) ? 'chatu8' : 'chami';
         for (const root of Array.isArray(roots) ? roots : []) {
             for (const button of safeQueryAll(root, selector)) {
                 if (!button || seen.has(button)) continue;
                 seen.add(button);
-                buttons.push(button);
+                const metadata = collectNodeMetadata(button);
+                buttons.push({
+                    button,
+                    adapterKey,
+                    order: order + 1,
+                    imageId: metadata.imageId,
+                    locationHash: metadata.locationHash,
+                    slotIndex: metadata.slotIndex,
+                    buttonIndex: metadata.buttonIndex,
+                });
+                order += 1;
             }
         }
     }
@@ -298,6 +319,35 @@ function imageCandidateGroupKey(sourceNode, imageNode, url, order) {
     const isChami = Boolean(safeClosest(source, '[class*="tsp-"],[data-location-hash],[data-image-id]'));
     if (isChami) return `chami-url:${url}`;
     return `node:${order}`;
+}
+
+function collectNodeMetadata(sourceNode, imageNode = null) {
+    const source = sourceNode && typeof sourceNode === 'object' ? sourceNode : imageNode;
+    const metadataNode = safeClosest(source, '[data-location-hash],[data-image-id],[data-slot-index],[data-image-index]');
+    return {
+        imageId: safeGetAttribute(source, 'data-image-id')
+            || safeGetAttribute(imageNode, 'data-image-id')
+            || safeGetAttribute(metadataNode, 'data-image-id')
+            || '',
+        locationHash: safeGetAttribute(source, 'data-location-hash')
+            || safeGetAttribute(imageNode, 'data-location-hash')
+            || safeGetAttribute(metadataNode, 'data-location-hash')
+            || '',
+        slotIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-slot-index', 'data-image-index']),
+        buttonIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-button-index', 'data-image-index', 'data-slot-index']),
+    };
+}
+
+function readIndexAttribute(sourceNode, imageNode, metadataNode, names) {
+    for (const name of Array.isArray(names) ? names : []) {
+        const value = safeGetAttribute(sourceNode, name)
+            || safeGetAttribute(imageNode, name)
+            || safeGetAttribute(metadataNode, name)
+            || '';
+        const numeric = Number(value);
+        if (Number.isFinite(numeric) && numeric >= 0) return Math.floor(numeric);
+    }
+    return null;
 }
 
 function nodePathKey(node) {

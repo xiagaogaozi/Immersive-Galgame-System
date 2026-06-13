@@ -28,6 +28,11 @@ export const stChatu8Provider = Object.freeze({
             url: candidate.url,
             providerId: 'builtin.st-chatu8',
             source: 'provider-dom',
+            imageId: candidate.imageId,
+            locationHash: candidate.locationHash,
+            slotIndex: candidate.slotIndex,
+            buttonIndex: candidate.buttonIndex,
+            order: candidate.order,
         }));
     },
 });

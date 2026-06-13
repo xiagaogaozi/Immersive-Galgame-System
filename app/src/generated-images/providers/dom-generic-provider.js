@@ -31,6 +31,11 @@ export const domGenericProvider = Object.freeze({
             url: candidate.url,
             providerId: 'builtin.dom-generic',
             source: 'provider-dom',
+            imageId: candidate.imageId,
+            locationHash: candidate.locationHash,
+            slotIndex: candidate.slotIndex,
+            buttonIndex: candidate.buttonIndex,
+            order: candidate.order,
         }));
     },
 });

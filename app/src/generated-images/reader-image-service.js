@@ -3,7 +3,7 @@ import { createMessageImageCache } from '../media/message-image-cache.js';
 import {
     detectExternalImageAdapter,
     getGlobalDetectionRoots,
-    findDomRegenerateButtons,
+    collectDomRegenerateButtonCandidates,
 } from './dom-image-candidates.js';
 import { getMessageScopedRoots } from '../host/tavern-helper-adapter.js';
 
@@ -48,6 +48,31 @@ export function createReaderImageService(options = {}) {
             }), resolveActiveProviders(context.providers, builtinProviders, imageApi));
             const sceneImages = collectSceneImages(context.scene, context.render);
             const cachedImages = cachedEntry && Array.isArray(cachedEntry.images) ? cachedEntry.images : [];
+            const imageSlots = normalizeImageSlots(firstDefined(
+                context.imageSlots,
+                context.imageState && context.imageState.slots,
+                [],
+            ));
+            const preferredImageIndex = resolvePreferredImageIndex(context, imageSlots.length);
+            if (imageSlots.length) {
+                const imageState = buildSlottedImageState({
+                    messageId,
+                    imageSlots,
+                    cachedImages,
+                    providerImages,
+                    sceneImages,
+                    preferredImageIndex,
+                });
+                const stored = cache.remember(messageId, [
+                    ...extractStoredSlotImages(imageState.slots),
+                    ...imageState.unboundImages,
+                ]);
+                if (stored.ok === false) return emptyImageState(stored);
+                return {
+                    ...imageState,
+                    signature: String(stored.entry && stored.entry.signature || imageState.signature || ''),
+                };
+            }
             const images = uniqueImages([
                 ...providerImages,
                 ...cachedImages,
@@ -167,12 +192,13 @@ export function createReaderImageService(options = {}) {
                 return { ok: false, reason: 'invalid-message-id', messageId };
             }
 
-            const currentIndex = normalizeIndex(context.currentIndex);
+            const imageIndex = resolvePreferredImageIndex(context, countImageSlots(context.imageState));
             const unifiedSettings = context.unifiedSettings || {};
             const imageApi = resolveImageApi(unifiedSettings);
             const currentState = context.imageState || await this.collect({
                 ...context,
-                currentIndex,
+                currentIndex: imageIndex,
+                preferredImageIndex: imageIndex,
                 providers: context.providers,
             });
 
@@ -180,7 +206,7 @@ export function createReaderImageService(options = {}) {
                 const generated = await this.generate({
                     ...context,
                     messageId,
-                    currentIndex,
+                    currentIndex: imageIndex,
                     unifiedSettings,
                     prompt: String(context.prompt || '').trim(),
                     request: context.request || {},
@@ -192,26 +218,48 @@ export function createReaderImageService(options = {}) {
                         imageState: currentState,
                     };
                 }
-                const nextImages = replaceImageAtIndex(
-                    currentState.images,
-                    currentIndex,
-                    {
+                const nextImage = {
+                    url: generated.url,
+                    providerId: String(generated.providerId || 'igs.provider.nai').trim(),
+                    source: String(generated.source || 'generated-image').trim(),
+                    filename: String(generated.filename || '').trim(),
+                };
+                if (Array.isArray(currentState.slots) && currentState.slots.length) {
+                    const nextSlots = replaceSlotImageAtIndex(currentState.slots, imageIndex, nextImage);
+                    const nextUnbound = Array.isArray(currentState.unboundImages) ? cloneData(currentState.unboundImages) : [];
+                    const stored = cache.remember(messageId, [
+                        ...extractStoredSlotImages(nextSlots),
+                        ...nextUnbound,
+                    ]);
+                    const nextState = buildSlottedImageState({
+                        messageId,
+                        imageSlots: nextSlots,
+                        cachedImages: extractStoredSlotImages(nextSlots),
+                        providerImages: [],
+                        sceneImages: [],
+                        preferredImageIndex: imageIndex,
+                    });
+                    return {
+                        ok: stored.ok !== false,
+                        reason: 'generated-image-updated',
+                        imageState: {
+                            ...nextState,
+                            signature: String(stored.entry && stored.entry.signature || nextState.signature || ''),
+                        },
                         url: generated.url,
-                        providerId: String(generated.providerId || 'igs.provider.nai').trim(),
-                        source: String(generated.source || 'generated-image').trim(),
-                        filename: String(generated.filename || '').trim(),
-                    },
-                );
+                    };
+                }
+                const nextImages = replaceImageAtIndex(currentState.images, imageIndex, nextImage);
                 const stored = cache.remember(messageId, nextImages);
                 return {
                     ok: stored.ok !== false,
                     reason: 'generated-image-updated',
-                    imageState: buildImageState(stored.entry, currentIndex),
+                    imageState: buildImageState(stored.entry, imageIndex),
                     url: generated.url,
                 };
             }
 
-            const button = await resolveRegenerateButton(hostAdapter, context, messageId, currentIndex);
+            const button = await resolveRegenerateButton(hostAdapter, context, messageId, imageIndex, currentState);
             if (!button || typeof button.click !== 'function') {
                 return { ok: false, reason: 'regen-button-not-found', imageState: currentState };
             }
@@ -227,7 +275,8 @@ export function createReaderImageService(options = {}) {
                 await wait(pollIntervalMs, globalObject);
                 lastState = await this.collect({
                     ...context,
-                    currentIndex,
+                    currentIndex: imageIndex,
+                    preferredImageIndex: imageIndex,
                     providers: context.providers,
                 });
                 if (!lastState || lastState.ok === false) continue;
@@ -257,7 +306,11 @@ export function createReaderImageService(options = {}) {
                 return { ok: false, reason: 'unsupported-save-url', url };
             }
 
-            const filename = String(context.filename || buildFilename(context.messageId, context.currentIndex, url)).trim();
+            const filename = String(context.filename || buildFilename(
+                context.messageId,
+                firstDefined(context.imageIndex, context.currentIndex, 0),
+                url,
+            )).trim();
             const doc = getDocument(globalObject);
             const anchor = doc && typeof doc.createElement === 'function' ? doc.createElement('a') : null;
 
@@ -318,10 +371,13 @@ function buildImageState(entry, currentIndex = 0) {
         ok: true,
         messageId: entry.messageId,
         images,
+        slots: [],
+        unboundImages: [],
         count: images.length,
         signature: String(entry.signature || ''),
         currentIndex: activeIndex,
         currentUrl: images[activeIndex] ? images[activeIndex].url : '',
+        displayUrl: images[activeIndex] ? images[activeIndex].url : '',
     };
 }
 
@@ -330,10 +386,13 @@ function emptyImageState(extra = {}) {
         ok: true,
         messageId: null,
         images: [],
+        slots: [],
+        unboundImages: [],
         count: 0,
         signature: '',
         currentIndex: 0,
         currentUrl: '',
+        displayUrl: '',
         ...extra,
     };
 }
@@ -460,17 +519,39 @@ function replaceImageAtIndex(images, index, image) {
 
 function uniqueImages(images) {
     const output = [];
-    const seen = new Set();
+    const seen = new Map();
     for (const image of Array.isArray(images) ? images : []) {
         const url = String(image && image.url || '').trim();
-        if (!url || seen.has(url)) continue;
-        seen.add(url);
-        output.push({
+        if (!url) continue;
+        const nextImage = {
             url,
             providerId: String(image.providerId || '').trim(),
             source: String(image.source || '').trim(),
             filename: String(image.filename || '').trim(),
-        });
+            imageId: String(image.imageId || '').trim(),
+            locationHash: String(image.locationHash || '').trim(),
+            slotIndex: normalizeOptionalIndex(image.slotIndex),
+            buttonIndex: normalizeOptionalIndex(image.buttonIndex),
+            order: normalizeOptionalIndex(image.order),
+        };
+        const existingIndex = seen.get(url);
+        if (existingIndex == null) {
+            seen.set(url, output.length);
+            output.push(nextImage);
+            continue;
+        }
+        output[existingIndex] = {
+            ...output[existingIndex],
+            ...nextImage,
+            providerId: output[existingIndex].providerId || nextImage.providerId,
+            source: output[existingIndex].source || nextImage.source,
+            filename: output[existingIndex].filename || nextImage.filename,
+            imageId: output[existingIndex].imageId || nextImage.imageId,
+            locationHash: output[existingIndex].locationHash || nextImage.locationHash,
+            slotIndex: output[existingIndex].slotIndex ?? nextImage.slotIndex ?? null,
+            buttonIndex: output[existingIndex].buttonIndex ?? nextImage.buttonIndex ?? null,
+            order: output[existingIndex].order ?? nextImage.order ?? null,
+        };
     }
     return output;
 }
@@ -530,15 +611,16 @@ function getDocument(globalObject) {
     return typeof document !== 'undefined' ? document : null;
 }
 
-async function resolveRegenerateButton(hostAdapter, context, messageId, imageIndex) {
+async function resolveRegenerateButton(hostAdapter, context, messageId, imageIndex, imageState = null) {
     if (hostAdapter && typeof hostAdapter.findRegenerateButton === 'function') {
-        const button = await hostAdapter.findRegenerateButton(messageId, imageIndex);
+        const button = await hostAdapter.findRegenerateButton(messageId, imageIndex, imageState);
         if (button) return button;
     }
     const message = context && context.message;
     if (!message) return null;
-    const buttons = findDomRegenerateButtons(getMessageScopedRoots(message));
-    return buttons[normalizeIndex(imageIndex)] || null;
+    const candidates = collectDomRegenerateButtonCandidates(getMessageScopedRoots(message));
+    const matched = matchRegenerateButtonCandidate(candidates, imageIndex, imageState);
+    return matched ? matched.button : null;
 }
 
 function wait(duration, globalObject) {
@@ -568,4 +650,263 @@ function cloneData(value) {
 
 function isPlainObject(value) {
     return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function buildSlottedImageState({
+    messageId,
+    imageSlots,
+    cachedImages,
+    providerImages,
+    sceneImages,
+    preferredImageIndex,
+}) {
+    const slots = normalizeImageSlots(imageSlots);
+    const preferredIndex = clampSlotIndex(preferredImageIndex, slots.length);
+    const cachedCandidates = normalizeCandidateImages(cachedImages);
+    const providerCandidates = normalizeCandidateImages(providerImages);
+    const sceneCandidates = normalizeCandidateImages(sceneImages);
+    const claimedUrls = new Set();
+
+    assignCandidatesToSlots(slots, cachedCandidates, {
+        preferredIndex,
+        fillOnlyEmpty: true,
+        allowSequentialFallback: cachedCandidates.length === slots.length,
+    }, claimedUrls);
+    assignCandidatesToSlots(slots, providerCandidates, {
+        preferredIndex,
+        fillOnlyEmpty: false,
+        allowSequentialFallback: providerCandidates.length === slots.length,
+    }, claimedUrls);
+    assignCandidatesToSlots(slots, sceneCandidates, {
+        preferredIndex,
+        fillOnlyEmpty: true,
+        allowSequentialFallback: sceneCandidates.length === slots.length,
+    }, claimedUrls);
+
+    const unboundImages = uniqueImages([
+        ...collectUnboundCandidates(cachedCandidates, claimedUrls),
+        ...collectUnboundCandidates(providerCandidates, claimedUrls),
+        ...collectUnboundCandidates(sceneCandidates, claimedUrls),
+    ]);
+    const displayImage = resolveDisplayImage(slots, preferredIndex) || unboundImages[0] || null;
+    const currentUrl = String(displayImage && displayImage.url || '').trim();
+    return {
+        ok: true,
+        messageId,
+        slots: cloneData(slots),
+        images: cloneData(slots),
+        unboundImages: cloneData(unboundImages),
+        count: slots.length,
+        signature: buildSlotSignature(slots, unboundImages),
+        currentIndex: preferredIndex,
+        currentUrl,
+        displayUrl: currentUrl,
+    };
+}
+
+function normalizeImageSlots(imageSlots) {
+    return (Array.isArray(imageSlots) ? imageSlots : []).map((slot, index) => ({
+        slotIndex: normalizeIndex(firstDefined(slot && slot.slotIndex, index)),
+        title: String(slot && slot.title || `图 ${index + 1}`).trim(),
+        tagName: String(slot && slot.tagName || 'image').trim(),
+        rawBlock: String(slot && slot.rawBlock || '').trim(),
+        promptText: String(slot && slot.promptText || '').trim(),
+        locationHash: String(slot && slot.locationHash || '').trim(),
+        source: String(slot && slot.source || 'image-tag').trim(),
+        url: String(slot && slot.url || '').trim(),
+        providerId: String(slot && slot.providerId || '').trim(),
+        filename: String(slot && slot.filename || '').trim(),
+        imageId: String(slot && slot.imageId || '').trim(),
+        buttonIndex: normalizeOptionalIndex(slot && slot.buttonIndex),
+        order: normalizeOptionalIndex(slot && slot.order),
+    })).sort((left, right) => left.slotIndex - right.slotIndex);
+}
+
+function normalizeCandidateImages(images) {
+    return uniqueImages(Array.isArray(images) ? images : []);
+}
+
+function assignCandidatesToSlots(slots, candidates, options, claimedUrls) {
+    const remaining = Array.isArray(candidates) ? candidates.slice() : [];
+    applyExactSlotMatches(slots, remaining, options, claimedUrls);
+    applyLocationHashMatches(slots, remaining, options, claimedUrls);
+    applyImageIdMatches(slots, remaining, options, claimedUrls);
+    applyPreferredSlotFallback(slots, remaining, options, claimedUrls);
+    applySequentialSlotFallback(slots, remaining, options, claimedUrls);
+}
+
+function applyExactSlotMatches(slots, candidates, options, claimedUrls) {
+    for (let index = candidates.length - 1; index >= 0; index -= 1) {
+        const candidate = candidates[index];
+        const slotIndex = normalizeOptionalIndex(candidate && candidate.slotIndex);
+        if (slotIndex == null || slotIndex >= slots.length) continue;
+        if (!canWriteSlot(slots[slotIndex], options)) continue;
+        writeSlotImage(slots[slotIndex], candidate);
+        claimedUrls.add(candidate.url);
+        candidates.splice(index, 1);
+    }
+}
+
+function applyLocationHashMatches(slots, candidates, options, claimedUrls) {
+    for (let index = candidates.length - 1; index >= 0; index -= 1) {
+        const candidate = candidates[index];
+        if (!candidate || !candidate.locationHash) continue;
+        const slot = slots.find((item) => item.locationHash && item.locationHash === candidate.locationHash && canWriteSlot(item, options));
+        if (!slot) continue;
+        writeSlotImage(slot, candidate);
+        claimedUrls.add(candidate.url);
+        candidates.splice(index, 1);
+    }
+}
+
+function applyImageIdMatches(slots, candidates, options, claimedUrls) {
+    for (let index = candidates.length - 1; index >= 0; index -= 1) {
+        const candidate = candidates[index];
+        if (!candidate || !candidate.imageId) continue;
+        const slot = slots.find((item) => item.imageId && item.imageId === candidate.imageId && canWriteSlot(item, options));
+        if (!slot) continue;
+        writeSlotImage(slot, candidate);
+        claimedUrls.add(candidate.url);
+        candidates.splice(index, 1);
+    }
+}
+
+function applyPreferredSlotFallback(slots, candidates, options, claimedUrls) {
+    if (!candidates.length) return;
+    if (options && options.allowSequentialFallback === true && candidates.length >= slots.length) return;
+    const preferredIndex = clampSlotIndex(options && options.preferredIndex, slots.length);
+    const preferredSlot = slots[preferredIndex];
+    if (!preferredSlot || !canWriteSlot(preferredSlot, options)) return;
+    const candidate = candidates.shift();
+    writeSlotImage(preferredSlot, candidate);
+    claimedUrls.add(candidate.url);
+}
+
+function applySequentialSlotFallback(slots, candidates, options, claimedUrls) {
+    if (!options || options.allowSequentialFallback !== true) return;
+    for (const slot of slots) {
+        if (!candidates.length) break;
+        if (!canWriteSlot(slot, options)) continue;
+        const candidate = candidates.shift();
+        writeSlotImage(slot, candidate);
+        claimedUrls.add(candidate.url);
+    }
+}
+
+function canWriteSlot(slot, options) {
+    return options && options.fillOnlyEmpty === true
+        ? !String(slot && slot.url || '').trim()
+        : true;
+}
+
+function writeSlotImage(slot, candidate) {
+    if (!slot || !candidate) return;
+    slot.url = String(candidate.url || '').trim();
+    slot.providerId = String(candidate.providerId || slot.providerId || '').trim();
+    slot.source = String(candidate.source || slot.source || '').trim();
+    slot.filename = String(candidate.filename || slot.filename || '').trim();
+    slot.imageId = String(candidate.imageId || slot.imageId || '').trim();
+    slot.locationHash = String(candidate.locationHash || slot.locationHash || '').trim();
+    slot.buttonIndex = normalizeOptionalIndex(firstDefined(candidate.buttonIndex, slot.buttonIndex));
+    slot.order = normalizeOptionalIndex(firstDefined(candidate.order, slot.order));
+}
+
+function resolveDisplayImage(slots, preferredIndex) {
+    if (!Array.isArray(slots) || !slots.length) return null;
+    const activeIndex = clampSlotIndex(preferredIndex, slots.length);
+    for (let index = activeIndex; index < slots.length; index += 1) {
+        if (String(slots[index] && slots[index].url || '').trim()) return slots[index];
+    }
+    for (let index = activeIndex - 1; index >= 0; index -= 1) {
+        if (String(slots[index] && slots[index].url || '').trim()) return slots[index];
+    }
+    return null;
+}
+
+function collectUnboundCandidates(candidates, claimedUrls) {
+    return (Array.isArray(candidates) ? candidates : []).filter((candidate) => {
+        return candidate && candidate.url && !claimedUrls.has(candidate.url);
+    });
+}
+
+function extractStoredSlotImages(slots) {
+    return (Array.isArray(slots) ? slots : [])
+        .filter((slot) => String(slot && slot.url || '').trim())
+        .map((slot) => ({
+            url: String(slot.url || '').trim(),
+            providerId: String(slot.providerId || '').trim(),
+            source: String(slot.source || '').trim(),
+            filename: String(slot.filename || '').trim(),
+            imageId: String(slot.imageId || '').trim(),
+            locationHash: String(slot.locationHash || '').trim(),
+            slotIndex: normalizeOptionalIndex(slot.slotIndex),
+            buttonIndex: normalizeOptionalIndex(slot.buttonIndex),
+            order: normalizeOptionalIndex(slot.order),
+        }));
+}
+
+function replaceSlotImageAtIndex(slots, index, image) {
+    const nextSlots = normalizeImageSlots(slots);
+    const slotIndex = clampSlotIndex(index, nextSlots.length);
+    if (!nextSlots[slotIndex]) return nextSlots;
+    writeSlotImage(nextSlots[slotIndex], {
+        ...image,
+        slotIndex,
+        locationHash: nextSlots[slotIndex].locationHash,
+        imageId: nextSlots[slotIndex].imageId,
+    });
+    return nextSlots;
+}
+
+function buildSlotSignature(slots, unboundImages) {
+    const bound = (Array.isArray(slots) ? slots : []).map((slot) => {
+        return [slot.slotIndex, String(slot.url || '').trim()].join(':');
+    });
+    const unbound = (Array.isArray(unboundImages) ? unboundImages : []).map((image) => String(image.url || '').trim());
+    return bound.concat(unbound).filter(Boolean).join('\n');
+}
+
+function countImageSlots(imageState) {
+    return Array.isArray(imageState && imageState.slots) ? imageState.slots.length : 0;
+}
+
+function resolvePreferredImageIndex(context = {}, slotCount = 0) {
+    const preferred = firstDefined(context.imageIndex, context.preferredImageIndex, context.currentIndex, 0);
+    return clampSlotIndex(preferred, slotCount || Number.MAX_SAFE_INTEGER);
+}
+
+function clampSlotIndex(value, slotCount) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) return 0;
+    if (!Number.isFinite(slotCount) || slotCount <= 0) return Math.floor(numeric);
+    return Math.max(0, Math.min(slotCount - 1, Math.floor(numeric)));
+}
+
+function normalizeOptionalIndex(value) {
+    if (value == null || value === '') return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) return null;
+    return Math.floor(numeric);
+}
+
+function matchRegenerateButtonCandidate(candidates, imageIndex, imageState) {
+    const buttonCandidates = Array.isArray(candidates) ? candidates : [];
+    const currentSlot = imageState
+        && Array.isArray(imageState.slots)
+        && imageState.slots[clampSlotIndex(imageIndex, imageState.slots.length)]
+        ? imageState.slots[clampSlotIndex(imageIndex, imageState.slots.length)]
+        : null;
+    if (currentSlot && currentSlot.locationHash) {
+        const exact = buttonCandidates.find((candidate) => candidate.locationHash && candidate.locationHash === currentSlot.locationHash);
+        if (exact) return exact;
+    }
+    if (currentSlot && currentSlot.imageId) {
+        const exact = buttonCandidates.find((candidate) => candidate.imageId && candidate.imageId === currentSlot.imageId);
+        if (exact) return exact;
+    }
+    if (currentSlot && currentSlot.buttonIndex != null) {
+        const exact = buttonCandidates.find((candidate) => candidate.buttonIndex === currentSlot.buttonIndex);
+        if (exact) return exact;
+    }
+    return buttonCandidates[normalizeIndex(imageIndex)] || buttonCandidates[0] || null;
 }

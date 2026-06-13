@@ -7,6 +7,7 @@ import {
     normalizeSourceFilter,
     normalizeVirtualRegex,
 } from '../../scene/message-source.js';
+import { buildNarrativeSegments } from '../../scene/image-slots.js';
 import {
     getOriginalReaderHtml,
     ORIGINAL_READER_ICONS,
@@ -735,14 +736,20 @@ export function createVisualNovelReaderHost(options = {}) {
             getMessagePrimaryText(payload.message),
             payload.raw,
         );
-        const segments = buildTextSegments(text);
+        const segments = Array.isArray(payload.textSegments) && payload.textSegments.length
+            ? cloneData(payload.textSegments)
+            : buildTextSegments(text);
         const normalizedIndex = Math.max(0, Math.min(segments.length - 1, Number(index) || 0));
-        const imageState = normalizeSnapshotImageState(payload.imageState, normalizedIndex);
+        const imageState = normalizeSnapshotImageState(
+            payload.imageState,
+            resolveSegmentImageIndex(payload, normalizedIndex),
+        );
         const currentText = segments[normalizedIndex] || text;
         const displayText = scene.speaker && currentText
             ? `${scene.speaker}: ${currentText}`
             : currentText;
         const backgroundImage = firstDefined(
+            imageState.displayUrl,
             imageState.currentUrl,
             scene.generatedImage && scene.generatedImage.value,
             stage.layers && stage.layers.generated && stage.layers.generated.resource && stage.layers.generated.resource.value,
@@ -789,10 +796,13 @@ export function createVisualNovelReaderHost(options = {}) {
                 progress: buildProgressText(normalizedIndex, segments.length, imageState),
                 backgroundImage,
                 images: cloneData(imageState.images),
+                imageSlots: cloneData(imageState.slots),
+                unboundImages: cloneData(imageState.unboundImages),
                 imageCount: imageState.count,
                 imageSignature: imageState.signature,
                 activeImageIndex: imageState.currentIndex,
-                currentImageUrl: imageState.currentUrl,
+                currentImageUrl: imageState.displayUrl || imageState.currentUrl,
+                currentSlotImageUrl: imageState.slotUrl,
                 sourceKind: firstDefined(scene.sourceKind, payload.sourceKind, 'raw-text'),
                 warnings: extracted.warnings,
                 errors: extracted.errors,
@@ -804,7 +814,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.5'),
+            source: getOriginalReaderSource(options.version || '0.3.6'),
         };
     }
 
@@ -829,7 +839,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.5'),
+                version: esc(options.version || '0.3.6'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1243,7 +1253,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vnm-settings-badge';
-        badge.textContent = options.version || '0.3.5';
+        badge.textContent = options.version || '0.3.6';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1847,7 +1857,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.5' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.6' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1858,7 +1868,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.5',
+            version: snapshot.version || options.version || '0.3.6',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2242,13 +2252,7 @@ function computeLineHeight(fontSize) {
 }
 
 function buildTextSegments(text) {
-    const source = String(text || '').trim();
-    if (!source) return [''];
-    const segments = source
-        .split(/\n+/)
-        .map((item) => item.replace(/\s+/g, ' ').trim())
-        .filter(Boolean);
-    return segments.length ? segments : [''];
+    return buildNarrativeSegments(text);
 }
 
 function applyToastToReader(current, allowed, message) {
@@ -2296,25 +2300,41 @@ function buildProgressText(currentIndex, totalSegments, imageState) {
 }
 
 function normalizeSnapshotImageState(imageState, fallbackIndex = 0) {
-    const images = Array.isArray(imageState && imageState.images)
-        ? imageState.images.map((image) => ({
-            url: String(image && image.url || '').trim(),
-            providerId: String(image && image.providerId || '').trim(),
-            source: String(image && image.source || '').trim(),
-            filename: String(image && image.filename || '').trim(),
-        })).filter((image) => image.url)
+    const slots = Array.isArray(imageState && imageState.slots)
+        ? imageState.slots
+            .map((image, index) => mapSnapshotImageEntry(image, index, false))
+            .filter(Boolean)
         : [];
-    const activeIndex = images.length
-        ? Math.max(0, Math.min(images.length - 1, normalizeFiniteIndex(
+    const images = slots.length
+        ? cloneData(slots)
+        : Array.isArray(imageState && imageState.images)
+            ? imageState.images
+                .map((image, index) => mapSnapshotImageEntry(image, index, true))
+                .filter(Boolean)
+            : [];
+    const totalCount = slots.length || images.length;
+    const activeIndex = totalCount
+        ? Math.max(0, Math.min(totalCount - 1, normalizeFiniteIndex(
             firstDefined(imageState && imageState.currentIndex, fallbackIndex),
         )))
         : 0;
+    const displayImage = slots.length
+        ? resolveSnapshotDisplayImage(slots, activeIndex)
+        : images[activeIndex] || null;
     return {
+        slots,
         images,
-        count: images.length,
+        unboundImages: Array.isArray(imageState && imageState.unboundImages)
+            ? imageState.unboundImages
+                .map((image, index) => mapSnapshotImageEntry(image, index, true))
+                .filter(Boolean)
+            : [],
+        count: totalCount,
         signature: String(imageState && imageState.signature || ''),
         currentIndex: activeIndex,
-        currentUrl: images[activeIndex] ? images[activeIndex].url : '',
+        currentUrl: String(displayImage && displayImage.url || ''),
+        displayUrl: String(displayImage && displayImage.url || ''),
+        slotUrl: String(slots[activeIndex] && slots[activeIndex].url || displayImage && displayImage.url || ''),
     };
 }
 
@@ -2327,13 +2347,17 @@ function buildImageActionContext(current, unifiedSettings = null) {
         messageId: snapshot.messageId,
         prompt: content.text || '',
         currentIndex: content.currentIndex || 0,
+        textIndex: normalizeFiniteIndex(content.currentIndex || 0),
         imageIndex: normalizeFiniteIndex(firstDefined(content.activeImageIndex, content.currentIndex, 0)),
         imageState: {
             images: cloneData(content.images || []),
+            slots: cloneData(content.imageSlots || []),
+            unboundImages: cloneData(content.unboundImages || []),
             count: Number(content.imageCount || 0) || 0,
             signature: String(content.imageSignature || ''),
             currentIndex: normalizeFiniteIndex(firstDefined(content.activeImageIndex, content.currentIndex, 0)),
             currentUrl: String(content.currentImageUrl || content.backgroundImage || ''),
+            displayUrl: String(content.currentImageUrl || content.backgroundImage || ''),
         },
         currentUrl: String(content.currentImageUrl || content.backgroundImage || ''),
         scene: current && current.payload && current.payload.scene || null,
@@ -2403,6 +2427,50 @@ function normalizeFiniteIndex(value) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric) || numeric < 0) return 0;
     return Math.floor(numeric);
+}
+
+function resolveSegmentImageIndex(payload, textIndex) {
+    const segmentImageSlots = Array.isArray(payload && payload.segmentImageSlots)
+        ? payload.segmentImageSlots
+        : [];
+    const mapped = Number(segmentImageSlots[textIndex]);
+    if (Number.isFinite(mapped) && mapped >= 0) return Math.floor(mapped);
+    return normalizeFiniteIndex(firstDefined(
+        payload && payload.imageState && payload.imageState.currentIndex,
+        textIndex,
+        0,
+    ));
+}
+
+function mapSnapshotImageEntry(image, fallbackIndex, requireUrl) {
+    const url = String(image && image.url || '').trim();
+    if (requireUrl && !url) return null;
+    return {
+        url,
+        providerId: String(image && image.providerId || '').trim(),
+        source: String(image && image.source || '').trim(),
+        filename: String(image && image.filename || '').trim(),
+        imageId: String(image && image.imageId || '').trim(),
+        locationHash: String(image && image.locationHash || '').trim(),
+        slotIndex: normalizeFiniteIndex(firstDefined(image && image.slotIndex, fallbackIndex, 0)),
+        buttonIndex: normalizeNullableNumber(image && image.buttonIndex),
+        title: String(image && image.title || '').trim(),
+        promptText: String(image && image.promptText || '').trim(),
+        rawBlock: String(image && image.rawBlock || '').trim(),
+        tagName: String(image && image.tagName || '').trim(),
+        order: normalizeNullableNumber(image && image.order),
+    };
+}
+
+function resolveSnapshotDisplayImage(slots, activeIndex) {
+    const source = Array.isArray(slots) ? slots : [];
+    for (let index = activeIndex; index < source.length; index += 1) {
+        if (String(source[index] && source[index].url || '').trim()) return source[index];
+    }
+    for (let index = activeIndex - 1; index >= 0; index -= 1) {
+        if (String(source[index] && source[index].url || '').trim()) return source[index];
+    }
+    return null;
 }
 
 function firstDefined(...values) {

@@ -1,3 +1,10 @@
+import {
+    buildNarrativeSegments,
+    buildSegmentImageMap,
+    parseImageSlots,
+} from './image-slots.js';
+import { parseSceneText } from './text-parser.js';
+
 export const DEFAULT_SOURCE_FILTER = Object.freeze({
     enabled: true,
     stripHtmlComments: true,
@@ -261,6 +268,19 @@ export function buildVisualNovelTextPayload(message, options = {}) {
     }
 
     formattedText = normalizeWhitespace(formattedText);
+    const readerScene = parseSceneText(formattedText, {});
+    const readerText = normalizeReaderSegmentText(firstNonEmpty(
+        readerScene.text,
+        formattedText,
+        visibleText,
+        cleanedRaw,
+        String(raw || '').trim(),
+    ), readerScene.speaker);
+    const textSegments = buildNarrativeSegments(readerText);
+    const imageSlots = parseImageSlots(raw, strictPayload.imageSource, sourceFilter);
+    const segmentImageSlots = readerText
+        ? buildSegmentImageMap(raw, textSegments, imageSlots)
+        : [];
 
     if (usedFallback) {
         warnings.push({ code: 'forced-fallback', message: 'Fell back to visible text or cleaned raw source.' });
@@ -278,6 +298,9 @@ export function buildVisualNovelTextPayload(message, options = {}) {
         formattedText,
         formattedRaw: buildFormattedReaderSource(formattedText, strictPayload.imageSource),
         imageSource: strictPayload.imageSource,
+        imageSlots,
+        textSegments,
+        segmentImageSlots,
         sourceKind,
         expectedTags: strictPayload.expectedTags,
         formatSourceKind,
@@ -428,6 +451,15 @@ function firstNonEmpty(...values) {
         if (text) return text;
     }
     return '';
+}
+
+function normalizeReaderSegmentText(text, speaker = '') {
+    let normalized = normalizeWhitespace(String(text || '').replace(/\x00IMG\x00/g, ' '));
+    const speakerName = normalizeWhitespace(speaker);
+    if (!speakerName || !normalized) return normalized;
+    const escaped = escapeRegExp(speakerName);
+    normalized = normalized.replace(new RegExp(`^${escaped}\\s*[:：]\\s*`), '');
+    return normalizeWhitespace(normalized);
 }
 
 function escapeRegExp(value) {

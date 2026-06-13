@@ -55,23 +55,39 @@ function normalizeImages(images) {
             providerId: String(image.providerId || '').trim(),
             source: String(image.source || '').trim(),
             filename: String(image.filename || '').trim(),
+            imageId: String(image.imageId || '').trim(),
+            locationHash: String(image.locationHash || '').trim(),
+            slotIndex: normalizeOptionalIndex(image.slotIndex),
+            buttonIndex: normalizeOptionalIndex(image.buttonIndex),
+            order: normalizeOptionalIndex(image.order),
         };
     }).filter(Boolean));
 }
 
 function uniqueImages(images) {
     const output = [];
-    const seen = new Set();
+    const seen = new Map();
     for (const image of Array.isArray(images) ? images : []) {
         const url = String(image && image.url || '').trim();
-        if (!url || seen.has(url)) continue;
-        seen.add(url);
-        output.push({
+        if (!url) continue;
+        const nextImage = {
             url,
             providerId: String(image.providerId || '').trim(),
             source: String(image.source || '').trim(),
             filename: String(image.filename || '').trim(),
-        });
+            imageId: String(image.imageId || '').trim(),
+            locationHash: String(image.locationHash || '').trim(),
+            slotIndex: normalizeOptionalIndex(image.slotIndex),
+            buttonIndex: normalizeOptionalIndex(image.buttonIndex),
+            order: normalizeOptionalIndex(image.order),
+        };
+        const existingIndex = seen.get(url);
+        if (existingIndex == null) {
+            seen.set(url, output.length);
+            output.push(nextImage);
+            continue;
+        }
+        output[existingIndex] = mergeImageMetadata(output[existingIndex], nextImage);
     }
     return output;
 }
@@ -93,4 +109,26 @@ function cloneData(value) {
         return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));
     }
     return value;
+}
+
+function mergeImageMetadata(current, next) {
+    return {
+        ...current,
+        ...next,
+        providerId: current.providerId || next.providerId,
+        source: current.source || next.source,
+        filename: current.filename || next.filename,
+        imageId: current.imageId || next.imageId,
+        locationHash: current.locationHash || next.locationHash,
+        slotIndex: current.slotIndex ?? next.slotIndex ?? null,
+        buttonIndex: current.buttonIndex ?? next.buttonIndex ?? null,
+        order: current.order ?? next.order ?? null,
+    };
+}
+
+function normalizeOptionalIndex(value) {
+    if (value == null || value === '') return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) return null;
+    return Math.floor(numeric);
 }

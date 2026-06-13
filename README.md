@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.5`：已按 `plan/v0.3.5-原版VN剩余重构审计与补全策划书.md` 补齐原版 VN 剩余 parity 缺口，实现真实 NAI 生图链路、外部插图适配过滤、DOM 图片探测、隐藏楼层兼容与 SillyTavern context fallback，并已通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
+- 当前项目版本 `v0.3.6`：已按 `plan/v0.3.6-image标签图位绑定与图片轮询修复施工图.md` 补齐 `<image>` 图位绑定、图片轮询图位保持与阅读器分页清理，并已通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
 - `v0.3.2` 已把“manifest 指向新版本但版本 tag CDN 暂不可用时，不弹失败框并改用 `@main` bundle”固定为回归闸门；`v0.3.1` 已固定 web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
@@ -128,6 +128,13 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.6 - 2026-06-13
+
+- 按 `plan/v0.3.6-image标签图位绑定与图片轮询修复施工图.md` 新增 `app/src/scene/image-slots.js`，把 `<image>` 与 `image###...###` 解析成稳定图位，并为阅读器正文段落补齐“段落对应图位”的映射数据。
+- `app/src/scene/message-source.js`、`app/src/api/visual-novel-compat.js` 与 `app/src/visual/visual-novel-ui/reader-host.js` 现已统一使用清理后的阅读正文分页，不再把 `[角色: ...]` 或图片占位行当成独立页面，同时保留原版“一行多句同页、单换行分段”的阅读节奏。
+- `app/src/generated-images/reader-image-service.js`、`provider-runtime.js`、`message-image-cache.js`、`dom-image-candidates.js` 与宿主/Provider 适配层现已在收图、轮询、重绘和缓存时保留 `slotIndex / locationHash / imageId` 元数据，修复“第三张图跑到第一张位置”“点重绘后又退回扫描顺序”的问题。
+- `app/tests/unit.test.js` 与 `app/tests/simulate.test.js` 新增 `<image>` 图位顺序、段落到图位映射、第三段绑定第三张图、重绘后仍停留原图位，以及关闭图位绑定时回退旧扫描顺序的回归闸门；本轮已同步通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
 
 ### v0.3.5 - 2026-06-13
 

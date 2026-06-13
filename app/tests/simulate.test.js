@@ -6,6 +6,7 @@ import path from 'node:path';
 import { bootstrapIGS, createMemoryStorage, createPresetRegistry, PRESET_STORE_KEY } from '../src/index.js';
 import { createShujukuClient } from '../src/data/shujuku/client.js';
 import { createResourceCache } from '../src/media/resource-cache.js';
+import { buildVisualNovelTextPayload } from '../src/scene/message-source.js';
 import { VISUAL_MODES } from '../src/visual/visual-mode.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
@@ -182,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.5');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.6');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -380,10 +381,10 @@ test('gate:simulation:visual-novel-ui-one-line-or-paragraph-per-page', async () 
     const nextParagraph = await paragraph.reader.controller.invokeAction('next');
 
     assert.equal(singleLine.ok, true);
-    assert.deepEqual(singleLine.reader.snapshot.content.segments, ['艾莉: 第一句。 第二句。']);
+    assert.deepEqual(singleLine.reader.snapshot.content.segments, ['第一句。 第二句。']);
     assert.equal(singleLine.reader.snapshot.content.progress, '1 / 1');
     assert.equal(paragraph.ok, true);
-    assert.deepEqual(paragraph.reader.snapshot.content.segments, ['艾莉: 第一段。', '第二段。']);
+    assert.deepEqual(paragraph.reader.snapshot.content.segments, ['第一段。', '第二段。']);
     assert.equal(paragraph.reader.snapshot.content.progress, '1 / 2');
     assert.equal(nextParagraph.ok, true);
     assert.equal(nextParagraph.progress, '2 / 2');
@@ -998,6 +999,134 @@ test('gate:simulation:visual-novel-ui-collects-iframe-data-src-images-and-finds-
     igs.destroy();
 });
 
+test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-third-segment-and-regens-matching-slot', async () => {
+    const document = createFakeDocument();
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source });
+    const targetSlot = payload.imageSlots[2];
+    const providerImage = createFakeMediaNode({
+        ownerDocument: document,
+        tagName: 'IMG',
+        src: 'https://example.com/slot-3-old.png',
+        attributes: {
+            'data-location-hash': targetSlot.locationHash,
+            'data-image-id': 'slot-3',
+            'data-slot-index': '2',
+            'data-image-index': '2',
+        },
+    });
+    const button = createFakeRegenerateButton(() => {
+        providerImage.currentSrc = 'https://example.com/slot-3-new.png';
+        providerImage.src = 'https://example.com/slot-3-new.png';
+    }, {
+        attributes: {
+            'data-location-hash': targetSlot.locationHash,
+            'data-image-id': 'slot-3',
+            'data-button-index': '2',
+            'data-slot-index': '2',
+        },
+    });
+    const message = {
+        id: 37,
+        text: source,
+        element: createFakeMessageElement(document, {
+            chamiImageNodes: [providerImage],
+            chamiButtons: [button],
+        }),
+    };
+    const igs = bootstrapIGS({
+        global: {
+            document,
+            setTimeout(callback) {
+                callback();
+                return 1;
+            },
+            clearTimeout() {},
+        },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'chami',
+                pollIntervalMs: 1,
+                pollAttempts: 3,
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            getMessageById: async (messageId) => Number(messageId) === 37 ? message : null,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openViewerFromMessage(37, 'pc', { startAtEnd: true });
+    const regenResult = await opened.reader.controller.invokeAction('regen');
+    const snapshot = igs.getState().visualNovelUi.activeReader.snapshot.content;
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.reader.snapshot.content.progress, '3 / 3   [3/6 图]');
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/slot-3-old.png');
+    assert.equal(opened.reader.snapshot.content.currentSlotImageUrl, 'https://example.com/slot-3-old.png');
+    assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/slot-3-old.png');
+    assert.equal(opened.reader.snapshot.content.imageSlots[2].title, '望月的不甘与动摇');
+    assert.equal(opened.reader.snapshot.content.imageSlots.filter((slot) => slot.url).length, 1);
+    assert.equal(regenResult.ok, true);
+    assert.equal(regenResult.reason, 'external-image-updated');
+    assert.equal(regenResult.imageState.currentIndex, 2);
+    assert.equal(regenResult.imageState.currentUrl, 'https://example.com/slot-3-new.png');
+    assert.equal(snapshot.progress, '3 / 3   [3/6 图]');
+    assert.equal(snapshot.currentImageUrl, 'https://example.com/slot-3-new.png');
+    assert.equal(snapshot.currentSlotImageUrl, 'https://example.com/slot-3-new.png');
+    assert.equal(snapshot.backgroundImage, 'https://example.com/slot-3-new.png');
+    assert.equal(button.clickCount, 1);
+
+    igs.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-image-slot-binding-falls-back-to-scan-order-when-image-tags-disabled', async () => {
+    const document = createFakeDocument();
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const message = {
+        id: 38,
+        text: source,
+        element: createFakeMessageElement(document, {
+            chamiImageNodes: [
+                createFakeMediaNode({
+                    ownerDocument: document,
+                    tagName: 'IMG',
+                    src: 'https://example.com/fallback-scene.png',
+                }),
+            ],
+        }),
+    };
+    const igs = bootstrapIGS({
+        global: { document },
+        autoAttachMagicWand: false,
+        config: {
+            sourceFilter: {
+                imageIncludeTags: '',
+            },
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'chami',
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await igs.openLatestAvailable('pc');
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.reader.snapshot.content.imageCount, 1);
+    assert.equal(opened.reader.snapshot.content.progress, '1 / 3   [1/1 图]');
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/fallback-scene.png');
+
+    igs.destroy();
+});
+
 test('gate:simulation:host-adapter-hide-state-skips-hidden-turns-in-real-bootstrap', async () => {
     const document = createFakeDocument();
     const jumps = [];
@@ -1209,6 +1338,10 @@ test('gate:simulation:bad-import-keeps-last-working-refresh', async () => {
 
 function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
+}
+
+function readText(relativePath) {
+    return fs.readFileSync(path.join(appRoot, relativePath), 'utf8');
 }
 
 function createFakeDocument(viewOptions = {}) {
@@ -1539,12 +1672,17 @@ function createFakeMessageElement(ownerDocument, options = {}) {
         tagName: 'IMG',
         src: url,
     }));
-    const chamiImages = (options.chamiImageUrls || []).map((url) => createFakeMediaNode({
-        ownerDocument,
-        tagName: 'IMG',
-        src: url,
-        attributes: { 'data-image-id': `image-${Math.random().toString(36).slice(2, 8)}` },
-    }));
+    const chamiImages = Array.isArray(options.chamiImageNodes)
+        ? options.chamiImageNodes
+        : (options.chamiImageUrls || []).map((url, index) => createFakeMediaNode({
+            ownerDocument,
+            tagName: 'IMG',
+            src: url,
+            attributes: {
+                'data-image-id': `image-${Math.random().toString(36).slice(2, 8)}`,
+                ...(Array.isArray(options.chamiImageAttributes) ? options.chamiImageAttributes[index] || {} : {}),
+            },
+        }));
     const genericNodes = Array.isArray(options.genericNodes) ? options.genericNodes : [];
     const regenButtons = Array.isArray(options.regenButtons) ? options.regenButtons : [];
     const chamiButtons = Array.isArray(options.chamiButtons) ? options.chamiButtons : [];
@@ -1610,9 +1748,19 @@ function createFakeMessageElement(ownerDocument, options = {}) {
     };
 }
 
-function createFakeRegenerateButton(onClick) {
+function createFakeRegenerateButton(onClick, options = {}) {
+    const attributes = new Map(Object.entries(options.attributes || {}));
     return {
         clickCount: 0,
+        getAttribute(name) {
+            return attributes.has(name) ? attributes.get(name) : null;
+        },
+        setAttribute(name, value) {
+            attributes.set(name, String(value));
+        },
+        closest() {
+            return null;
+        },
         click() {
             this.clickCount += 1;
             onClick();

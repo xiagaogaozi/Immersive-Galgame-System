@@ -3,7 +3,7 @@ import {
     getVisibleMessageTextFromElement,
     looksLikeHostUiHtml,
 } from '../scene/message-source.js';
-import { findDomRegenerateButtons } from '../generated-images/dom-image-candidates.js';
+import { collectDomRegenerateButtonCandidates } from '../generated-images/dom-image-candidates.js';
 
 const INTERNAL_READER_ATTR = 'data-vnm-internal-reader';
 const HIDDEN_CACHE_WINDOW_MS = 300;
@@ -62,10 +62,10 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
             return { ok: true, messageId: normalizedId };
         },
 
-        async findRegenerateButton(messageId, imageIndex = 0) {
+        async findRegenerateButton(messageId, imageIndex = 0, imageState = null) {
             const message = await this.getMessageById(messageId);
             if (!message) return null;
-            return findMessageRegenerateButton(message, imageIndex);
+            return findMessageRegenerateButton(message, imageIndex, imageState);
         },
 
         async typeAndSend(text) {
@@ -319,10 +319,28 @@ function isTurnCandidate(message) {
     );
 }
 
-function findMessageRegenerateButton(message, imageIndex) {
-    const buttons = findDomRegenerateButtons(getMessageScopedRoots(message));
+function findMessageRegenerateButton(message, imageIndex, imageState = null) {
+    const candidates = collectDomRegenerateButtonCandidates(getMessageScopedRoots(message));
     const targetIndex = Math.max(0, Math.floor(Number(imageIndex) || 0));
-    return buttons[targetIndex] || null;
+    const currentSlot = imageState
+        && Array.isArray(imageState.slots)
+        && imageState.slots[targetIndex]
+        ? imageState.slots[targetIndex]
+        : null;
+    if (currentSlot && currentSlot.locationHash) {
+        const candidate = candidates.find((item) => item.locationHash && item.locationHash === currentSlot.locationHash);
+        if (candidate) return candidate.button;
+    }
+    if (currentSlot && currentSlot.imageId) {
+        const candidate = candidates.find((item) => item.imageId && item.imageId === currentSlot.imageId);
+        if (candidate) return candidate.button;
+    }
+    if (currentSlot && currentSlot.buttonIndex != null) {
+        const candidate = candidates.find((item) => item.buttonIndex === currentSlot.buttonIndex);
+        if (candidate) return candidate.button;
+    }
+    const fallback = candidates[targetIndex] || candidates[0] || null;
+    return fallback ? fallback.button : null;
 }
 
 function getMessageScopedDocs(messageElement) {
