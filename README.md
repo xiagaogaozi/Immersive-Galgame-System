@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.11`：自动更新 loader 改为先读取 raw manifest 的最新版本，再优先加载 jsDelivr `@v版本` 自包含 bundle，绕开 `@main` 分支文件缓存。
-- `v0.3.11` 已把 manifest-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门；`v0.3.9` 已把 `<image>` 图位翻页同步固定为回归闸门。
+- 当前项目版本 `v0.3.12`：自动更新 loader 改为读取 GitHub API 的 `main` 最新提交哈希，再加载 jsDelivr `@提交哈希` 自包含 bundle，绕开 `@main` 分支文件缓存和新标签同步延迟。
+- `v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门；`v0.3.9` 已把 `<image>` 图位翻页同步固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,12 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.12 - 2026-06-13
+
+- 强化自动更新链路：`loader/igs-loader.js` 默认读取 GitHub API `branches/main`，拿到当前 `main` 提交哈希后加载 `https://cdn.jsdelivr.net/gh/...@<commit>/app/dist/igs.bundle.*`，避免 raw manifest 缓存仍停在旧版本、jsDelivr 新标签短时 404 或 `@main` 分支文件继续吐旧入口。
+- 保留兜底：GitHub API 不可用时仍回退 `@main`，手动指定 `window.IGS_LOADER_REF` 或自定义 base 的行为不变。
+- 更新 loader VM 回归测试：默认加载必须使用 GitHub API 返回的 40 位提交哈希，确保酒馆端实际拿到的就是当前提交里的自包含 bundle。
 
 ### v0.3.11 - 2026-06-13
 

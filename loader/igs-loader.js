@@ -4,7 +4,7 @@
     const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
     const DEFAULT_REF = 'main';
     const MAIN_BASE = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@main`;
-    const MAIN_MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/app/dist/manifest.json`;
+    const MAIN_BRANCH_URL = `https://api.github.com/repos/${REPOSITORY}/branches/main`;
     const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
     const CSS_ID = 'igs-auto-loader-css';
     const SCRIPT_ID = 'igs-auto-loader-js';
@@ -92,10 +92,9 @@
     async function resolveLoaderConfig() {
         const userConfig = getObject(root.IGS_LOADER_CONFIG);
         const explicitRef = String(userConfig.ref || root.IGS_LOADER_REF || '').trim();
-        const latestManifest = !explicitRef && !userConfig.base && !root.IGS_LOADER_BASE
-            ? await fetchLatestManifest()
+        const latestRef = !explicitRef && !userConfig.base && !root.IGS_LOADER_BASE
+            ? await fetchLatestRef()
             : null;
-        const latestRef = normalizeManifestRef(latestManifest);
         const ref = explicitRef || latestRef || DEFAULT_REF;
         const defaultBase = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${ref}`;
         const hasCustomBase = Boolean(userConfig.base || root.IGS_LOADER_BASE);
@@ -136,25 +135,25 @@
         return attempt.ref !== 'main';
     }
 
-    async function fetchLatestManifest() {
+    async function fetchLatestRef() {
         const fetchFn = getFetch();
-        if (!fetchFn) return null;
-        const manifestUrl = withTimestamp(MAIN_MANIFEST_URL);
+        if (!fetchFn) return '';
+        const branchUrl = withTimestamp(MAIN_BRANCH_URL);
         try {
-            const response = await fetchFn(manifestUrl, { cache: 'no-store' });
+            const response = await fetchFn(branchUrl, { cache: 'no-store' });
             if (!response || !response.ok) {
-                console.warn('[IGS Loader] 最新 manifest 读取失败，改用 @main。', response && response.status || 'unknown');
-                return null;
+                console.warn('[IGS Loader] 最新 main 提交读取失败，改用 @main。', response && response.status || 'unknown');
+                return '';
             }
-            const manifest = await readResponseJson(response);
-            const ref = normalizeManifestRef(manifest);
+            const branch = await readResponseJson(response);
+            const ref = normalizeCommitRef(branch && branch.commit && branch.commit.sha);
             if (ref) {
-                console.info('[IGS Loader] 发现最新远程版本。', ref, manifestUrl);
+                console.info('[IGS Loader] 发现最新远程提交。', ref, branchUrl);
             }
-            return manifest;
+            return ref;
         } catch (error) {
-            console.warn('[IGS Loader] 最新 manifest 读取异常，改用 @main。', error);
-            return null;
+            console.warn('[IGS Loader] 最新 main 提交读取异常，改用 @main。', error);
+            return '';
         }
     }
 
@@ -167,9 +166,9 @@
         return null;
     }
 
-    function normalizeManifestRef(manifest) {
-        const version = String(manifest && manifest.version || '').trim();
-        return /^\d+\.\d+\.\d+$/.test(version) ? `v${version}` : '';
+    function normalizeCommitRef(value) {
+        const sha = String(value || '').trim();
+        return /^[a-f0-9]{40}$/i.test(sha) ? sha : '';
     }
 
     function dedupeAttempts(attempts) {
