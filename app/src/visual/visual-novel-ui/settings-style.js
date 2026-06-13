@@ -33,7 +33,7 @@ const SETTINGS_STYLE_TEXT = `
 .vn-settings-model select{grid-column:1 / -1;height:36px}
 .vn-settings-model select:disabled{opacity:.55;cursor:not-allowed}
 .vn-settings-inline-action{width:96px;height:36px;padding:0 10px;white-space:nowrap}
-.vn-settings-action.is-active,.vn-settings-inline-action.is-active{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.28);color:#fff}
+.vn-settings-action.is-active,.vn-settings-inline-action.is-active{background:linear-gradient(135deg,rgba(93,190,255,.38),rgba(255,255,255,.20));border-color:rgba(135,216,255,.72);color:#fff;box-shadow:0 0 0 1px rgba(135,216,255,.22) inset,0 0 18px rgba(93,190,255,.20)}
 .vn-settings-action[disabled],.vn-settings-inline-action[disabled]{opacity:.55;cursor:not-allowed;pointer-events:none}
 .vn-segmented-field .vn-settings-field{width:100%}
 .vn-segmented{height:40px;display:grid;grid-template-columns:repeat(var(--vn-segment-count,3),minmax(0,1fr));align-items:center;gap:0;padding:4px;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.075);border-radius:14px;position:relative;overflow:hidden}

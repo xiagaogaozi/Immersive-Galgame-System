@@ -163,8 +163,8 @@ export function getMessageScopedRoots(message, targetDocument = null) {
 }
 
 export function ensureMessageImagePlaceholders(message, imageSlots = []) {
-    const blocks = normalizeImagePlaceholderBlocks(imageSlots);
-    if (!blocks.length) {
+    const placeholders = normalizeImagePlaceholderBlocks(imageSlots);
+    if (!placeholders.length) {
         return removeMessageImagePlaceholders(message);
     }
     const mesText = getMessageTextRoot(resolveMessageElementFromInput(message));
@@ -172,7 +172,7 @@ export function ensureMessageImagePlaceholders(message, imageSlots = []) {
         return {
             ok: false,
             reason: 'message-text-root-not-found',
-            count: blocks.length,
+            count: placeholders.length,
         };
     }
     const owned = getOwnedImagePlaceholders(mesText);
@@ -183,25 +183,31 @@ export function ensureMessageImagePlaceholders(message, imageSlots = []) {
         return {
             ok: true,
             reason: 'placeholder-present-legacy',
-            count: blocks.length,
+            count: placeholders.length,
         };
     }
-    const textContent = blocks.join('\n');
-    if (owned.length === 1 && String(owned[0].textContent || '').trim() === textContent) {
+    const signature = placeholders.map(buildImagePlaceholderSignature).join('\n');
+    const ownedSignature = owned.map((node) => String(
+        node && typeof node.getAttribute === 'function'
+            ? node.getAttribute('data-vn-placeholder-signature') || ''
+            : '',
+    )).join('\n');
+    if (owned.length === placeholders.length && ownedSignature === signature) {
         return {
             ok: true,
             reason: 'placeholder-present',
-            count: blocks.length,
+            count: placeholders.length,
         };
     }
     owned.forEach(removeNodeSafely);
-    const placeholder = createMessageImagePlaceholderNode(mesText.ownerDocument, textContent);
-    mesText.appendChild(placeholder);
+    for (const placeholder of placeholders) {
+        mesText.appendChild(createMessageImagePlaceholderNode(mesText.ownerDocument, placeholder));
+    }
     dispatchMessagePlaceholderMutation(mesText);
     return {
         ok: true,
         reason: 'placeholder-injected',
-        count: blocks.length,
+        count: placeholders.length,
     };
 }
 
@@ -252,8 +258,15 @@ function normalizeImagePlaceholderBlocks(imageSlots) {
         const rawBlock = String(slot && slot.rawBlock || '').trim();
         const promptText = String(slot && slot.promptText || '').trim();
         const block = rawBlock || promptText;
-        if (!block || output.includes(block)) continue;
-        output.push(block);
+        if (!block || output.some((item) => item.block === block)) continue;
+        const slotIndex = normalizeMessageSlotIndex(slot && slot.slotIndex, output.length);
+        output.push({
+            block,
+            slotIndex,
+            imageId: String(slot && slot.imageId || `vn-slot-${slotIndex + 1}`).trim(),
+            locationHash: String(slot && slot.locationHash || '').trim(),
+            title: String(slot && slot.title || `图 ${slotIndex + 1}`).trim(),
+        });
     }
     return output;
 }
@@ -267,19 +280,38 @@ function getOwnedImagePlaceholders(mesText) {
     }
 }
 
-function createMessageImagePlaceholderNode(ownerDocument, textContent) {
+function createMessageImagePlaceholderNode(ownerDocument, placeholder) {
     const node = ownerDocument && typeof ownerDocument.createElement === 'function'
         ? ownerDocument.createElement('div')
         : buildFallbackPlaceholderNode();
     if (typeof node.setAttribute === 'function') {
         node.setAttribute('data-vn-placeholder', '1');
         node.setAttribute('data-vn-image-placeholder', '1');
+        node.setAttribute('data-vn-image-slot', String(placeholder.slotIndex));
+        node.setAttribute('data-slot-index', String(placeholder.slotIndex));
+        node.setAttribute('data-image-index', String(placeholder.slotIndex));
+        node.setAttribute('data-image-id', placeholder.imageId);
+        node.setAttribute('data-vn-image-id', placeholder.imageId);
+        if (placeholder.locationHash) {
+            node.setAttribute('data-location-hash', placeholder.locationHash);
+            node.setAttribute('data-vn-location-hash', placeholder.locationHash);
+        }
+        node.setAttribute('data-vn-placeholder-signature', buildImagePlaceholderSignature(placeholder));
     }
     node.className = 'vn-img-ph vn-image-placeholder';
     node.style = node.style || {};
     node.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;font-size:0';
-    node.textContent = String(textContent || '');
+    node.textContent = String(placeholder.block || '');
     return node;
+}
+
+function buildImagePlaceholderSignature(placeholder) {
+    return [
+        placeholder && placeholder.slotIndex,
+        placeholder && placeholder.locationHash,
+        placeholder && placeholder.imageId,
+        placeholder && placeholder.block,
+    ].map((part) => String(part || '')).join('|');
 }
 
 function buildFallbackPlaceholderNode() {
@@ -604,6 +636,12 @@ function normalizeMessageId(value) {
     const id = Number(value);
     if (!Number.isFinite(id) || id < 0) return null;
     return id;
+}
+
+function normalizeMessageSlotIndex(value, fallback) {
+    const index = Number(value);
+    if (!Number.isFinite(index) || index < 0) return Math.max(0, Math.floor(Number(fallback) || 0));
+    return Math.floor(index);
 }
 
 function isUserMessage(message, element) {

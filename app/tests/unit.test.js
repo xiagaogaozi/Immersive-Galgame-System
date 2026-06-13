@@ -264,7 +264,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.18',
+            version: '0.3.19',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -291,7 +291,7 @@ test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.18',
+            version: '0.3.19',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -317,7 +317,7 @@ test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-mul
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.18',
+            version: '0.3.19',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -419,7 +419,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.18',
+        version: '0.3.19',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -574,6 +574,7 @@ test('gate:generated-images:reader-image-service-prefers-slot-binding-over-scan-
                 extractImages() {
                     return [{
                         url: 'https://example.com/slot-3.png',
+                        slotIndex: 2,
                     }];
                 },
             },
@@ -594,6 +595,46 @@ test('gate:generated-images:reader-image-service-prefers-slot-binding-over-scan-
     assert.equal(imageState.slots[2].url, 'https://example.com/slot-3.png');
     assert.equal(imageState.slots.filter((slot) => slot.url).length, 1);
     assert.equal(imageState.unboundImages.length, 0);
+});
+
+test('gate:generated-images:reader-image-service-keeps-single-unnumbered-image-unbound-with-image-tags', async () => {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
+        sourceFilter: DEFAULT_SOURCE_FILTER,
+    });
+    const service = createReaderImageService({
+        providers: [
+            {
+                id: 'test.unnumbered-provider',
+                async detect() {
+                    return true;
+                },
+                extractImages() {
+                    return [{
+                        url: 'https://example.com/latest-visible-image.png',
+                    }];
+                },
+            },
+        ],
+    });
+
+    const imageState = await service.collect({
+        messageId: 80,
+        message: { id: 80, text: source },
+        imageSlots: payload.imageSlots,
+        preferredImageIndex: 0,
+    });
+
+    assert.equal(imageState.ok, true);
+    assert.equal(imageState.count, 6);
+    assert.equal(imageState.currentIndex, 0);
+    assert.equal(imageState.currentUrl, '');
+    assert.equal(imageState.displayUrl, '');
+    assert.equal(imageState.boundCount, 0);
+    assert.equal(imageState.unboundCount, 1);
+    assert.equal(imageState.availableCount, 1);
+    assert.equal(imageState.slots.filter((slot) => slot.url).length, 0);
+    assert.equal(imageState.unboundImages[0].url, 'https://example.com/latest-visible-image.png');
 });
 
 test('gate:generated-images:reader-image-service-does-not-show-later-slot-on-first-segment', async () => {
@@ -705,10 +746,12 @@ test('gate:host:ensure-message-image-placeholders-reuses-owned-placeholder', () 
     assert.equal(first.reason, 'placeholder-injected');
     assert.equal(second.ok, true);
     assert.equal(second.reason, 'placeholder-present');
-    assert.equal(mesText.children.length, 1);
+    assert.equal(mesText.children.length, 2);
     assert.equal(mesText.children[0].getAttribute('data-vn-image-placeholder'), '1');
+    assert.equal(mesText.children[0].getAttribute('data-vn-image-slot'), '0');
+    assert.equal(mesText.children[1].getAttribute('data-vn-image-slot'), '1');
     assert.match(mesText.children[0].textContent, /image###one###/);
-    assert.match(mesText.children[0].textContent, /image###two###/);
+    assert.match(mesText.children[1].textContent, /image###two###/);
 });
 
 test('gate:host:tavern-helper-adapter-uses-hide-state-fallback-for-hidden-messages', async () => {

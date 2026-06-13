@@ -73,6 +73,10 @@ export function createReaderImageService(options = {}) {
                     providerImages,
                     sceneImages,
                     preferredImageIndex,
+                    preferredFallback: {
+                        enabled: context.allowPreferredSlotFallback === true,
+                        excludeUrls: context.preferredFallbackExcludeUrls,
+                    },
                 });
                 const stored = cache.remember(messageId, [
                     ...extractStoredSlotImages(imageState.slots),
@@ -298,6 +302,7 @@ export function createReaderImageService(options = {}) {
             const pollAttempts = normalizePositiveInteger(imageApi.pollAttempts, 60);
             const baselineSignature = String(currentState.signature || '');
             const baselineUrl = String(currentState.currentUrl || '');
+            const baselineUrls = collectImageStateUrls(currentState);
             let lastState = currentState;
 
             for (let attempt = 0; attempt < pollAttempts; attempt += 1) {
@@ -306,6 +311,8 @@ export function createReaderImageService(options = {}) {
                     ...context,
                     currentIndex: imageIndex,
                     preferredImageIndex: imageIndex,
+                    allowPreferredSlotFallback: true,
+                    preferredFallbackExcludeUrls: baselineUrls,
                     providers: context.providers,
                 });
                 if (!lastState || lastState.ok === false) continue;
@@ -403,6 +410,10 @@ function buildImageState(entry, currentIndex = 0, extra = {}) {
         slots: [],
         unboundImages: [],
         count: images.length,
+        expectedCount: images.length,
+        boundCount: images.length,
+        unboundCount: 0,
+        availableCount: images.length,
         signature: String(entry.signature || ''),
         currentIndex: activeIndex,
         currentUrl: images[activeIndex] ? images[activeIndex].url : '',
@@ -423,6 +434,10 @@ function emptyImageState(extra = {}) {
         slots: [],
         unboundImages: [],
         count: 0,
+        expectedCount: 0,
+        boundCount: 0,
+        unboundCount: 0,
+        availableCount: 0,
         signature: '',
         currentIndex: 0,
         currentUrl: '',
@@ -733,12 +748,14 @@ function buildSlottedImageState({
     providerImages,
     sceneImages,
     preferredImageIndex,
+    preferredFallback,
 }) {
     const slots = normalizeImageSlots(imageSlots);
     const preferredIndex = clampSlotIndex(preferredImageIndex, slots.length);
     const cachedCandidates = normalizeCandidateImages(cachedImages);
     const providerCandidates = normalizeCandidateImages(providerImages);
     const sceneCandidates = normalizeCandidateImages(sceneImages);
+    const preferredFallbackOptions = normalizePreferredFallback(preferredFallback);
     const claimedUrls = new Set();
 
     assignCandidatesToSlots(slots, cachedCandidates, {
@@ -750,7 +767,8 @@ function buildSlottedImageState({
         preferredIndex,
         fillOnlyEmpty: false,
         allowSequentialFallback: providerCandidates.length === slots.length,
-        allowPreferredFallback: shouldUsePreferredSlotFallback(providerCandidates),
+        allowPreferredFallback: preferredFallbackOptions.enabled,
+        preferredFallbackUrlBlacklist: preferredFallbackOptions.excludeUrls,
     }, claimedUrls);
     assignCandidatesToSlots(slots, sceneCandidates, {
         preferredIndex,
@@ -765,6 +783,8 @@ function buildSlottedImageState({
     ]);
     const currentSlot = slots[preferredIndex] || null;
     const currentUrl = String(currentSlot && currentSlot.url || '').trim();
+    const boundCount = countBoundSlots(slots);
+    const unboundCount = unboundImages.length;
     return {
         ok: true,
         messageId,
@@ -772,6 +792,10 @@ function buildSlottedImageState({
         images: cloneData(slots),
         unboundImages: cloneData(unboundImages),
         count: slots.length,
+        expectedCount: slots.length,
+        boundCount,
+        unboundCount,
+        availableCount: boundCount + unboundCount,
         signature: buildSlotSignature(slots, unboundImages),
         currentIndex: preferredIndex,
         currentUrl,
@@ -855,7 +879,12 @@ function applyPreferredSlotFallback(slots, candidates, options, claimedUrls) {
     const preferredIndex = clampSlotIndex(options && options.preferredIndex, slots.length);
     const preferredSlot = slots[preferredIndex];
     if (!preferredSlot || !canWriteSlot(preferredSlot, options)) return;
-    const candidate = candidates.shift();
+    const blacklist = options && options.preferredFallbackUrlBlacklist instanceof Set
+        ? options.preferredFallbackUrlBlacklist
+        : new Set();
+    const candidateIndex = candidates.findIndex((candidate) => candidate && candidate.url && !blacklist.has(candidate.url));
+    if (candidateIndex < 0) return;
+    const [candidate] = candidates.splice(candidateIndex, 1);
     writeSlotImage(preferredSlot, candidate);
     claimedUrls.add(candidate.url);
 }
@@ -887,20 +916,6 @@ function writeSlotImage(slot, candidate) {
     slot.locationHash = String(candidate.locationHash || slot.locationHash || '').trim();
     slot.buttonIndex = normalizeOptionalIndex(firstDefined(candidate.buttonIndex, slot.buttonIndex));
     slot.order = normalizeOptionalIndex(firstDefined(candidate.order, slot.order));
-}
-
-function resolveDisplayImage(slots, preferredIndex) {
-    if (!Array.isArray(slots) || !slots.length) return null;
-    const activeIndex = clampSlotIndex(preferredIndex, slots.length);
-    const slot = slots[activeIndex];
-    return String(slot && slot.url || '').trim() ? slot : null;
-}
-
-function shouldUsePreferredSlotFallback(candidates) {
-    return (Array.isArray(candidates) ? candidates : []).some((candidate) => {
-        if (!candidate || hasSlotBindingSignal(candidate)) return true;
-        return String(candidate.providerId || '') !== 'builtin.dom-generic';
-    });
 }
 
 function buildScopePolicy(input = {}) {
@@ -937,22 +952,41 @@ function buildImageDiagnostics(images = [], placeholderState = null) {
     return output;
 }
 
-function hasSlotBindingSignal(candidate) {
-    return Boolean(
-        candidate
-        && (
-            candidate.slotIndex != null
-            || candidate.locationHash
-            || candidate.imageId
-            || candidate.buttonIndex != null
-        )
-    );
-}
-
 function collectUnboundCandidates(candidates, claimedUrls) {
     return (Array.isArray(candidates) ? candidates : []).filter((candidate) => {
         return candidate && candidate.url && !claimedUrls.has(candidate.url);
     });
+}
+
+function countBoundSlots(slots) {
+    return (Array.isArray(slots) ? slots : []).filter((slot) => String(slot && slot.url || '').trim()).length;
+}
+
+function normalizePreferredFallback(value) {
+    const excludeUrls = new Set();
+    for (const url of Array.isArray(value && value.excludeUrls) ? value.excludeUrls : []) {
+        const normalized = String(url || '').trim();
+        if (normalized) excludeUrls.add(normalized);
+    }
+    return {
+        enabled: value && value.enabled === true,
+        excludeUrls,
+    };
+}
+
+function collectImageStateUrls(imageState) {
+    const urls = [];
+    for (const source of [
+        imageState && imageState.images,
+        imageState && imageState.slots,
+        imageState && imageState.unboundImages,
+    ]) {
+        for (const image of Array.isArray(source) ? source : []) {
+            const url = String(image && image.url || '').trim();
+            if (url && !urls.includes(url)) urls.push(url);
+        }
+    }
+    return urls;
 }
 
 function extractStoredSlotImages(slots) {

@@ -25,6 +25,9 @@ const ADAPTER_SELECTORS = Object.freeze({
         metadata: Object.freeze([
             '[data-image-id]',
             '[data-location-hash]',
+            '[data-slot-index]',
+            '[data-image-index]',
+            '[data-vn-image-slot]',
             'img[data-image-id]',
             'img[data-location-hash]',
             '[data-image-id] img',
@@ -198,22 +201,27 @@ export function findDomRegenerateButtons(roots) {
 
 export function collectDomRegenerateButtonCandidates(roots) {
     const selectors = [
-        ...ADAPTER_SELECTORS.chatu8.buttons,
-        ...ADAPTER_SELECTORS.chami.buttons,
+        ...ADAPTER_SELECTORS.chatu8.buttons.map((selector) => ({ selector, adapterKey: 'chatu8', requireHint: false })),
+        ...ADAPTER_SELECTORS.chami.buttons.map((selector) => ({ selector, adapterKey: 'chami', requireHint: false })),
+        { selector: 'button', adapterKey: 'generic', requireHint: true },
+        { selector: '[role="button"]', adapterKey: 'generic', requireHint: true },
+        { selector: 'input[type="button"]', adapterKey: 'generic', requireHint: true },
+        { selector: 'input[type="submit"]', adapterKey: 'generic', requireHint: true },
+        { selector: 'a[role="button"]', adapterKey: 'generic', requireHint: true },
     ];
     const buttons = [];
     const seen = new Set();
     let order = 0;
-    for (const selector of selectors) {
-        const adapterKey = ADAPTER_SELECTORS.chatu8.buttons.includes(selector) ? 'chatu8' : 'chami';
+    for (const entry of selectors) {
         for (const root of Array.isArray(roots) ? roots : []) {
-            for (const button of safeQueryAll(root, selector)) {
+            for (const button of safeQueryAll(root, entry.selector)) {
                 if (!button || seen.has(button)) continue;
+                if (entry.requireHint && !isLikelyRegenerateButton(button)) continue;
                 seen.add(button);
                 const metadata = collectNodeMetadata(button);
                 buttons.push({
                     button,
-                    adapterKey,
+                    adapterKey: entry.adapterKey,
                     order: order + 1,
                     imageId: metadata.imageId,
                     locationHash: metadata.locationHash,
@@ -332,18 +340,24 @@ function imageCandidateGroupKey(sourceNode, imageNode, url, order) {
 
 function collectNodeMetadata(sourceNode, imageNode = null) {
     const source = sourceNode && typeof sourceNode === 'object' ? sourceNode : imageNode;
-    const metadataNode = safeClosest(source, '[data-location-hash],[data-image-id],[data-slot-index],[data-image-index]');
+    const metadataNode = safeClosest(source, '[data-location-hash],[data-image-id],[data-slot-index],[data-image-index],[data-vn-image-slot]');
     return {
         imageId: safeGetAttribute(source, 'data-image-id')
             || safeGetAttribute(imageNode, 'data-image-id')
             || safeGetAttribute(metadataNode, 'data-image-id')
+            || safeGetAttribute(source, 'data-vn-image-id')
+            || safeGetAttribute(imageNode, 'data-vn-image-id')
+            || safeGetAttribute(metadataNode, 'data-vn-image-id')
             || '',
         locationHash: safeGetAttribute(source, 'data-location-hash')
             || safeGetAttribute(imageNode, 'data-location-hash')
             || safeGetAttribute(metadataNode, 'data-location-hash')
+            || safeGetAttribute(source, 'data-vn-location-hash')
+            || safeGetAttribute(imageNode, 'data-vn-location-hash')
+            || safeGetAttribute(metadataNode, 'data-vn-location-hash')
             || '',
-        slotIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-slot-index', 'data-image-index']),
-        buttonIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-button-index', 'data-image-index', 'data-slot-index']),
+        slotIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-slot-index', 'data-image-index', 'data-vn-image-slot']),
+        buttonIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-button-index', 'data-image-index', 'data-slot-index', 'data-vn-image-slot']),
     };
 }
 
@@ -477,6 +491,22 @@ function safeGetAttribute(node, name) {
     } catch (error) {
         return null;
     }
+}
+
+function isLikelyRegenerateButton(button) {
+    const text = [
+        safeGetAttribute(button, 'title'),
+        safeGetAttribute(button, 'aria-label'),
+        safeGetAttribute(button, 'data-action'),
+        safeGetAttribute(button, 'data-command'),
+        safeGetAttribute(button, 'data-tooltip'),
+        safeGetAttribute(button, 'value'),
+        safeGetAttribute(button, 'class'),
+        button && button.textContent,
+        button && button.innerText,
+        button && button.value,
+    ].filter(Boolean).join(' ');
+    return /(?:重新生成|生成图片|生成图|重绘|重画|换图|再来一张|regen|regenerate|reroll|generate\s*image|image\s*gen)/i.test(text);
 }
 
 function safeDocument(target) {

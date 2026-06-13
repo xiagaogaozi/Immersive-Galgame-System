@@ -127,6 +127,9 @@ const TOOLBAR_ACTIONS = Object.freeze([
     ['prev-turn', '上一轮'],
     ['next-turn', '下一轮'],
 ]);
+const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze(['hide']);
+const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
+const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
 
 export function createVisualNovelReaderHost(options = {}) {
     const state = {
@@ -204,8 +207,10 @@ export function createVisualNovelReaderHost(options = {}) {
             },
             runtime: null,
             toastTimer: null,
+            imagePollToken: 0,
         };
         updateMountedReader(snapshot);
+        startReaderImagePolling(state.activeReader);
 
         return {
             ok: true,
@@ -273,6 +278,7 @@ export function createVisualNovelReaderHost(options = {}) {
         closeSettings();
         clearReaderToast(current);
         clearReaderModeRuntime(current);
+        current.imagePollToken += 1;
         if (current.dom && typeof current.dom.dispose === 'function') {
             current.dom.dispose();
         }
@@ -717,6 +723,46 @@ export function createVisualNovelReaderHost(options = {}) {
         return result;
     }
 
+    function startReaderImagePolling(current) {
+        if (!current || typeof options.collectMessageImages !== 'function') return;
+        if (!shouldPollReaderImages(current.snapshot && current.snapshot.content)) return;
+        const token = (current.imagePollToken || 0) + 1;
+        current.imagePollToken = token;
+        pollReaderImages(current, token);
+    }
+
+    async function pollReaderImages(current, token) {
+        const unified = resolveBridgeConfigSnapshot({ mode: current.mode });
+        const imageApi = unified.bridge && unified.bridge.imageApi || {};
+        const intervalMs = normalizePollInterval(imageApi.initialPollIntervalMs || imageApi.pollIntervalMs);
+        const attempts = normalizePollAttempts(imageApi.initialPollAttempts);
+        let previousSignature = String(current.snapshot && current.snapshot.content && current.snapshot.content.imageSignature || '');
+        let previousBoundCount = Number(current.snapshot && current.snapshot.content && current.snapshot.content.imageBoundCount || 0) || 0;
+
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+            await waitForReaderImagePoll(intervalMs, options.global);
+            if (!state.activeReader || state.activeReader !== current || current.imagePollToken !== token) return;
+            const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
+            const result = await options.collectMessageImages({
+                ...context,
+                preferredImageIndex: context.imageIndex,
+                requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
+                    && context.imageState.slots.length > 0,
+            });
+            if (!result || result.ok === false) continue;
+            const nextBoundCount = countBoundImageSlots(result);
+            const nextSignature = String(result.signature || '');
+            const currentUrl = String(result.currentUrl || result.displayUrl || '').trim();
+            if (nextSignature !== previousSignature || nextBoundCount > previousBoundCount || currentUrl) {
+                current.payload.imageState = cloneData(result);
+                rerenderActiveReader();
+                previousSignature = nextSignature;
+                previousBoundCount = nextBoundCount;
+                if (!shouldPollReaderImages(current.snapshot && current.snapshot.content)) return;
+            }
+        }
+    }
+
     function buildReaderSnapshot(payload, mode, readerSettings, index = 0) {
         const scene = cloneData(payload.scene || (payload.render && payload.render.scene) || {});
         const render = payload.render || {};
@@ -744,13 +790,14 @@ export function createVisualNovelReaderHost(options = {}) {
             payload.imageState,
             resolveSegmentImageIndex(payload, normalizedIndex),
         );
+        const displayImageState = applyImageCountOverride(imageState, readerSettings.imageCountOverride);
         const currentText = segments[normalizedIndex] || text;
         const displayText = scene.speaker && currentText
             ? `${scene.speaker}: ${currentText}`
             : currentText;
         const backgroundImage = firstNonEmptyString(
-            imageState.displayUrl,
-            imageState.currentUrl,
+            displayImageState.displayUrl,
+            displayImageState.currentUrl,
             scene.generatedImage && scene.generatedImage.value,
             stage.layers && stage.layers.generated && stage.layers.generated.resource && stage.layers.generated.resource.value,
             stage.layers && stage.layers.background && stage.layers.background.resource && stage.layers.background.resource.url,
@@ -793,16 +840,20 @@ export function createVisualNovelReaderHost(options = {}) {
                 displayText,
                 segments: cloneData(segments),
                 currentIndex: normalizedIndex,
-                progress: buildProgressText(normalizedIndex, segments.length, imageState),
+                progress: buildProgressText(normalizedIndex, segments.length, displayImageState),
                 backgroundImage,
-                images: cloneData(imageState.images),
-                imageSlots: cloneData(imageState.slots),
-                unboundImages: cloneData(imageState.unboundImages),
-                imageCount: imageState.count,
-                imageSignature: imageState.signature,
-                activeImageIndex: imageState.currentIndex,
-                currentImageUrl: imageState.displayUrl || imageState.currentUrl,
-                currentSlotImageUrl: imageState.slotUrl,
+                images: cloneData(displayImageState.images),
+                imageSlots: cloneData(displayImageState.slots),
+                unboundImages: cloneData(displayImageState.unboundImages),
+                imageCount: displayImageState.count,
+                imageExpectedCount: displayImageState.expectedCount,
+                imageBoundCount: displayImageState.boundCount,
+                imageUnboundCount: displayImageState.unboundCount,
+                imageAvailableCount: displayImageState.availableCount,
+                imageSignature: displayImageState.signature,
+                activeImageIndex: displayImageState.currentIndex,
+                currentImageUrl: displayImageState.displayUrl || displayImageState.currentUrl,
+                currentSlotImageUrl: displayImageState.slotUrl,
                 sourceKind: firstDefined(scene.sourceKind, payload.sourceKind, 'raw-text'),
                 warnings: extracted.warnings,
                 errors: extracted.errors,
@@ -814,7 +865,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.18'),
+            source: getOriginalReaderSource(options.version || '0.3.19'),
         };
     }
 
@@ -839,7 +890,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.18'),
+                version: esc(options.version || '0.3.19'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1253,7 +1304,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vn-settings-badge';
-        badge.textContent = options.version || '0.3.18';
+        badge.textContent = options.version || '0.3.19';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1440,6 +1491,8 @@ export function createVisualNovelReaderHost(options = {}) {
         const textEl = refs.textEl || root.querySelector('#vn-text');
         const toolbar = refs.toolbar || root.querySelector('#vn-ctrl-bar');
         const controls = root.querySelector('.vn-controls');
+        const bg = root.querySelector('#vn-bg');
+        const bgBlur = root.querySelector('#vn-bg-blur');
         const readerSettings = snapshot.readerSettings || {};
         const inlineMode = snapshot.mode === 'pc' || snapshot.mode === 'mobile';
         const win = getOwnerWindow(root);
@@ -1480,6 +1533,14 @@ export function createVisualNovelReaderHost(options = {}) {
 
         if (controls) {
             controls.style.zoom = String(Number(readerSettings.inputScale || 100) / 100);
+        }
+
+        if (bg) {
+            bg.style.backgroundSize = readerSettings.imgMode === 'contain' ? 'contain' : 'cover';
+            bg.style.backgroundColor = '#000';
+        }
+        if (bgBlur) {
+            bgBlur.style.backgroundSize = readerSettings.imgMode === 'contain' ? 'cover' : 'cover';
         }
     }
 
@@ -1857,7 +1918,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.18' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.19' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1868,7 +1929,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.18',
+            version: snapshot.version || options.version || '0.3.19',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -1910,7 +1971,7 @@ export function createVisualNovelReaderHost(options = {}) {
             imgMode: 'adaptive',
             stayMode: false,
             imageCountOverride: null,
-            pinnedBtns: [],
+            pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
         };
         const normalized = {
             ...base,
@@ -1925,7 +1986,7 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.imgMode = normalized.imgMode === 'contain' ? 'contain' : 'adaptive';
         normalized.stayMode = normalizeBoolean(normalized.stayMode, false);
         normalized.imageCountOverride = normalizeNullableNumber(normalized.imageCountOverride);
-        normalized.pinnedBtns = Array.isArray(normalized.pinnedBtns) ? normalized.pinnedBtns.filter(Boolean) : [];
+        normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);
         return normalized;
     }
 
@@ -1974,6 +2035,54 @@ export function createVisualNovelReaderHost(options = {}) {
         const bridge = resolveBridgeConfigSnapshot({ mode: current.mode }).bridge;
         applyToastToReader(current, bridge.showToasts !== false, message);
     }
+}
+
+function shouldPollReaderImages(content = {}) {
+    const expected = Number(content.imageExpectedCount || content.imageCount || 0) || 0;
+    if (!expected) return false;
+    const slots = Array.isArray(content.imageSlots) ? content.imageSlots : [];
+    if (!slots.length) return false;
+    const bound = Number(content.imageBoundCount || 0) || countBoundImageSlots({ slots });
+    return bound < expected || !String(content.currentSlotImageUrl || content.currentImageUrl || '').trim();
+}
+
+function countBoundImageSlots(imageState = {}) {
+    return (Array.isArray(imageState.slots) ? imageState.slots : [])
+        .filter((slot) => String(slot && slot.url || '').trim())
+        .length;
+}
+
+function normalizePollInterval(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return INITIAL_IMAGE_POLL_INTERVAL_MS;
+    return Math.max(50, Math.min(750, Math.floor(numeric)));
+}
+
+function normalizePollAttempts(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return INITIAL_IMAGE_POLL_ATTEMPTS;
+    return Math.max(1, Math.min(20, Math.floor(numeric)));
+}
+
+function normalizePinnedButtons(value) {
+    const allowed = new Set(TOOLBAR_ACTIONS.map(([id]) => id));
+    const output = [];
+    for (const id of Array.isArray(value) ? value : []) {
+        const normalized = String(id || '').trim();
+        if (!normalized || !allowed.has(normalized) || output.includes(normalized)) continue;
+        output.push(normalized);
+    }
+    if (!output.length) return Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS);
+    return output;
+}
+
+function waitForReaderImagePoll(duration, globalObject) {
+    return new Promise((resolve) => {
+        const timeout = globalObject && typeof globalObject.setTimeout === 'function'
+            ? globalObject.setTimeout.bind(globalObject)
+            : setTimeout;
+        timeout(resolve, duration);
+    });
 }
 
 function renderTemplate(template, values) {
@@ -2296,7 +2405,17 @@ function clampNumber(value, min, max) {
 function buildProgressText(currentIndex, totalSegments, imageState) {
     const segmentProgress = `${currentIndex + 1} / ${totalSegments}`;
     if (!imageState || !imageState.count) return segmentProgress;
-    return `${segmentProgress}   [${imageState.currentIndex + 1}/${imageState.count} 图]`;
+    const expected = Number(imageState.expectedCount || imageState.count || 0) || 0;
+    const bound = Number(imageState.boundCount || 0) || 0;
+    const unbound = Number(imageState.unboundCount || 0) || 0;
+    const hasSlots = Array.isArray(imageState.slots) && imageState.slots.length > 0;
+    if (!hasSlots) return `${segmentProgress}   [${imageState.currentIndex + 1}/${imageState.count} 图]`;
+    const currentUrl = String(imageState.slotUrl || imageState.currentUrl || imageState.displayUrl || '').trim();
+    const slotText = currentUrl
+        ? `图位 ${imageState.currentIndex + 1}/${expected}`
+        : '当前图位未生成';
+    const suffix = !currentUrl && unbound > 0 ? `，未匹配 ${unbound}` : '';
+    return `${segmentProgress}   [${slotText}，已绑定 ${bound}/${expected}${suffix}]`;
 }
 
 function normalizeSnapshotImageState(imageState, fallbackIndex = 0) {
@@ -2326,16 +2445,69 @@ function normalizeSnapshotImageState(imageState, fallbackIndex = 0) {
     const displayImage = slots.length
         ? resolveSnapshotDisplayImage(slots, activeIndex) || resolveIndexedSnapshotUnboundImage(unboundImages, activeIndex, slots.length)
         : images[activeIndex] || null;
+    const expectedCount = Number(firstDefined(imageState && imageState.expectedCount, totalCount)) || totalCount;
+    const boundCount = slots.length
+        ? slots.filter((slot) => String(slot && slot.url || '').trim()).length
+        : images.length;
+    const unboundCount = unboundImages.length;
     return {
         slots,
         images,
         unboundImages,
         count: totalCount,
+        expectedCount,
+        boundCount,
+        unboundCount,
+        availableCount: boundCount + unboundCount,
         signature: String(imageState && imageState.signature || ''),
         currentIndex: activeIndex,
         currentUrl: String(displayImage && displayImage.url || ''),
         displayUrl: String(displayImage && displayImage.url || ''),
         slotUrl: String(slots[activeIndex] && slots[activeIndex].url || displayImage && displayImage.url || ''),
+    };
+}
+
+function applyImageCountOverride(imageState, override) {
+    const expected = normalizeNullableNumber(override);
+    if (!expected || expected <= 0 || !imageState || !Array.isArray(imageState.slots) || !imageState.slots.length) {
+        return imageState;
+    }
+    const slots = imageState.slots.slice(0, expected);
+    while (slots.length < expected) {
+        const slotIndex = slots.length;
+        slots.push({
+            url: '',
+            providerId: '',
+            source: 'manual-image-count',
+            filename: '',
+            imageId: '',
+            locationHash: '',
+            slotIndex,
+            buttonIndex: null,
+            title: `图 ${slotIndex + 1}`,
+            promptText: '',
+            rawBlock: '',
+            tagName: 'image',
+            order: null,
+        });
+    }
+    const currentIndex = Math.max(0, Math.min(slots.length - 1, normalizeFiniteIndex(imageState.currentIndex)));
+    const currentSlot = slots[currentIndex] || null;
+    const boundCount = slots.filter((slot) => String(slot && slot.url || '').trim()).length;
+    const unboundImages = Array.isArray(imageState.unboundImages) ? cloneData(imageState.unboundImages) : [];
+    return {
+        ...imageState,
+        slots,
+        images: cloneData(slots),
+        count: slots.length,
+        expectedCount: slots.length,
+        boundCount,
+        unboundCount: unboundImages.length,
+        availableCount: boundCount + unboundImages.length,
+        currentIndex,
+        currentUrl: String(currentSlot && currentSlot.url || ''),
+        displayUrl: String(currentSlot && currentSlot.url || ''),
+        slotUrl: String(currentSlot && currentSlot.url || ''),
     };
 }
 
@@ -2355,10 +2527,15 @@ function buildImageActionContext(current, unifiedSettings = null) {
             slots: cloneData(content.imageSlots || []),
             unboundImages: cloneData(content.unboundImages || []),
             count: Number(content.imageCount || 0) || 0,
+            expectedCount: Number(content.imageExpectedCount || content.imageCount || 0) || 0,
+            boundCount: Number(content.imageBoundCount || 0) || 0,
+            unboundCount: Number(content.imageUnboundCount || 0) || 0,
+            availableCount: Number(content.imageAvailableCount || 0) || 0,
             signature: String(content.imageSignature || ''),
             currentIndex: normalizeFiniteIndex(firstDefined(content.activeImageIndex, content.currentIndex, 0)),
             currentUrl: String(content.currentImageUrl || content.backgroundImage || ''),
             displayUrl: String(content.currentImageUrl || content.backgroundImage || ''),
+            slotUrl: String(content.currentSlotImageUrl || ''),
         },
         currentUrl: String(content.currentImageUrl || content.backgroundImage || ''),
         scene: current && current.payload && current.payload.scene || null,

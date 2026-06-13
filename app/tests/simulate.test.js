@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vn-version'), '0.3.18');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.3.19');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -322,6 +322,7 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
     const opened = await vn.openLatestAvailable('pc');
     const controller = opened.reader.controller;
     assert.equal(opened.reader.snapshot.content.progress, '1 / 2');
+    assert.deepEqual(opened.reader.snapshot.readerSettings.pinnedBtns, ['hide']);
     assert.equal(vn.getState().visualNovelUi.activeReader.toolbarCollapsed, true);
 
     const settingsResult = await controller.invokeAction('settings');
@@ -1067,7 +1068,7 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-th
     const snapshot = vn.getState().visualNovelUi.activeReader.snapshot.content;
 
     assert.equal(opened.ok, true);
-    assert.equal(opened.reader.snapshot.content.progress, '3 / 3   [3/6 图]');
+    assert.equal(opened.reader.snapshot.content.progress, '3 / 3   [图位 3/6，已绑定 1/6]');
     assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/slot-3-old.png');
     assert.equal(opened.reader.snapshot.content.currentSlotImageUrl, 'https://example.com/slot-3-old.png');
     assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/slot-3-old.png');
@@ -1077,7 +1078,7 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-th
     assert.equal(regenResult.reason, 'external-image-updated');
     assert.equal(regenResult.imageState.currentIndex, 2);
     assert.equal(regenResult.imageState.currentUrl, 'https://example.com/slot-3-new.png');
-    assert.equal(snapshot.progress, '3 / 3   [3/6 图]');
+    assert.equal(snapshot.progress, '3 / 3   [图位 3/6，已绑定 1/6]');
     assert.equal(snapshot.currentImageUrl, 'https://example.com/slot-3-new.png');
     assert.equal(snapshot.currentSlotImageUrl, 'https://example.com/slot-3-new.png');
     assert.equal(snapshot.backgroundImage, 'https://example.com/slot-3-new.png');
@@ -1128,10 +1129,119 @@ test('gate:simulation:visual-novel-ui-slot-scope-blocks-outside-message-images-a
     assert.equal(opened.reader.snapshot.content.currentImageUrl, '');
     assert.equal(opened.reader.snapshot.content.currentSlotImageUrl, '');
     assert.equal(opened.reader.snapshot.content.backgroundImage, '');
-    assert.equal(placeholders.length, 1);
+    assert.equal(placeholders.length, 6);
     assert.match(placeholders[0].textContent, /image###slot-1###/);
-    assert.match(placeholders[0].textContent, /image###slot-6###/);
+    assert.match(placeholders[5].textContent, /image###slot-6###/);
+    assert.equal(placeholders[0].getAttribute('data-vn-image-slot'), '0');
+    assert.equal(placeholders[5].getAttribute('data-vn-image-slot'), '5');
     assert.equal(roleCardImage.closest('.mes_text'), null);
+
+    vn.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-single-unnumbered-latest-image-does-not-pretend-to-be-first-image-slot', async () => {
+    const document = createFakeDocument();
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const message = {
+        id: 41,
+        text: source,
+        element: createFakeMessageElement(document, {
+            genericNodes: [
+                createFakeMediaNode({
+                    ownerDocument: document,
+                    tagName: 'IMG',
+                    src: 'https://example.com/last-generated-visible.png',
+                }),
+            ],
+        }),
+    };
+    const vn = bootstrapVN({
+        global: { document },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'auto',
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const content = opened.reader.snapshot.content;
+
+    assert.equal(opened.ok, true);
+    assert.equal(content.imageCount, 6);
+    assert.equal(content.imageBoundCount, 0);
+    assert.equal(content.imageUnboundCount, 1);
+    assert.equal(content.progress, '1 / 3   [当前图位未生成，已绑定 0/6，未匹配 1]');
+    assert.equal(content.currentImageUrl, '');
+    assert.equal(content.backgroundImage, '');
+    assert.equal(content.unboundImages[0].url, 'https://example.com/last-generated-visible.png');
+
+    vn.destroy();
+});
+
+test('gate:simulation:visual-novel-ui-plain-generate-image-button-regens-and-binds-current-slot', async () => {
+    const document = createFakeDocument();
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const image = createFakeMediaNode({
+        ownerDocument: document,
+        tagName: 'IMG',
+        src: 'https://example.com/current-plugin-image-old.png',
+    });
+    const button = createFakeRegenerateButton(() => {
+        image.currentSrc = 'https://example.com/current-plugin-image-new.png';
+        image.src = 'https://example.com/current-plugin-image-new.png';
+    }, {
+        textContent: '生成图片',
+    });
+    const message = {
+        id: 42,
+        text: source,
+        element: createFakeMessageElement(document, {
+            genericNodes: [image],
+            regenButtons: [button],
+        }),
+    };
+    const vn = bootstrapVN({
+        global: {
+            document,
+            setTimeout(callback) {
+                callback();
+                return 1;
+            },
+            clearTimeout() {},
+        },
+        autoAttachMagicWand: false,
+        config: {
+            imageApi: {
+                mode: 'extension',
+                externalAdapter: 'auto',
+                pollIntervalMs: 1,
+                pollAttempts: 3,
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const regenResult = await opened.reader.controller.invokeAction('regen');
+    const content = vn.getState().visualNovelUi.activeReader.snapshot.content;
+
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, '');
+    assert.equal(regenResult.ok, true);
+    assert.equal(regenResult.imageState.currentUrl, 'https://example.com/current-plugin-image-new.png');
+    assert.equal(content.currentImageUrl, 'https://example.com/current-plugin-image-new.png');
+    assert.equal(content.currentSlotImageUrl, 'https://example.com/current-plugin-image-new.png');
+    assert.equal(content.progress, '1 / 3   [图位 1/6，已绑定 1/6]');
+    assert.equal(button.clickCount, 1);
 
     vn.destroy();
 });
@@ -1213,7 +1323,7 @@ test('gate:simulation:visual-novel-ui-generic-message-images-follow-image-tags-w
 
     assert.equal(opened.ok, true);
     assert.equal(opened.reader.snapshot.content.imageCount, 6);
-    assert.equal(opened.reader.snapshot.content.progress, '1 / 3   [1/6 图]');
+    assert.equal(opened.reader.snapshot.content.progress, '1 / 3   [图位 1/6，已绑定 6/6]');
     assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/prism-generated-1.png');
     assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/prism-generated-1.png');
 
@@ -1221,7 +1331,7 @@ test('gate:simulation:visual-novel-ui-generic-message-images-follow-image-tags-w
     const snapshot = vn.getState().visualNovelUi.activeReader.snapshot.content;
 
     assert.equal(nextResult.ok, true);
-    assert.equal(snapshot.progress, '2 / 3   [2/6 图]');
+    assert.equal(snapshot.progress, '2 / 3   [图位 2/6，已绑定 6/6]');
     assert.equal(snapshot.currentImageUrl, 'https://example.com/prism-generated-2.png');
     assert.equal(snapshot.backgroundImage, 'https://example.com/prism-generated-2.png');
 
@@ -1894,9 +2004,13 @@ function createFakeRegenerateButton(onClick, options = {}) {
         parentElement: null,
         children: [],
         className: String(options.className || ''),
+        textContent: String(options.textContent || options.text || ''),
+        innerText: String(options.innerText || options.textContent || options.text || ''),
+        value: String(options.value || ''),
         clickCount: 0,
         getAttribute(name) {
             if (name === 'class') return this.className || null;
+            if (name === 'value') return this.value || null;
             return attributes.has(name) ? attributes.get(name) : null;
         },
         setAttribute(name, value) {
