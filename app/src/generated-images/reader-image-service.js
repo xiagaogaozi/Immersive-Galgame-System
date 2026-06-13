@@ -676,6 +676,7 @@ function buildSlottedImageState({
         preferredIndex,
         fillOnlyEmpty: false,
         allowSequentialFallback: providerCandidates.length === slots.length,
+        allowPreferredFallback: shouldUsePreferredSlotFallback(providerCandidates),
     }, claimedUrls);
     assignCandidatesToSlots(slots, sceneCandidates, {
         preferredIndex,
@@ -688,7 +689,9 @@ function buildSlottedImageState({
         ...collectUnboundCandidates(providerCandidates, claimedUrls),
         ...collectUnboundCandidates(sceneCandidates, claimedUrls),
     ]);
-    const displayImage = resolveDisplayImage(slots, preferredIndex) || unboundImages[0] || null;
+    const displayImage = resolveDisplayImage(slots, preferredIndex)
+        || resolveIndexedUnboundImage(unboundImages, preferredIndex, slots.length)
+        || null;
     const currentUrl = String(displayImage && displayImage.url || '').trim();
     return {
         ok: true,
@@ -773,6 +776,7 @@ function applyImageIdMatches(slots, candidates, options, claimedUrls) {
 
 function applyPreferredSlotFallback(slots, candidates, options, claimedUrls) {
     if (!candidates.length) return;
+    if (options && options.allowPreferredFallback === false) return;
     if (options && options.allowSequentialFallback === true && candidates.length >= slots.length) return;
     const preferredIndex = clampSlotIndex(options && options.preferredIndex, slots.length);
     const preferredSlot = slots[preferredIndex];
@@ -814,13 +818,34 @@ function writeSlotImage(slot, candidate) {
 function resolveDisplayImage(slots, preferredIndex) {
     if (!Array.isArray(slots) || !slots.length) return null;
     const activeIndex = clampSlotIndex(preferredIndex, slots.length);
-    for (let index = activeIndex; index < slots.length; index += 1) {
-        if (String(slots[index] && slots[index].url || '').trim()) return slots[index];
-    }
-    for (let index = activeIndex - 1; index >= 0; index -= 1) {
-        if (String(slots[index] && slots[index].url || '').trim()) return slots[index];
-    }
-    return null;
+    const slot = slots[activeIndex];
+    return String(slot && slot.url || '').trim() ? slot : null;
+}
+
+function resolveIndexedUnboundImage(unboundImages, preferredIndex, slotCount) {
+    if (!Array.isArray(unboundImages) || !unboundImages.length) return null;
+    if (!Number.isFinite(slotCount) || slotCount <= 0) return unboundImages[0] || null;
+    if (unboundImages.length !== slotCount) return null;
+    return unboundImages[clampSlotIndex(preferredIndex, unboundImages.length)] || null;
+}
+
+function shouldUsePreferredSlotFallback(candidates) {
+    return (Array.isArray(candidates) ? candidates : []).some((candidate) => {
+        if (!candidate || hasSlotBindingSignal(candidate)) return true;
+        return String(candidate.providerId || '') !== 'builtin.dom-generic';
+    });
+}
+
+function hasSlotBindingSignal(candidate) {
+    return Boolean(
+        candidate
+        && (
+            candidate.slotIndex != null
+            || candidate.locationHash
+            || candidate.imageId
+            || candidate.buttonIndex != null
+        )
+    );
 }
 
 function collectUnboundCandidates(candidates, claimedUrls) {

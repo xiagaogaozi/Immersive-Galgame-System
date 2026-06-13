@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.8');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.9');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);
@@ -1127,20 +1127,18 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-falls-back-to-scan-orde
     igs.destroy();
 });
 
-test('gate:simulation:visual-novel-ui-generic-message-image-displays-with-image-tags', async () => {
+test('gate:simulation:visual-novel-ui-generic-message-images-follow-image-tags-while-paging', async () => {
     const document = createFakeDocument();
     const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
     const message = {
         id: 39,
         text: source,
         element: createFakeMessageElement(document, {
-            genericNodes: [
-                createFakeMediaNode({
-                    ownerDocument: document,
-                    tagName: 'IMG',
-                    src: 'https://example.com/prism-generated.png',
-                }),
-            ],
+            genericNodes: Array.from({ length: 6 }, (_, index) => createFakeMediaNode({
+                ownerDocument: document,
+                tagName: 'IMG',
+                src: `https://example.com/prism-generated-${index + 1}.png`,
+            })),
         }),
     };
     const igs = bootstrapIGS({
@@ -1163,8 +1161,16 @@ test('gate:simulation:visual-novel-ui-generic-message-image-displays-with-image-
     assert.equal(opened.ok, true);
     assert.equal(opened.reader.snapshot.content.imageCount, 6);
     assert.equal(opened.reader.snapshot.content.progress, '1 / 3   [1/6 图]');
-    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/prism-generated.png');
-    assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/prism-generated.png');
+    assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/prism-generated-1.png');
+    assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/prism-generated-1.png');
+
+    const nextResult = await opened.reader.controller.invokeAction('next');
+    const snapshot = igs.getState().visualNovelUi.activeReader.snapshot.content;
+
+    assert.equal(nextResult.ok, true);
+    assert.equal(snapshot.progress, '2 / 3   [2/6 图]');
+    assert.equal(snapshot.currentImageUrl, 'https://example.com/prism-generated-2.png');
+    assert.equal(snapshot.backgroundImage, 'https://example.com/prism-generated-2.png');
 
     igs.destroy();
 });

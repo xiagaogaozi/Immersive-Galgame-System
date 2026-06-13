@@ -261,7 +261,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.8',
+            version: '0.3.9',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -288,7 +288,7 @@ test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.8',
+            version: '0.3.9',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -314,7 +314,7 @@ test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-mul
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.8',
+            version: '0.3.9',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -416,7 +416,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.8',
+        version: '0.3.9',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -591,6 +591,43 @@ test('gate:generated-images:reader-image-service-prefers-slot-binding-over-scan-
     assert.equal(imageState.slots[2].url, 'https://example.com/slot-3.png');
     assert.equal(imageState.slots.filter((slot) => slot.url).length, 1);
     assert.equal(imageState.unboundImages.length, 0);
+});
+
+test('gate:generated-images:reader-image-service-does-not-show-later-slot-on-first-segment', async () => {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
+        sourceFilter: DEFAULT_SOURCE_FILTER,
+    });
+    const service = createReaderImageService({
+        providers: [
+            {
+                id: 'test.slot-provider',
+                async detect() {
+                    return true;
+                },
+                extractImages() {
+                    return [{
+                        url: 'https://example.com/slot-6.png',
+                        slotIndex: 5,
+                    }];
+                },
+            },
+        ],
+    });
+
+    const imageState = await service.collect({
+        messageId: 78,
+        message: { id: 78, text: source },
+        imageSlots: payload.imageSlots,
+        preferredImageIndex: 0,
+    });
+
+    assert.equal(imageState.ok, true);
+    assert.equal(imageState.count, 6);
+    assert.equal(imageState.currentIndex, 0);
+    assert.equal(imageState.currentUrl, '');
+    assert.equal(imageState.displayUrl, '');
+    assert.equal(imageState.slots[5].url, 'https://example.com/slot-6.png');
 });
 
 test('gate:host:tavern-helper-adapter-uses-hide-state-fallback-for-hidden-messages', async () => {

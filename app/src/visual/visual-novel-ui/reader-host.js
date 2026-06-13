@@ -814,7 +814,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.8'),
+            source: getOriginalReaderSource(options.version || '0.3.9'),
         };
     }
 
@@ -839,7 +839,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.8'),
+                version: esc(options.version || '0.3.9'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1253,7 +1253,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vnm-settings-badge';
-        badge.textContent = options.version || '0.3.8';
+        badge.textContent = options.version || '0.3.9';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1857,7 +1857,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.8' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.9' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1868,7 +1868,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.8',
+            version: snapshot.version || options.version || '0.3.9',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2320,13 +2320,11 @@ function normalizeSnapshotImageState(imageState, fallbackIndex = 0) {
     const totalCount = slots.length || images.length;
     const activeIndex = totalCount
         ? Math.max(0, Math.min(totalCount - 1, normalizeFiniteIndex(
-            firstDefined(imageState && imageState.currentIndex, fallbackIndex),
+            firstDefined(fallbackIndex, imageState && imageState.currentIndex),
         )))
         : 0;
     const displayImage = slots.length
-        ? resolveSnapshotDisplayImage(slots, activeIndex) || unboundImages[0] || mapSnapshotImageEntry({
-            url: firstNonEmptyString(imageState && imageState.displayUrl, imageState && imageState.currentUrl),
-        }, activeIndex, true)
+        ? resolveSnapshotDisplayImage(slots, activeIndex) || resolveIndexedSnapshotUnboundImage(unboundImages, activeIndex, slots.length)
         : images[activeIndex] || null;
     return {
         slots,
@@ -2467,13 +2465,14 @@ function mapSnapshotImageEntry(image, fallbackIndex, requireUrl) {
 
 function resolveSnapshotDisplayImage(slots, activeIndex) {
     const source = Array.isArray(slots) ? slots : [];
-    for (let index = activeIndex; index < source.length; index += 1) {
-        if (String(source[index] && source[index].url || '').trim()) return source[index];
-    }
-    for (let index = activeIndex - 1; index >= 0; index -= 1) {
-        if (String(source[index] && source[index].url || '').trim()) return source[index];
-    }
-    return null;
+    const slot = source[activeIndex];
+    return String(slot && slot.url || '').trim() ? slot : null;
+}
+
+function resolveIndexedSnapshotUnboundImage(unboundImages, activeIndex, slotCount) {
+    const source = Array.isArray(unboundImages) ? unboundImages : [];
+    if (!source.length || source.length !== slotCount) return null;
+    return source[normalizeFiniteIndex(activeIndex)] || null;
 }
 
 function firstDefined(...values) {

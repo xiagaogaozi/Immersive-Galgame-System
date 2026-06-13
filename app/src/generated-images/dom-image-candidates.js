@@ -348,6 +348,7 @@ function readIndexAttribute(sourceNode, imageNode, metadataNode, names) {
             || safeGetAttribute(imageNode, name)
             || safeGetAttribute(metadataNode, name)
             || '';
+        if (value === '') continue;
         const numeric = Number(value);
         if (Number.isFinite(numeric) && numeric >= 0) return Math.floor(numeric);
     }
