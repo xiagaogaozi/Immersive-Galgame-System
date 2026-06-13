@@ -76,8 +76,9 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.equal(loaderJson.content, loaderSource);
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
-    assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.6'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'main'/);
+    assert.doesNotMatch(loaderJson.content, /DEFAULT_REF = 'v\d+\.\d+\.\d+'/);
+    assert.doesNotMatch(loaderJson.content, /RAW_MANIFEST_URL/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -124,21 +125,16 @@ test('gate:loader-json:repeated enable rescans magic wand without alerting', () 
     assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.reused, true);
 });
 
-test('gate:loader-json:falls-back-to-main-when-version-cdn-is-missing', async () => {
+test('gate:loader-json:loads-main-by-default-without-manifest-version-lock', async () => {
     const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
     const scripts = [];
     const alerts = [];
+    const fetched = [];
     const documentLike = createLoaderDocumentLike({
         onAppend(element) {
             if (element.tagName !== 'SCRIPT') return;
             scripts.push(element.src);
-            setTimeout(() => {
-                if (element.src.includes('@main/')) {
-                    element.onload();
-                } else {
-                    element.onerror();
-                }
-            }, 0);
+            setTimeout(() => element.onload(), 0);
         },
     });
     const root = {
@@ -149,15 +145,53 @@ test('gate:loader-json:falls-back-to-main-when-version-cdn-is-missing', async ()
         setTimeout,
         fetch: async (url) => {
             const text = String(url);
-            if (text.includes('manifest.json')) {
-                return {
-                    ok: true,
-                    json: async () => ({ version: '0.3.6' }),
-                };
-            }
+            fetched.push(text);
+            return { ok: true, status: 200 };
+        },
+    };
+    root.parent = root;
+
+    const context = vm.createContext({
+        window: root,
+        document: documentLike,
+        console,
+        setTimeout,
+        fetch: root.fetch,
+    });
+    vm.runInContext(loaderJson.content, context);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.deepEqual(alerts, []);
+    assert.equal(scripts.length, 1);
+    assert.match(scripts[0], /@main\/app\/dist\/igs\.bundle\.js/);
+    assert.ok(fetched.every((url) => !url.includes('manifest.json')));
+});
+
+test('gate:loader-json:explicit-fixed-ref-falls-back-to-main-when-cdn-is-missing', async () => {
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const scripts = [];
+    const alerts = [];
+    const fetched = [];
+    const documentLike = createLoaderDocumentLike({
+        onAppend(element) {
+            if (element.tagName !== 'SCRIPT') return;
+            scripts.push(element.src);
+            setTimeout(() => element.onload(), 0);
+        },
+    });
+    const root = {
+        document: documentLike,
+        parent: null,
+        IGS_LOADER_REF: 'v9.9.9',
+        alert: (message) => alerts.push(message),
+        console,
+        setTimeout,
+        fetch: async (url) => {
+            const text = String(url);
+            fetched.push(text);
             return {
-                ok: !text.includes('@v0.3.6/'),
-                status: text.includes('@v0.3.6/') ? 404 : 200,
+                ok: !text.includes('@v9.9.9/'),
+                status: text.includes('@v9.9.9/') ? 404 : 200,
             };
         },
     };
@@ -174,6 +208,8 @@ test('gate:loader-json:falls-back-to-main-when-version-cdn-is-missing', async ()
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     assert.deepEqual(alerts, []);
+    assert.ok(fetched.some((url) => url.includes('@v9.9.9/app/dist/igs.bundle.js')));
+    assert.ok(fetched.some((url) => url.includes('@main/app/dist/igs.bundle.js')));
     assert.equal(scripts.length, 1);
     assert.match(scripts[0], /@main\/app\/dist\/igs\.bundle\.js/);
 });
@@ -247,7 +283,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.6');
+    const source = getOriginalReaderSource('0.3.7');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

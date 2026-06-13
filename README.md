@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.6`：已按 `plan/v0.3.6-image标签图位绑定与图片轮询修复施工图.md` 补齐 `<image>` 图位绑定、图片轮询图位保持与阅读器分页清理，并已通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
-- `v0.3.2` 已把“manifest 指向新版本但版本 tag CDN 暂不可用时，不弹失败框并改用 `@main` bundle”固定为回归闸门；`v0.3.1` 已固定 web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body。
+- 当前项目版本 `v0.3.7`：自动更新 loader 默认追踪 jsDelivr `@main` 最新 bundle，不再要求每次发版都修改 `loader/igs-loader.js` 的内置版本号。
+- `v0.3.7` 已把“loader 默认不得写死 `vX.Y.Z`、不得依赖 manifest 解析版本、默认加载 `@main`、固定 ref 失败时回退 `@main`”固定为回归闸门；`v0.3.6` 已补齐 `<image>` 图位绑定与图片轮询修复。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,14 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.7 - 2026-06-13
+
+- 修复自动更新 loader 的发布逻辑：`loader/igs-loader.js` 默认 ref 改为 `main`，直接加载 `https://cdn.jsdelivr.net/gh/xiagaogaozi/immersive-galgame-system@main/app/dist/igs.bundle.*` 并加 cache bust，不再通过 manifest 推导 `v<version>`。
+- 保留手动锁版本能力：用户仍可通过 `window.IGS_LOADER_REF` 或 `window.IGS_LOADER_CONFIG.ref` 指向旧 tag、`main` 或测试分支；非 `main` ref 探测失败时会继续 fallback 到 `@main`。
+- 更新 `app/tests/gate-contract.test.js`，新增默认不读 manifest、默认加载 `@main`、固定 ref 404 后回退 `@main` 的 VM 回归测试，并防止 `DEFAULT_REF` 再被写回 `vX.Y.Z`。
+- `docs/PACKAGING_WORKFLOW.md`、`docs/RELEASE.md` 与 `loader/README.md` 已同步改写发布说明；`app/package.json`、运行时版本、阅读器版本显示与构建产物同步提升到 `v0.3.7`。
+- 本轮已通过 `npm run test`、`npm run simulate`、`npm run gate`、`npm run build:loader` 与 loader JSON 反解校验。
 
 ### v0.3.6 - 2026-06-13
 

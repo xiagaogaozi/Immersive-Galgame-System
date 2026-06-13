@@ -27,7 +27,7 @@ npm run build:loader
 `igs-loader.js` 只允许：
 
 - 阻止重复加载。
-- 选择远程版本或读取远程 manifest。
+- 选择远程 ref，默认追踪 `main` 最新 bundle。
 - 注入 `igs.bundle.css`。
 - 注入 `igs.bundle.js`。
 - 输出加载状态和失败原因。
