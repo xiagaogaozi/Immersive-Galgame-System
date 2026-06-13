@@ -2,7 +2,7 @@
     'use strict';
 
     const REPOSITORY = 'xiagaogaozi/immersive-galgame-system';
-    const DEFAULT_REF = 'v0.3.1';
+    const DEFAULT_REF = 'v0.3.2';
     const RAW_MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/app/dist/manifest.json`;
     const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
     const CSS_ID = 'igs-auto-loader-css';
@@ -55,14 +55,32 @@
 
     async function load() {
         const config = await resolveLoaderConfig();
-        const cssUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.css`, config);
-        const scriptUrl = withCacheBust(`${config.base}/app/dist/igs.bundle.js`, config);
+        const attempts = buildLoadAttempts(config);
+        let lastError = null;
 
-        injectCss(cssUrl);
-        injectScript(scriptUrl);
-        scheduleMagicWandEnsure();
-        console.info('[IGS Loader] 使用远程版本。', config.ref, config.base);
-        return config;
+        for (const attempt of attempts) {
+            const cssUrl = withCacheBust(`${attempt.base}/app/dist/igs.bundle.css`, attempt);
+            const scriptUrl = withCacheBust(`${attempt.base}/app/dist/igs.bundle.js`, attempt);
+            const probe = await probeBundleUrl(scriptUrl);
+            if (!probe.ok) {
+                lastError = probe.error || new Error(`remote bundle not available: ${scriptUrl}`);
+                console.warn('[IGS Loader] 远程 bundle 探测失败，尝试下一个地址。', attempt.ref, scriptUrl, lastError);
+                continue;
+            }
+            try {
+                injectCss(cssUrl);
+                await injectScript(scriptUrl);
+                scheduleMagicWandEnsure();
+                console.info('[IGS Loader] 使用远程版本。', attempt.ref, attempt.base);
+                return { ...config, activeRef: attempt.ref, activeBase: attempt.base };
+            } catch (error) {
+                lastError = error;
+                clearTraceElements();
+                console.warn('[IGS Loader] 远程 bundle 加载失败，尝试下一个地址。', attempt.ref, scriptUrl, error);
+            }
+        }
+
+        throw lastError || new Error('没有可用的沉浸式 Galgame 系统远程 bundle。');
     }
 
     async function resolveLoaderConfig() {
@@ -70,9 +88,29 @@
         const explicitRef = String(userConfig.ref || root.IGS_LOADER_REF || '').trim();
         const ref = explicitRef || await resolveLatestTagRef(userConfig) || DEFAULT_REF;
         const defaultBase = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${ref}`;
+        const hasCustomBase = Boolean(userConfig.base || root.IGS_LOADER_BASE);
         const base = String(userConfig.base || root.IGS_LOADER_BASE || defaultBase).replace(/\/+$/, '');
         const cacheBust = userConfig.cacheBust === undefined ? ref === 'main' || Boolean(explicitRef && !/^v\d+\.\d+\.\d+$/.test(ref)) : userConfig.cacheBust !== false;
-        return { ref, base, cacheBust };
+        return { ref, base, cacheBust, hasCustomBase };
+    }
+
+    function buildLoadAttempts(config) {
+        const attempts = [
+            {
+                ref: config.ref,
+                base: config.base,
+                cacheBust: config.cacheBust,
+            },
+        ];
+        if (!config.hasCustomBase && config.ref !== 'main') {
+            attempts.push({
+                ref: 'main',
+                base: `https://cdn.jsdelivr.net/gh/${REPOSITORY}@main`,
+                cacheBust: true,
+                fallbackOf: config.ref,
+            });
+        }
+        return attempts;
     }
 
     async function resolveLatestTagRef(userConfig) {
@@ -104,6 +142,21 @@
         return `${url}${url.includes('?') ? '&' : '?'}${mark}`;
     }
 
+    async function probeBundleUrl(url) {
+        const fetchFn = root.fetch
+            ? root.fetch.bind(root)
+            : (typeof fetch === 'function' ? fetch : null);
+        if (!fetchFn) return { ok: true, skipped: true };
+        try {
+            const response = await fetchFn(url, { method: 'HEAD', cache: 'no-store' });
+            return response && response.ok
+                ? { ok: true }
+                : { ok: false, error: new Error(`HTTP ${response && response.status || 'unknown'}`) };
+        } catch (error) {
+            return { ok: false, error };
+        }
+    }
+
     function injectCss(href) {
         let link = doc.querySelector(`#${CSS_ID}`);
         if (!link) {
@@ -116,23 +169,23 @@
     }
 
     function injectScript(src) {
-        if (doc.querySelector(`#${SCRIPT_ID}`)) return;
-        const script = doc.createElement('script');
-        script.id = SCRIPT_ID;
-        script.type = 'module';
-        script.src = src;
-        script.onload = () => {
-            console.info('[IGS Loader] 沉浸式 Galgame 系统 bundle 已加载。', src);
-        };
-        script.onerror = () => {
-            console.error('[IGS Loader] 远程 bundle 加载失败。', src);
-            try {
-                if (typeof root.alert === 'function') root.alert('沉浸式 Galgame 系统远程脚本加载失败，请检查 GitHub 仓库是否公开、网络是否可访问。');
-            } catch (error) {
-                // Ignore blocked alert calls.
-            }
-        };
-        doc.head.appendChild(script);
+        const existing = doc.querySelector(`#${SCRIPT_ID}`);
+        if (existing && existing.src === src) return Promise.resolve(existing);
+        if (existing && existing.remove) existing.remove();
+        return new Promise((resolve, reject) => {
+            const script = doc.createElement('script');
+            script.id = SCRIPT_ID;
+            script.type = 'module';
+            script.src = src;
+            script.onload = () => {
+                console.info('[IGS Loader] 沉浸式 Galgame 系统 bundle 已加载。', src);
+                resolve(script);
+            };
+            script.onerror = () => {
+                reject(new Error(`remote script load failed: ${src}`));
+            };
+            doc.head.appendChild(script);
+        });
     }
 
     function reconcileExistingRuntime() {

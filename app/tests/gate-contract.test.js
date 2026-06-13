@@ -77,7 +77,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /igs\.bundle\.js/);
     assert.match(loaderJson.content, /igs\.bundle\.css/);
     assert.match(loaderJson.content, /raw\.githubusercontent\.com/);
-    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.1'/);
+    assert.match(loaderJson.content, /DEFAULT_REF = 'v0\.3\.2'/);
     assert.doesNotMatch(loaderJson.content, /notifyDuplicateLoadBlocked/);
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
@@ -122,6 +122,60 @@ test('gate:loader-json:repeated enable rescans magic wand without alerting', () 
     assert.equal(documentLike.head.children.length, 0);
     assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.status, 'ready');
     assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.reused, true);
+});
+
+test('gate:loader-json:falls-back-to-main-when-version-cdn-is-missing', async () => {
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const scripts = [];
+    const alerts = [];
+    const documentLike = createLoaderDocumentLike({
+        onAppend(element) {
+            if (element.tagName !== 'SCRIPT') return;
+            scripts.push(element.src);
+            setTimeout(() => {
+                if (element.src.includes('@main/')) {
+                    element.onload();
+                } else {
+                    element.onerror();
+                }
+            }, 0);
+        },
+    });
+    const root = {
+        document: documentLike,
+        parent: null,
+        alert: (message) => alerts.push(message),
+        console,
+        setTimeout,
+        fetch: async (url) => {
+            const text = String(url);
+            if (text.includes('manifest.json')) {
+                return {
+                    ok: true,
+                    json: async () => ({ version: '0.3.2' }),
+                };
+            }
+            return {
+                ok: !text.includes('@v0.3.2/'),
+                status: text.includes('@v0.3.2/') ? 404 : 200,
+            };
+        },
+    };
+    root.parent = root;
+
+    const context = vm.createContext({
+        window: root,
+        document: documentLike,
+        console,
+        setTimeout,
+        fetch: root.fetch,
+    });
+    vm.runInContext(loaderJson.content, context);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.deepEqual(alerts, []);
+    assert.equal(scripts.length, 1);
+    assert.match(scripts[0], /@main\/app\/dist\/igs\.bundle\.js/);
 });
 
 test('gate:visual-novel-compat:legacy-storage', () => {
@@ -189,7 +243,7 @@ test('gate:visual-novel-compat:api-shape', () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.1');
+    const source = getOriginalReaderSource('0.3.2');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));
@@ -264,18 +318,21 @@ function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
 }
 
-function createLoaderDocumentLike() {
+function createLoaderDocumentLike(options = {}) {
     const head = {
         children: [],
         appendChild(element) {
             this.children.push(element);
+            if (typeof options.onAppend === 'function') options.onAppend(element);
             return element;
         },
     };
     return {
         head,
-        querySelector() {
-            return null;
+        querySelector(selector) {
+            const idMatch = String(selector || '').match(/^#(.+)$/);
+            if (!idMatch) return null;
+            return head.children.find((element) => element.id === idMatch[1] && !element.removed) || null;
         },
         createElement(tagName) {
             return {

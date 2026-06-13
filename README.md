@@ -19,8 +19,8 @@ JS-Slash-Runner（酒馆助手）沉浸式 Galgame 系统项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前运行版本 `v0.3.1`：修复网页全屏与浏览器全屏中打开设置页时只显示空壳、tabs/body 不可见的问题；魔法棒入口显示名继续固定为 `沉浸式 Galgame 系统`，入口形态继续保留原版 `fa-book-open` 单入口。
-- `v0.3.1` 已把“web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body”固定为回归闸门；`v0.3.0` 已固定正文 fallback、pc/mobile 浮窗几何、web 滚动锁定、fullscreen 请求全屏、隐藏恢复和 toast 边界反馈。
+- 当前运行版本 `v0.3.2`：修复 jsDelivr 新标签短时 404 时 loader 直接弹出“远程脚本加载失败”的问题；loader 会先尝试 `@v<version>`，失败后自动回退到 `@main`。
+- `v0.3.2` 已把“manifest 指向新版本但版本 tag CDN 暂不可用时，不弹失败框并改用 `@main` bundle”固定为回归闸门；`v0.3.1` 已固定 web/fullscreen 设置页必须跟随 visualViewport 偏移并完整显示 shell/head/tabs/body。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
 - 最终酒馆导入形态：`loader/igs-loader.json`，格式参考 `_inbox/酒馆助手脚本-玉子手机.json`。
@@ -128,6 +128,13 @@ projects/沉浸式galgame系统/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.2 - 2026-06-13
+
+- 修复自动更新 loader 在 jsDelivr `@v<version>` 标签资源短时返回 404 时直接弹出“远程脚本加载失败”的问题；本轮实际探测到 GitHub raw 的 `v0.3.1` bundle 可访问，但 jsDelivr `@v0.3.1/app/dist/igs.bundle.js` 返回 404。
+- `loader/igs-loader.js` 现在会用 raw GitHub manifest 解析版本后，先探测 jsDelivr tag bundle；如果 tag bundle 不可用，会自动 fallback 到 jsDelivr `@main` 并加 cache bust，避免刚发布标签时测试入口打不开。
+- 扩展 `app/tests/gate-contract.test.js`：新增 VM 回归测试，模拟 manifest 返回 `0.3.2`、版本 tag 探测 404，要求 loader 不弹窗并改用 `@main/app/dist/igs.bundle.js`。
+- `app/package.json`、`app/src/core/bootstrap.js`、阅读器默认版本、`app/dist/manifest.json` 与 `loader/igs-loader.json` 同步提升到 `v0.3.2`。
 
 ### v0.3.1 - 2026-06-13
 

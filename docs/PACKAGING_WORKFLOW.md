@@ -166,10 +166,11 @@ https://github.com/xiagaogaozi/immersive-galgame-system
 当前 loader 默认链路：
 
 ```text
-GitHub raw main/app/dist/manifest.json -> 读取 version -> jsDelivr @v<version>/app/dist/igs.bundle.*
+GitHub raw main/app/dist/manifest.json -> 读取 version -> 探测 jsDelivr @v<version>/app/dist/igs.bundle.js -> 加载 jsDelivr @v<version>/app/dist/igs.bundle.*
 ```
 
-不要默认直接从 jsDelivr `@main/app/dist/*` 加载主程序；`@main` 可能出现 CDN 缓存旧 dist。需要测试分支或滚动主分支时，可由用户手动设置 `window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。
+如果刚发布的新 tag 在 jsDelivr 上短时返回 404，loader 会自动 fallback 到 `https://cdn.jsdelivr.net/gh/<repo>@main/app/dist/*` 并强制 cache bust，避免酒馆导入后直接失败。`@main` 只作为 tag CDN 不可用时的应急 fallback；正常稳定加载仍优先使用 `@v<version>` 不可变标签。
+需要测试分支或滚动主分支时，可由用户手动设置 `window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。
 
 ## 推荐发布步骤
 

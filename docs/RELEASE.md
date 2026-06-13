@@ -59,10 +59,10 @@
 默认远程加载策略：
 
 ```text
-GitHub raw main/app/dist/manifest.json -> 读取 version -> jsDelivr @v<version>/app/dist/igs.bundle.*
+GitHub raw main/app/dist/manifest.json -> 读取 version -> 探测 jsDelivr @v<version>/app/dist/igs.bundle.js -> 加载 jsDelivr @v<version>/app/dist/igs.bundle.*
 ```
 
-不要默认直接依赖 jsDelivr `@main/app/dist/*`，因为 CDN 可能返回旧 dist。需要临时测试主分支时，可以手动设置 `window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。
+如果新发布 tag 在 jsDelivr 上短时返回 404，loader 会自动 fallback 到 jsDelivr `@main/app/dist/*` 并加 cache bust；这是应急路径，不是稳定发布主路径。需要临时测试主分支时，也可以手动设置 `window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。
 
 ## 后续建议命令
 
