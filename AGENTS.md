@@ -6,7 +6,7 @@
 
 - 默认项目目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`
 - 默认工作形态：`loader/` 只放远程 bundle loader，主程序只放 `app/`。
-- 最终导入产物：`loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终导入产物：`loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 打包发布入口文档：`docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`。
 - 不新增 `project.json`、`latest/`、`archive/`、`tavern helper/` 等奶龙工具箱发布壳目录，除非用户明确要求重新接入工具箱流程。
@@ -88,8 +88,8 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 - 用户明确要求只做本地草稿、不上传或不打标签时，才跳过 GitHub 上传；最终回复必须说明 skipped 原因。
 - 用户明确要求发布酒馆导入件时，才额外生成 loader、release notes 或 GitHub Release。
 - 发布候选不得依赖真实 API key、真实聊天记录或真实 shujuku 数据作为唯一验证来源。
-- 最终给酒馆导入的是版本化中文发布文件，不是 `app/dist/igs.bundle.js`，也不是原版 `Visual Novel` 的 `latest/*.json`。
-- `loader/igs-loader.json` 和版本化中文发布文件的 `content` 必须来自 `loader/igs-loader.js` 原文，JSON 反序列化后必须完全一致。
+- 最终给酒馆导入的是版本化中文发布文件，不是 `app/dist/vn.bundle.js`，也不是原版 `Visual Novel` 的 `latest/*.json`。
+- `loader/vn-loader.json` 和版本化中文发布文件的 `content` 必须来自 `loader/vn-loader.js` 原文，JSON 反序列化后必须完全一致。
 - 远程 bundle 地址必须是普通用户可访问的公开地址；当前 private 仓库的 raw 地址不能作为最终发布源。
 - 发布流程、字段格式和校验命令以 `docs/PACKAGING_WORKFLOW.md` 为准。
 

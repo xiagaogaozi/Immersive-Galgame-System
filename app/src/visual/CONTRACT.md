@@ -11,35 +11,35 @@
 ## 图层结构
 
 ```text
-.igs-stage
-├── .igs-background-layer
-├── .igs-generated-layer
-├── .igs-effect-layer
-├── .igs-character-layer
-├── .igs-avatar-layer
-├── .igs-dialogue-layer
-├── .igs-hud-layer
-│   ├── .igs-toolbar[data-placement="top-left"]
-│   └── .igs-toolbar[data-placement="top-right"]
-├── .igs-choice-layer
-└── .igs-system-layer
+.vn-stage
+├── .vn-background-layer
+├── .vn-generated-layer
+├── .vn-effect-layer
+├── .vn-character-layer
+├── .vn-avatar-layer
+├── .vn-dialogue-layer
+├── .vn-hud-layer
+│   ├── .vn-toolbar[data-placement="top-left"]
+│   └── .vn-toolbar[data-placement="top-right"]
+├── .vn-choice-layer
+└── .vn-system-layer
 ```
 
 ## 稳定槽位
 
 换皮 CSS 可以改变视觉表现和布局，但必须保留以下核心槽位：
 
-- `.igs-stage`
-- `.igs-background-layer`
-- `.igs-generated-layer`
-- `.igs-character-layer`
-- `.igs-dialogue-layer`
-- `.igs-hud-layer`
-- `.igs-toolbar`
-- `.igs-choice-layer`
-- `.igs-system-layer`
+- `.vn-stage`
+- `.vn-background-layer`
+- `.vn-generated-layer`
+- `.vn-character-layer`
+- `.vn-dialogue-layer`
+- `.vn-hud-layer`
+- `.vn-toolbar`
+- `.vn-choice-layer`
+- `.vn-system-layer`
 
-`设置 -> 阅读器` 修改的是语义配置，`visual` 必须将配置同步为 `data-igs-*` 属性和 CSS 变量，供皮肤 CSS 使用。
+`设置 -> 阅读器` 修改的是语义配置，`visual` 必须将配置同步为 `data-vn-*` 属性和 CSS 变量，供皮肤 CSS 使用。
 
 ## 显示策略
 
@@ -66,28 +66,28 @@
 - `vertical`：按钮竖向排列。
 - `auto`：桌面默认横向，手机默认竖向。
 - `data-placement` 支持 `top-left`、`top-right`、`top`、`bottom`、`bottom-right`、`custom`。
-- 工具栏 CSS 必须使用 `.igs-toolbar-*` 命名空间。
+- 工具栏 CSS 必须使用 `.vn-toolbar-*` 命名空间。
 
 ## 设置桥接
 
 `readerSettings` 和 `layoutSettings` 至少应映射为：
 
-- `data-igs-toolbar-layout`
-- `data-igs-toolbar-placement`
-- `data-igs-dialogue-style`
-- `data-igs-nameplate-visible`
-- `data-igs-avatar-visible`
-- `--igs-dialogue-font-size`
-- `--igs-dialogue-width`
-- `--igs-dialogue-height`
-- `--igs-dialogue-opacity`
-- `--igs-toolbar-placement-x`
-- `--igs-toolbar-placement-y`
+- `data-vn-toolbar-layout`
+- `data-vn-toolbar-placement`
+- `data-vn-dialogue-style`
+- `data-vn-nameplate-visible`
+- `data-vn-avatar-visible`
+- `--vn-dialogue-font-size`
+- `--vn-dialogue-width`
+- `--vn-dialogue-height`
+- `--vn-dialogue-opacity`
+- `--vn-toolbar-placement-x`
+- `--vn-toolbar-placement-y`
 
 ## 环境效果
 
 - 环境效果由 `scene` 解析出的时间、天气、地点驱动。
-- `rain`、`snow`、`fog`、`night-tint` 等效果只能进入 `.igs-effect-layer`。
+- `rain`、`snow`、`fog`、`night-tint` 等效果只能进入 `.vn-effect-layer`。
 - 效果层不得改变原始聊天楼层 DOM。
 
 ## 性能约束

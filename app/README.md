@@ -1,6 +1,6 @@
 # app 主工程
 
-`app/` 是 Visual Novel 的主工程。后续发布到 GitHub 时，构建产物预计为 `app/dist/igs.bundle.js` 与 `app/dist/igs.bundle.css`。
+`app/` 是 Visual Novel 的主工程。后续发布到 GitHub 时，构建产物预计为 `app/dist/vn.bundle.js` 与 `app/dist/vn.bundle.css`。
 
 ## 工程目标
 
@@ -62,7 +62,7 @@ pnpm perf
 | `styles` | CSS 全量编辑、UI token、用户 CSS、主题预设。 |
 | `hotkeys` | 手动快捷键绑定和冲突检测。 |
 | `mods` | 面向 JS 作者的二创 Mod 加载、权限和隔离。 |
-| `api` | `window.IGS` / `window.ImmersiveGalgameSystem` 公开 API。 |
+| `api` | `window.VN` / `window.VisualNovel` 公开 API。 |
 
 ## 关键文件入口
 

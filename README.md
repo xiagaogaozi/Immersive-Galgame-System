@@ -5,25 +5,25 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 ## 当前定位
 
 - 显示名：Visual Novel
-- 内部代号：IGS
-- 全局对象：`window.IGS`
-- 完整对象：`window.ImmersiveGalgameSystem`
-- CSS 前缀：`.igs-`
-- DOM 属性：`data-igs-*`
-- 存储前缀：`igs:*`
-- Mod 后缀：`.igs-mod.js`
-- 预设后缀：`.igs-preset.json`
-- 资源包后缀：`.igs-pack.json`
+- 内部代号：VN
+- 全局对象：`window.VN`
+- 完整对象：`window.VisualNovel`
+- CSS 前缀：`.vn-`
+- DOM 属性：`data-vn-*`
+- 存储前缀：`vn:*`
+- Mod 后缀：`.vn-mod.js`
+- 预设后缀：`.vn-preset.json`
+- 资源包后缀：`.vn-pack.json`
 
 ## 当前状态
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.16`：发布名、运行时公开名、dist manifest、用户可见导入文件和项目目录均为 `Visual Novel`。
+- 当前项目版本 `v0.3.17`：发布名、运行时公开名、dist manifest、用户可见导入文件和项目目录均为 `Visual Novel`。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.16.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.17.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -129,11 +129,17 @@ projects/Visual Novel/
 
 ## 更新日志
 
+### v0.3.17 - 2026-06-13
+
+- 统一内部命名空间：内部代号、公开全局对象、CSS 前缀、DOM 属性、存储前缀、Mod/Preset/Pack 后缀均切换为 `VN` / `vn` 体系。
+- 发布链路同步切换为 `app/dist/vn.bundle.js`、`app/dist/vn.bundle.css`、`loader/vn-loader.js` 与 `loader/vn-loader.json`。
+- 最终导入件固定为 `loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.17.json`，loader 继续从 GitHub `main` 最新提交加载远程 bundle。
+
 ### v0.3.14 - 2026-06-13
 
 - 同步原版参考路径：活文档、AI 工作流、发布说明和 Visual Novel UI 契约中的原版来源目录已改为 `projects/Visual Novel 原版备份`。
 - 统一 Visual Novel 对外形态：项目目录、魔法棒入口、运行时公开名、dist manifest 和用户可见导入文件均使用 `Visual Novel`。
-- 最终导入件固定为 `loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`；`loader/igs-loader.json` 继续作为固定内部入口和自动化校验基准。
+- 最终导入件固定为 `loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`；`loader/vn-loader.json` 继续作为固定内部入口和自动化校验基准。
 
 ### v0.3.13 - 2026-06-13
 
@@ -144,19 +150,19 @@ projects/Visual Novel/
 
 ### v0.3.12 - 2026-06-13
 
-- 强化自动更新链路：`loader/igs-loader.js` 默认读取 GitHub API `branches/main`，拿到当前 `main` 提交哈希后加载 `https://cdn.jsdelivr.net/gh/...@<commit>/app/dist/igs.bundle.*`，避免 raw manifest 缓存仍停在旧版本、jsDelivr 新标签短时 404 或 `@main` 分支文件继续吐旧入口。
-- 保留兜底：GitHub API 不可用时仍回退 `@main`，手动指定 `window.IGS_LOADER_REF` 或自定义 base 的行为不变。
+- 强化自动更新链路：`loader/vn-loader.js` 默认读取 GitHub API `branches/main`，拿到当前 `main` 提交哈希后加载 `https://cdn.jsdelivr.net/gh/...@<commit>/app/dist/vn.bundle.*`，避免 raw manifest 缓存仍停在旧版本、jsDelivr 新标签短时 404 或 `@main` 分支文件继续吐旧入口。
+- 保留兜底：GitHub API 不可用时仍回退 `@main`，手动指定 `window.VN_LOADER_REF` 或自定义 base 的行为不变。
 - 更新 loader VM 回归测试：默认加载必须使用 GitHub API 返回的 40 位提交哈希，确保酒馆端实际拿到的就是当前提交里的自包含 bundle。
 
 ### v0.3.11 - 2026-06-13
 
-- 修复 jsDelivr `@main` 分支缓存继续返回旧 267 字节入口的问题：`loader/igs-loader.js` 现在默认先读取 `raw.githubusercontent.com/.../main/app/dist/manifest.json`，从最新 manifest 得到 `vX.Y.Z` 后优先加载 `https://cdn.jsdelivr.net/gh/...@vX.Y.Z/app/dist/igs.bundle.*`。
+- 修复 jsDelivr `@main` 分支缓存继续返回旧 267 字节入口的问题：`loader/vn-loader.js` 现在默认先读取 `raw.githubusercontent.com/.../main/app/dist/manifest.json`，从最新 manifest 得到 `vX.Y.Z` 后优先加载 `https://cdn.jsdelivr.net/gh/...@vX.Y.Z/app/dist/vn.bundle.*`。
 - 保留自动更新：以后发布新版本只需要更新仓库 `main` 的 manifest 和打版本标签，loader 不需要再手改内置版本号；manifest 或版本标签不可用时才回退 `@main`。
 - 更新 loader VM 回归测试：默认加载必须先走 manifest 指向的版本标签，坏固定 ref 仍能 fallback，避免酒馆端继续吃 `@main` 旧缓存导致 `<image>` 绑定修复不生效。
 
 ### v0.3.10 - 2026-06-13
 
-- 修复自动更新链路的实机错位风险：`app/scripts/build.js` 现在会把 `app/src` 模块打成自包含的 `app/dist/igs.bundle.js`，不再发布只有 267 字节、继续 `import ../src/index.js` 的转发入口。
+- 修复自动更新链路的实机错位风险：`app/scripts/build.js` 现在会把 `app/src` 模块打成自包含的 `app/dist/vn.bundle.js`，不再发布只有 267 字节、继续 `import ../src/index.js` 的转发入口。
 - 这个问题会导致 loader 入口虽然带 cache bust，但浏览器/酒馆仍可能复用未带刷新参数的旧子模块；表现就是本地源码已绑定 `<image>`，酒馆里第 1 页仍显示后段图片，翻正文页时图片页码不跟随。
 - 新增 `gate:dist-bundle:is-self-contained-for-loader-cache-bust` 回归闸门：发布产物不得包含运行时 `import`，必须包含当前版本号与 `resolveSegmentImageIndex` 绑定逻辑。
 - 当前远程发布文件会直接携带 v0.3.9 的 `<image>` 图位修复，避免旧模块缓存继续把正文第 1 页错绑到最后一张图。
@@ -172,7 +178,7 @@ projects/Visual Novel/
 
 ### v0.3.8 - 2026-06-13
 
-- 优化自动更新 loader 的入口体感速度：`loader/igs-loader.js` 现在会在远程 `igs.bundle.js` 下载完成前先向酒馆魔法棒菜单注入临时入口；正式 IGS 运行时加载完成后，`createMagicWandEntry()` 会清理该临时入口并替换为正式入口。
+- 优化自动更新 loader 的入口体感速度：`loader/vn-loader.js` 现在会在远程 `vn.bundle.js` 下载完成前先向酒馆魔法棒菜单注入临时入口；正式 VN 运行时加载完成后，`createMagicWandEntry()` 会清理该临时入口并替换为正式入口。
 - 默认 `@main` 加载路径不再额外做一次 HEAD 探测，减少一次远程请求；手动指定旧 tag、测试分支或自定义 base 时仍保留探测和 `@main` fallback，避免坏 ref 直接弹失败框。
 - 修复截图同类图片黑屏问题：`dom-image-candidates.js` 现在会在楼层范围内识别普通 `img[src] / img[data-src]`，并过滤明显的头像/宿主装饰图；`reader-host.js` 在当前 `<image>` 图位暂未绑定 URL 时，会用已扫到的未绑定插图或 `currentUrl` 兜底显示，不再只显示黑底。
 - 新增回归测试：loader 在远程 bundle 未完成前必须先显示临时魔法棒入口；含 `<image>` 图位且楼层只有普通图片节点时，阅读器必须显示该图片为背景。
@@ -180,8 +186,8 @@ projects/Visual Novel/
 
 ### v0.3.7 - 2026-06-13
 
-- 修复自动更新 loader 的发布逻辑：`loader/igs-loader.js` 默认 ref 改为 `main`，直接加载 `https://cdn.jsdelivr.net/gh/xiagaogaozi/Visual-Novel@main/app/dist/igs.bundle.*` 并加 cache bust，不再通过 manifest 推导 `v<version>`。
-- 保留手动锁版本能力：用户仍可通过 `window.IGS_LOADER_REF` 或 `window.IGS_LOADER_CONFIG.ref` 指向旧 tag、`main` 或测试分支；非 `main` ref 探测失败时会继续 fallback 到 `@main`。
+- 修复自动更新 loader 的发布逻辑：`loader/vn-loader.js` 默认 ref 改为 `main`，直接加载 `https://cdn.jsdelivr.net/gh/xiagaogaozi/Visual-Novel@main/app/dist/vn.bundle.*` 并加 cache bust，不再通过 manifest 推导 `v<version>`。
+- 保留手动锁版本能力：用户仍可通过 `window.VN_LOADER_REF` 或 `window.VN_LOADER_CONFIG.ref` 指向旧 tag、`main` 或测试分支；非 `main` ref 探测失败时会继续 fallback 到 `@main`。
 - 更新 `app/tests/gate-contract.test.js`，新增默认不读 manifest、默认加载 `@main`、固定 ref 404 后回退 `@main` 的 VM 回归测试，并防止 `DEFAULT_REF` 再被写回 `vX.Y.Z`。
 - `docs/PACKAGING_WORKFLOW.md`、`docs/RELEASE.md` 与 `loader/README.md` 已同步改写发布说明；`app/package.json`、运行时版本、阅读器版本显示与构建产物同步提升到 `v0.3.7`。
 - 本轮已通过 `npm run test`、`npm run simulate`、`npm run gate`、`npm run build:loader` 与 loader JSON 反解校验。
@@ -198,7 +204,7 @@ projects/Visual Novel/
 - 按 `plan/v0.3.5-原版VN剩余重构审计与补全策划书.md` 补齐原版 VN 剩余重构缺口：新增 `app/src/generated-images/image-api-client.js`、`dom-image-candidates.js` 与 `providers/dom-generic-provider.js`，把原版的模型读取、真实 NAI 生图、DOM 插图探测和通用外部适配收口到 `generated-images` 运行时。
 - `app/src/generated-images/providers/nai-provider.js`、`provider-runtime.js`、`reader-image-service.js` 与 `app/src/core/bootstrap.js` 现已打通真实 `fetchImageModels` / `testImageApi` / `generateImage` / `regenerate` / `save` 链路，不再用占位结果伪装原版 VN 的图像设置页。
 - `app/src/host/tavern-helper-adapter.js` 与 `app/src/visual/visual-novel-ui/reader-host.js` 补回隐藏楼层 `hide_state` 兜底、`SillyTavern.getContext()` fallback、iframe `data-src` 图片源扫描、重绘按钮定位和版本同步，确保原版阅读器在更多宿主环境下仍可打开最新楼层并读取插图。
-- `app/tests/unit.test.js`、`app/tests/simulate.test.js` 与 `app/tests/gate-contract.test.js` 扩展了 NAI zip/base64 返回、图像设置页真实调用、外部适配过滤、iframe 探测、隐藏楼层跳转与 SillyTavern context fallback 的回归闸门；本轮已同步重建 `app/dist/manifest.json` 与 `loader/igs-loader.json`，并通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
+- `app/tests/unit.test.js`、`app/tests/simulate.test.js` 与 `app/tests/gate-contract.test.js` 扩展了 NAI zip/base64 返回、图像设置页真实调用、外部适配过滤、iframe 探测、隐藏楼层跳转与 SillyTavern context fallback 的回归闸门；本轮已同步重建 `app/dist/manifest.json` 与 `loader/vn-loader.json`，并通过 `npm run test`、`npm run simulate`、`npm run gate` 与 `npm run build:loader`。
 
 ### v0.3.4 - 2026-06-13
 
@@ -215,27 +221,27 @@ projects/Visual Novel/
 
 ### v0.3.2 - 2026-06-13
 
-- 修复自动更新 loader 在 jsDelivr `@v<version>` 标签资源短时返回 404 时直接弹出“远程脚本加载失败”的问题；本轮实际探测到 GitHub raw 的 `v0.3.1` bundle 可访问，但 jsDelivr `@v0.3.1/app/dist/igs.bundle.js` 返回 404。
-- `loader/igs-loader.js` 现在会用 raw GitHub manifest 解析版本后，先探测 jsDelivr tag bundle；如果 tag bundle 不可用，会自动 fallback 到 jsDelivr `@main` 并加 cache bust，避免刚发布标签时测试入口打不开。
-- 扩展 `app/tests/gate-contract.test.js`：新增 VM 回归测试，模拟 manifest 返回 `0.3.2`、版本 tag 探测 404，要求 loader 不弹窗并改用 `@main/app/dist/igs.bundle.js`。
-- `app/package.json`、`app/src/core/bootstrap.js`、阅读器默认版本、`app/dist/manifest.json` 与 `loader/igs-loader.json` 同步提升到 `v0.3.2`。
+- 修复自动更新 loader 在 jsDelivr `@v<version>` 标签资源短时返回 404 时直接弹出“远程脚本加载失败”的问题；本轮实际探测到 GitHub raw 的 `v0.3.1` bundle 可访问，但 jsDelivr `@v0.3.1/app/dist/vn.bundle.js` 返回 404。
+- `loader/vn-loader.js` 现在会用 raw GitHub manifest 解析版本后，先探测 jsDelivr tag bundle；如果 tag bundle 不可用，会自动 fallback 到 jsDelivr `@main` 并加 cache bust，避免刚发布标签时测试入口打不开。
+- 扩展 `app/tests/gate-contract.test.js`：新增 VM 回归测试，模拟 manifest 返回 `0.3.2`、版本 tag 探测 404，要求 loader 不弹窗并改用 `@main/app/dist/vn.bundle.js`。
+- `app/package.json`、`app/src/core/bootstrap.js`、阅读器默认版本、`app/dist/manifest.json` 与 `loader/vn-loader.json` 同步提升到 `v0.3.2`。
 
 ### v0.3.1 - 2026-06-13
 
 - 修复 `web` 网页全屏与 `fullscreen` 浏览器全屏模式下打开设置页时设置面板只剩顶部空壳、tabs/body 不显示或落在可视区外的问题。
-- `app/src/visual/visual-novel-ui/settings-style.js` 恢复原版 Visual Novel 的 `#vnm-unified-settings` viewport 盒模型：使用 `--vnm-settings-vleft / --vnm-settings-vtop / --vnm-settings-vw / --vnm-settings-vh` 控制 `left / top / width / height`，并保留原版设置页按钮、tabs 和毛玻璃面板样式。
+- `app/src/visual/visual-novel-ui/settings-style.js` 恢复原版 Visual Novel 的 `#vn-unified-settings` viewport 盒模型：使用 `--vn-settings-vleft / --vn-settings-vtop / --vn-settings-vw / --vn-settings-vh` 控制 `left / top / width / height`，并保留原版设置页按钮、tabs 和毛玻璃面板样式。
 - `app/src/visual/visual-novel-ui/reader-host.js` 为设置面板补回 `visualViewport.resize / visualViewport.scroll / resize / orientationchange` 监听，关闭设置页时会清理事件和 RAF；Node 模拟环境增加设置页 fallback DOM，用于稳定断言 shell/head/tabs/body。
 - 扩展 `app/tests/gate-contract.test.js` 与 `app/tests/simulate.test.js`：新增设置 CSS viewport 变量契约，以及 `web/fullscreen` 打开设置后完整渲染并随 visualViewport 偏移更新的回归测试。
-- `app/package.json`、`app/src/core/bootstrap.js`、阅读器源码默认版本与 `loader/igs-loader.js` 默认标签同步提升到 `v0.3.1`；本轮发布需重新生成 `app/dist/manifest.json` 与 `loader/igs-loader.json`。
+- `app/package.json`、`app/src/core/bootstrap.js`、阅读器源码默认版本与 `loader/vn-loader.js` 默认标签同步提升到 `v0.3.1`；本轮发布需重新生成 `app/dist/manifest.json` 与 `loader/vn-loader.json`。
 
 ### v0.3.0 - 2026-06-13
 
 - 重构 `app/src/visual/visual-novel-ui/reader-host.js` 的运行时层，补齐原版 VN 的四模式行为：`pc` 固定 `900x540` 浮窗、`mobile` 固定 `480x680` 浮窗、`web` 模式锁定 `body/html` 滚动并跟随 `visualViewport` 高度、`fullscreen` 模式主动调用浏览器 `requestFullscreen` 并在退出全屏时关闭阅读器。
 - 修复正文 fallback：当 `scene.text` 为空字符串时，阅读器现在会继续回退到 `formattedText / visibleText / cleanedRaw`，不再出现只剩黑底和工具栏、正文为空的假死状态。
-- 恢复原版可见交互：点击背景层可翻页，隐藏后可再次点击背景层恢复，`Escape / ArrowLeft / ArrowRight / Space / H` 键与原版一致；`#vnm-toast` 现在会显示段落边界、楼层切换缺宿主、保存/重绘结果等提示。
-- `app/src/visual/visual-novel-ui/original-reader-source.js` 补回 `#vnm-send-status` 与 spinner 结构，保持原版工具栏 SVG、选择器和单入口契约；`app/fixtures/visual-novel-ui/original-reader-snapshot.json` 同步扩展契约快照。
+- 恢复原版可见交互：点击背景层可翻页，隐藏后可再次点击背景层恢复，`Escape / ArrowLeft / ArrowRight / Space / H` 键与原版一致；`#vn-toast` 现在会显示段落边界、楼层切换缺宿主、保存/重绘结果等提示。
+- `app/src/visual/visual-novel-ui/original-reader-source.js` 补回 `#vn-send-status` 与 spinner 结构，保持原版工具栏 SVG、选择器和单入口契约；`app/fixtures/visual-novel-ui/original-reader-snapshot.json` 同步扩展契约快照。
 - 扩展 `app/tests/unit.test.js`、`app/tests/simulate.test.js`：新增空正文 fallback、`pc/mobile` 浮窗几何、`web` 滚动锁定、`fullscreen` 全屏请求、隐藏恢复和 toast 边界反馈的模拟闸门，确保这轮修复不会再悄悄退化。
-- `app/package.json`、`app/src/core/bootstrap.js`、`loader/igs-loader.js` 默认版本已同步提升到 `v0.3.0`；本轮发布后需要重新生成 `app/dist/manifest.json` 与 `loader/igs-loader.json`。
+- `app/package.json`、`app/src/core/bootstrap.js`、`loader/vn-loader.js` 默认版本已同步提升到 `v0.3.0`；本轮发布后需要重新生成 `app/dist/manifest.json` 与 `loader/vn-loader.json`。
 
 ### v0.2.14 - 2026-06-13
 
@@ -243,15 +249,15 @@ projects/Visual Novel/
 - `app/src/host/tavern-helper-adapter.js` 新增 `listMessages()`、`getAdjacentMessage()`、`jumpToMessage()`、`findRegenerateButton()`，并按原版 VN 语义补齐可读楼层筛选、消息归一化和重绘按钮定位。
 - `app/src/api/visual-novel-compat.js` 与 `app/src/core/bootstrap.js` 现已接通 `openViewerFromMessage()` 的 `startAtEnd`/`message` 透传、跨楼层跳转、内置 image provider 注册，以及阅读器级 `collectMessageImages()` / `generateImage()` / `saveImage()`。
 - `app/src/visual/visual-novel-ui/reader-host.js` 现已恢复原版 VN 的 `prev-turn` / `next-turn`、图片重绘、图片保存和按图片数量刷新的进度文本；跨楼层返回上一轮时会从末段打开，保持原版阅读节奏。
-- `loader/igs-loader.js`、`app/package.json`、`app/dist/manifest.json` 与阅读器源码默认版本同步提升到 `v0.2.14`；`loader/igs-loader.json` 需由 `npm run build:loader` 重新生成并与源码保持完全一致。
+- `loader/vn-loader.js`、`app/package.json`、`app/dist/manifest.json` 与阅读器源码默认版本同步提升到 `v0.2.14`；`loader/vn-loader.json` 需由 `npm run build:loader` 重新生成并与源码保持完全一致。
 - 扩展 `app/tests/simulate.test.js`、`app/tests/gate-contract.test.js`、`app/tests/unit.test.js`，新增跨楼层切换、provider 图片提取、保存返回可下载 URL、外部重绘轮询更新背景等模拟验收闸门。
 
 ### v0.2.13 - 2026-06-12
 
 - 修复阅读器控制器与 DOM 挂载参数错位导致的工具栏全失效问题：`settings`、`hide`、`toggle-bar`、`close` 现在会走真实 controller 行为，关闭会同时卸载阅读器和设置面板。
-- 魔法棒入口显示名固定为 `Visual Novel`，继续保留原版 `data-vnm-magic-entry="1"`、`vnm-magic-entry`、`fa-book-open` 单入口契约，并清理旧 `[data-igs-magic-entry]` 残留。
-- 阅读器工具栏恢复原版 SVG 图标、`#vnm-bar-btns` 收纳区、`#vnm-bar-pinned` 常驻区、`toggle-bar` 与 `close` 常驻按钮；默认状态与原版一致为收纳。
-- 设置面板基础页的 `bridge.openMode` 四模式切换现在会即时同步 active reader mode；阅读器页补回常驻按钮配置并持久化到 `vnm-reader-settings-v9-<mode>`。
+- 魔法棒入口显示名固定为 `Visual Novel`，继续保留原版 `data-vn-magic-entry="1"`、`vn-magic-entry`、`fa-book-open` 单入口契约，并清理旧 `[data-vn-magic-entry]` 残留。
+- 阅读器工具栏恢复原版 SVG 图标、`#vn-bar-btns` 收纳区、`#vn-bar-pinned` 常驻区、`toggle-bar` 与 `close` 常驻按钮；默认状态与原版一致为收纳。
+- 设置面板基础页的 `bridge.openMode` 四模式切换现在会即时同步 active reader mode；阅读器页补回常驻按钮配置并持久化到 `vn-reader-settings-v9-<mode>`。
 - `prev` / `next` 不再是空占位，已能在当前楼层正文段落之间切换并刷新进度；`prev-turn` / `next-turn` 在模拟环境返回明确宿主消息列表需求，不再静默无响应。
 - 扩展 `app/tests/simulate.test.js` 与合约测试，覆盖入口名、SVG 图标、默认收纳、设置打开、四模式切换、隐藏、关闭卸载、段落切换和宿主 UI HTML 泄漏防护。
 - 本轮仍不修改原版 `projects/Visual Novel 原版备份/**`；上一轮/下一轮跨楼层真实 DOM 图片缓存与真实 provider 重画/保存仍需后续在 host/generated-images 层继续补齐。
@@ -260,9 +266,9 @@ projects/Visual Novel/
 
 - 新增 `app/src/scene/message-source.js`，迁移原版 Visual Novel 的 `DEFAULT_SOURCE_FILTER`、`DEFAULT_VIRTUAL_REGEX`、`getVisibleMessageText()`、`cleanNarrativeSource()`、`buildFormattedTextPipeline()` 和强制 fallback 语义，统一正文提取、正文格式化和宿主 HTML 泄漏防护。
 - `app/src/api/visual-novel-compat.js` 现在在 `openLatestAvailable()` / `openViewerFromMessage()` 前先构建 VN 正文 payload，再把清洗后的 `textScene` 送入 `refresh()`，避免 reader 继续直接拿宿主原始 HTML 当正文。
-- `app/src/host/magic-wand-entry.js` 恢复原版单一入口契约：`vnm-magic-entry`、`data-vnm-magic-entry="1"`、`fa-book-open`，并在重扫/销毁时主动清理旧 `[data-igs-magic-entry]` 残留；入口显示名保持 `Visual Novel`。
+- `app/src/host/magic-wand-entry.js` 恢复原版单一入口契约：`vn-magic-entry`、`data-vn-magic-entry="1"`、`fa-book-open`，并在重扫/销毁时主动清理旧 `[data-vn-magic-entry]` 残留；入口显示名保持 `Visual Novel`。
 - `app/src/host/tavern-helper-adapter.js` 增加消息筛选和 DOM 可见正文回填，优先打开最近一条可读的非用户消息，并把 `.mes_text` 提取结果作为 `visibleText` 参与 fallback。
-- 新增 `app/fixtures/tavern/host-ui-leak-message.json`，扩展 `app/tests/unit.test.js`、`app/tests/simulate.test.js`、`app/tests/gate-contract.test.js`，固定“只有一个魔法棒入口”“图标必须是 `fa-book-open`”“宿主 UI HTML 不得进入 `.vnm-text`”的回归闸门。
+- 新增 `app/fixtures/tavern/host-ui-leak-message.json`，扩展 `app/tests/unit.test.js`、`app/tests/simulate.test.js`、`app/tests/gate-contract.test.js`，固定“只有一个魔法棒入口”“图标必须是 `fa-book-open`”“宿主 UI HTML 不得进入 `.vn-text`”的回归闸门。
 - runtime、manifest、loader 默认版本同步提升到 `v0.2.12`，本轮已通过 `npm run gate` 和 `npm run build:loader`。
 
 ### v0.2.12-plan - 2026-06-12
@@ -273,28 +279,28 @@ projects/Visual Novel/
 
 ### v0.2.11 - 2026-06-12
 
-- 修复重复启用自动更新脚本时只弹出“已加载”而不注册魔法棒入口的问题：loader 现在检测到新版 IGS 已存在时会调用 `ensureMagicWandEntry()` 重扫入口。
-- 如果页面残留旧版 `window.IGS`、旧 script/link 或旧 `__IGS_AUTO_UPDATE_LOADER__`，loader 会清理残留并重新加载当前版本，避免旧实例阻断新入口注册。
+- 修复重复启用自动更新脚本时只弹出“已加载”而不注册魔法棒入口的问题：loader 现在检测到新版 VN 已存在时会调用 `ensureMagicWandEntry()` 重扫入口。
+- 如果页面残留旧版 `window.VN`、旧 script/link 或旧 `__VN_AUTO_UPDATE_LOADER__`，loader 会清理残留并重新加载当前版本，避免旧实例阻断新入口注册。
 - loader 加载 bundle 后会短时重试 `ensureMagicWandEntry()`，对齐原版 Visual Novel 的“菜单重建后继续重扫入口”行为。
 
 ### v0.2.10 - 2026-06-12
 
-- 修复 JS-Slash-Runner 导入报错：`loader/igs-loader.json` 恢复为 `button.enabled=false`、`button.buttons=[]`，不再生成缺少 `visible` 字段的按钮项。
-- 删除 `启动 IGS`、`重扫入口` 两个酒馆助手按钮；正式用户入口只保留酒馆魔法棒菜单里的 `Visual Novel`。
+- 修复 JS-Slash-Runner 导入报错：`loader/vn-loader.json` 恢复为 `button.enabled=false`、`button.buttons=[]`，不再生成缺少 `visible` 字段的按钮项。
+- 删除 `启动 VN`、`重扫入口` 两个酒馆助手按钮；正式用户入口只保留酒馆魔法棒菜单里的 `Visual Novel`。
 - 更新 loader 合约测试，强制要求自动更新脚本不提供额外按钮入口，防止后续偏离原版 Visual Novel 的入口形态。
 
 ### v0.2.9 - 2026-06-12
 
 - 修复自动更新链路的 CDN 缓存风险：loader 默认先读取 `raw.githubusercontent.com/.../main/app/dist/manifest.json` 获取最新版本号，再加载 jsDelivr 的 `@v<version>` 不可变标签资源。
-- `loader/igs-loader.js` 的内置兜底版本升为 `v0.2.9`；仍可通过 `window.IGS_LOADER_REF` 或 `window.IGS_LOADER_CONFIG.ref` 手动指定 `main`、旧标签或测试分支。
-- 发布回查新增远程 CDN 内容确认：本轮已确认 `loader/igs-loader.json` 按钮可从 CDN 拉取；发现 `@main/app/dist/manifest.json` 可能返回旧缓存，因此默认链路不再依赖 jsDelivr 的 `@main` dist。
+- `loader/vn-loader.js` 的内置兜底版本升为 `v0.2.9`；仍可通过 `window.VN_LOADER_REF` 或 `window.VN_LOADER_CONFIG.ref` 手动指定 `main`、旧标签或测试分支。
+- 发布回查新增远程 CDN 内容确认：本轮已确认 `loader/vn-loader.json` 按钮可从 CDN 拉取；发现 `@main/app/dist/manifest.json` 可能返回旧缓存，因此默认链路不再依赖 jsDelivr 的 `@main` dist。
 
 ### v0.2.8 - 2026-06-12
 
 - 新增 `app/src/host/magic-wand-entry.js`，启动后自动向酒馆魔法棒菜单 `#extensionsMenu`、`#extensions_menu`、`.extensions_block .list-group` 注入 `Visual Novel` 入口。
-- `bootstrapIGS()` 现在会自动挂载魔法棒入口，点击入口会调用 `openLatestAvailable()` 打开最新可用楼层阅读器，并在 `destroy()` 时清理菜单项、委托点击和观察器。
+- `bootstrapVN()` 现在会自动挂载魔法棒入口，点击入口会调用 `openLatestAvailable()` 打开最新可用楼层阅读器，并在 `destroy()` 时清理菜单项、委托点击和观察器。
 - 公开 API 新增 `ensureMagicWandEntry()` 与 `getMagicWandEntryState()`，用于控制台手动重扫入口、诊断入口状态。
-- 新增模拟测试覆盖“魔法棒菜单存在 -> IGS 注入入口 -> 点击入口 -> 阅读器打开”的最小闭环；本轮仍不执行真实酒馆实机校验。
+- 新增模拟测试覆盖“魔法棒菜单存在 -> VN 注入入口 -> 点击入口 -> 阅读器打开”的最小闭环；本轮仍不执行真实酒馆实机校验。
 
 ### v0.2.7 - 2026-06-12
 
@@ -304,8 +310,8 @@ projects/Visual Novel/
 
 ### v0.2.6 - 2026-06-12
 
-- 新增 `app/src/visual/visual-novel-ui/*`，把原版 Visual Novel 的阅读器 overlay、统一设置面板、四个 tab、reader mode 图标和 `.vnm-*` selector 抽成独立等价层；浏览器环境挂真实 DOM，Node 模拟测试返回 snapshot/controller。
-- 更新 `app/src/core/bootstrap.js`、`app/src/api/visual-novel-compat.js` 与 `app/src/storage/legacy-visual-novel.js`，让 `openSettings()` 不再返回 `settings-ui-not-mounted`，并接通 `openLatestAvailable()` / `openViewerFromMessage()` -> 原版阅读器 UI -> `typeAndSend()` 的最小闭环，同时支持旧 `vnm_*` 配置读写回写。
+- 新增 `app/src/visual/visual-novel-ui/*`，把原版 Visual Novel 的阅读器 overlay、统一设置面板、四个 tab、reader mode 图标和 `.vn-*` selector 抽成独立等价层；浏览器环境挂真实 DOM，Node 模拟测试返回 snapshot/controller。
+- 更新 `app/src/core/bootstrap.js`、`app/src/api/visual-novel-compat.js` 与 `app/src/storage/legacy-visual-novel.js`，让 `openSettings()` 不再返回 `settings-ui-not-mounted`，并接通 `openLatestAvailable()` / `openViewerFromMessage()` -> 原版阅读器 UI -> `typeAndSend()` 的最小闭环，同时支持旧 `vn_*` 配置读写回写。
 - 新增 `app/fixtures/visual-novel-ui/*`，并扩展 `app/tests/gate-contract.test.js`、`app/tests/simulate.test.js`，覆盖原版 selector/几何契约、四个 tab、设置保存回写，以及 `Enter` 发送 / `Shift+Enter` 不发送的模拟验收。
 - 当前仍不做真实酒馆实机验真、不接真实 NAI/provider 网络请求、不把 `window.VisualNovelBridge` 旧全局别名重新挂回；本轮验收继续以 `npm run gate` 的模拟闸门为准。
 
@@ -335,24 +341,24 @@ projects/Visual Novel/
 
 ### v0.2.2 - 2026-06-12
 
-- 新增 `app/src/storage/legacy-visual-novel.js`，只读读取 `vnm_visual_novel_bridge_config`、`vnm-reader-settings-v9-*` 和 `vnm-display-mode`。
-- 新增 `app/src/api/visual-novel-compat.js`，把 `openSettings()`、`getConfig()`、`getUnifiedSettings()`、`openViewerFromMessage()`、`openLatestAvailable()`、`generateImage()` 收敛到 IGS 兼容层。
-- 更新 `bootstrapIGS()` 与 `tavern-helper-adapter`，让 fake host 可按 message id 读取消息，并将旧 bridge 配置并入初始 config。
+- 新增 `app/src/storage/legacy-visual-novel.js`，只读读取 `vn_visual_novel_bridge_config`、`vn-reader-settings-v9-*` 和 `vn-display-mode`。
+- 新增 `app/src/api/visual-novel-compat.js`，把 `openSettings()`、`getConfig()`、`getUnifiedSettings()`、`openViewerFromMessage()`、`openLatestAvailable()`、`generateImage()` 收敛到 VN 兼容层。
+- 更新 `bootstrapVN()` 与 `tavern-helper-adapter`，让 fake host 可按 message id 读取消息，并将旧 bridge 配置并入初始 config。
 - 新增 `app/fixtures/visual-novel/*`、`docs/VISUAL_NOVEL_MIGRATION.md` 与 gate 测试，固定第一阶段兼容基线。
 - 当前仍不迁移完整阅读器 DOM、不实现真实 provider 请求、不挂载 `window.VisualNovelBridge` 旧全局别名。
 
 ### v0.2.1 - 2026-06-12
 
 - 归档 `plan/v0.2.1-酒馆助手脚本发布打包策划书.md`，明确最终按酒馆助手脚本 JSON 形态发布，参考 `_inbox/酒馆助手脚本-玉子手机.json`。
-- 新增 `docs/PACKAGING_WORKFLOW.md`，固定原版 Visual Novel 源路径、IGS 源码路径、`app/dist` bundle、`loader/igs-loader.json` 和发布前验收命令。
+- 新增 `docs/PACKAGING_WORKFLOW.md`，固定原版 Visual Novel 源路径、VN 源码路径、`app/dist` bundle、`loader/vn-loader.json` 和发布前验收命令。
 - 更新 README、AGENTS、AI_WORKFLOW、RELEASE 与 loader README，要求后续涉及打包发布时先读发布工作流文档。
 - 明确当前仍不默认接回奶龙工具箱 `project.json / latest / tavern helper` 发布壳；发布导入件采用独立 loader JSON。
-- 新增 `loader/igs-loader.js` 与 `app/scripts/build-loader.js`，可通过 `npm run build:loader` 生成项目内 `loader/igs-loader.json` 供酒馆导入测试。
-- `npm run gate` 新增 loader JSON 反解校验，确保 `loader/igs-loader.json.content` 与 `loader/igs-loader.js` 原文一致。
+- 新增 `loader/vn-loader.js` 与 `app/scripts/build-loader.js`，可通过 `npm run build:loader` 生成项目内 `loader/vn-loader.json` 供酒馆导入测试。
+- `npm run gate` 新增 loader JSON 反解校验，确保 `loader/vn-loader.json.content` 与 `loader/vn-loader.js` 原文一致。
 
 ### v0.2.0 - 2026-06-12
 
-- 接通最小运行闭环：`bootstrapIGS()` 负责 host -> scene -> visual -> public API 的基础装配，并挂载 `window.IGS` / `window.ImmersiveGalgameSystem`。
+- 接通最小运行闭环：`bootstrapVN()` 负责 host -> scene -> visual -> public API 的基础装配，并挂载 `window.VN` / `window.VisualNovel`。
 - 新增 `app/src/index.js`、`core/bootstrap.js`、`api/public-api.js`、`host/tavern-helper-adapter.js`、`scene/text-parser.js`，让 fake TavernHelper 消息可以解析为 scene 并渲染到 layer。
 - 新增 shujuku 安全包装、资源缓存、导入分发和样式契约检查的最小实现，覆盖 v0.1.5 验收闸门的 P0 模拟链路。
 - 新增 `app/package.json` 和 `app/scripts/*`，提供 `npm run structure/static/test/simulate/perf/build/gate`。
@@ -387,7 +393,7 @@ projects/Visual Novel/
 - 将 st-chatu8 和 chami 明确为可拆卸内置 `image-provider`，新增默认 provider 骨架。
 - 补充 `image-provider-preset`，用于保存 provider 选择器、优先级、轮询和按钮匹配配置。
 - 补充 `ui-skin-preset` / `ui-layout-preset`，用于支持全屏字幕式、左上工具栏等完全不同 UI。
-- 增加稳定 DOM 槽位、CSS 变量和 `data-igs-*` 设置桥接要求，保证换皮后 `设置 -> 阅读器` 仍能控制关键 UI 配置。
+- 增加稳定 DOM 槽位、CSS 变量和 `data-vn-*` 设置桥接要求，保证换皮后 `设置 -> 阅读器` 仍能控制关键 UI 配置。
 
 ### v0.1.2 - 2026-06-10
 

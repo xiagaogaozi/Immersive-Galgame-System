@@ -40,7 +40,7 @@ fixtures 文件应短小、可读、可复用。需要大资源时只放 manifes
 | `S7` | shujuku | fake shujuku 增删改、刷新世界书、失败返回处理 |
 | `S8` | storage | IndexedDB/localStorage 迁移、Blob URL 生命周期 |
 | `S9` | registry | Mod / Preset / Pack 导入、权限声明、冲突检测 |
-| `S10` | api | `window.IGS` 公开 API 权限、错误返回和兼容别名 |
+| `S10` | api | `window.VN` 公开 API 权限、错误返回和兼容别名 |
 
 ## 当前覆盖补充（v0.2.5）
 

@@ -60,15 +60,15 @@ export function createPublicApi(app) {
 
 export function attachPublicApi(globalObject, api) {
     if (!globalObject) return api;
-    globalObject.IGS = api;
-    globalObject.ImmersiveGalgameSystem = api;
+    globalObject.VN = api;
+    globalObject.VisualNovel = api;
     return api;
 }
 
 export function detachPublicApi(globalObject, api) {
     if (!globalObject) return;
-    if (globalObject.IGS === api) delete globalObject.IGS;
-    if (globalObject.ImmersiveGalgameSystem === api) delete globalObject.ImmersiveGalgameSystem;
+    if (globalObject.VN === api) delete globalObject.VN;
+    if (globalObject.VisualNovel === api) delete globalObject.VisualNovel;
 }
 
 function createApiGroup(groupName, presetRegistry) {

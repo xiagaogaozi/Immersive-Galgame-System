@@ -3,7 +3,7 @@ import { createStageModel } from './stage-model.js';
 
 export function createStageRenderer(layerController) {
     if (!layerController || typeof layerController.render !== 'function') {
-        throw new Error('IGS stage renderer requires a layer controller.');
+        throw new Error('VN stage renderer requires a layer controller.');
     }
 
     return {

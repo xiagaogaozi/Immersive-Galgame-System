@@ -17,8 +17,8 @@ const required = [
     path.join(projectRoot, 'AGENTS.md'),
     path.join(projectRoot, 'docs', 'AI_WORKFLOW.md'),
     path.join(projectRoot, 'docs', 'PACKAGING_WORKFLOW.md'),
-    path.join(projectRoot, 'loader', 'igs-loader.js'),
-    path.join(projectRoot, 'loader', 'igs-loader.json'),
+    path.join(projectRoot, 'loader', 'vn-loader.js'),
+    path.join(projectRoot, 'loader', 'vn-loader.json'),
 ];
 
 for (const target of forbidden) {

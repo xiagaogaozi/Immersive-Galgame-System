@@ -4,8 +4,8 @@
 
 ## 预计产物
 
-- `igs.bundle.js`
-- `igs.bundle.css`
+- `vn.bundle.js`
+- `vn.bundle.css`
 - `manifest.json`
 
 当前阶段不提交真实构建产物。

@@ -1,47 +1,47 @@
 const BASIC_TAB_TEMPLATE = `
-<div class="vnm-settings-grid">
+<div class="vn-settings-grid">
   {{openModeField}}
-  <div class="vnm-settings-section">{{settingsToggles}}</div>
+  <div class="vn-settings-section">{{settingsToggles}}</div>
 </div>
 `.trim();
 
 const REGEX_TAB_TEMPLATE = `
-<div class="vnm-settings-grid">
-  <div class="vnm-source-filter">
+<div class="vn-settings-grid">
+  <div class="vn-source-filter">
     <div>
-      <div class="vnm-source-filter-title">标签解析</div>
-      <div class="vnm-source-filter-note">先筛出 VN 正文和图片来源；严格解析未命中时阅读器仍会使用兜底文本打开。</div>
+      <div class="vn-source-filter-title">标签解析</div>
+      <div class="vn-source-filter-note">先筛出 VN 正文和图片来源；严格解析未命中时阅读器仍会使用兜底文本打开。</div>
     </div>
-    <div class="vnm-settings-row">{{filterToggles}}</div>
-    <div class="vnm-settings-row">{{untaggedToggle}}</div>
-    <div class="vnm-source-filter-grid">
+    <div class="vn-settings-row">{{filterToggles}}</div>
+    <div class="vn-settings-row">{{untaggedToggle}}</div>
+    <div class="vn-source-filter-grid">
       {{textIncludeField}}
       {{textExcludeField}}
-      <div class="vnm-settings-full">{{imageIncludeField}}</div>
+      <div class="vn-settings-full">{{imageIncludeField}}</div>
     </div>
   </div>
-  <div class="vnm-source-filter vnm-body-format">
+  <div class="vn-source-filter vn-body-format">
     <div>
-      <div class="vnm-source-filter-title">正文格式化</div>
-      <div class="vnm-source-filter-note">对标签解析后的正文执行正则替换；不修改酒馆楼层原文。</div>
+      <div class="vn-source-filter-title">正文格式化</div>
+      <div class="vn-source-filter-note">对标签解析后的正文执行正则替换；不修改酒馆楼层原文。</div>
     </div>
-    <div class="vnm-settings-row">{{regexToggle}}</div>
-    <div class="vnm-source-filter-grid">
+    <div class="vn-settings-row">{{regexToggle}}</div>
+    <div class="vn-source-filter-grid">
       {{regexPatternField}}
       {{regexFlagsField}}
-      <div class="vnm-settings-full">{{regexReplacementField}}</div>
+      <div class="vn-settings-full">{{regexReplacementField}}</div>
     </div>
-    <div class="vnm-settings-row">
-      <button class="vnm-settings-action" data-action="reset-virtual-regex" type="button">恢复默认正文替换</button>
-      <button class="vnm-settings-action" data-action="test-virtual-regex" type="button">测试当前楼层</button>
+    <div class="vn-settings-row">
+      <button class="vn-settings-action" data-action="reset-virtual-regex" type="button">恢复默认正文替换</button>
+      <button class="vn-settings-action" data-action="test-virtual-regex" type="button">测试当前楼层</button>
     </div>
-    <div class="vnm-settings-preview" data-result="virtual-regex">{{regexPreview}}</div>
+    <div class="vn-settings-preview" data-result="virtual-regex">{{regexPreview}}</div>
   </div>
 </div>
 `.trim();
 
 const IMAGE_TAB_TEMPLATE = `
-<div class="vnm-settings-grid">
+<div class="vn-settings-grid">
   {{imageModeField}}
   {{adapterField}}
   <div class="{{apiGroupClass}}">
@@ -56,18 +56,18 @@ const IMAGE_TAB_TEMPLATE = `
     {{pollAttemptsField}}
     {{promptPrefixField}}
   </div>
-  <div class="vnm-settings-full">
-    <div class="vnm-settings-result" data-result="image-models">{{imageModelsMessage}}</div>
+  <div class="vn-settings-full">
+    <div class="vn-settings-result" data-result="image-models">{{imageModelsMessage}}</div>
   </div>
-  <div class="vnm-settings-full">
-    <button class="vnm-settings-action" data-action="test-image">{{imageTestActionLabel}}</button>
-    <div class="vnm-settings-result" data-result="image">{{imageTestHelp}}</div>
+  <div class="vn-settings-full">
+    <button class="vn-settings-action" data-action="test-image">{{imageTestActionLabel}}</button>
+    <div class="vn-settings-result" data-result="image">{{imageTestHelp}}</div>
   </div>
 </div>
 `.trim();
 
 const READER_TAB_TEMPLATE = `
-<div class="vnm-settings-grid">
+<div class="vn-settings-grid">
   {{readerModeField}}
   {{fontSizeField}}
   {{dialogWidthField}}
@@ -77,8 +77,8 @@ const READER_TAB_TEMPLATE = `
   {{inputScaleField}}
   {{toolbarScaleField}}
   {{imgModeField}}
-  <div class="vnm-settings-section">{{readerToggles}}</div>
-  <div class="vnm-settings-section vnm-settings-full">{{pinnedButtonsField}}</div>
+  <div class="vn-settings-section">{{readerToggles}}</div>
+  <div class="vn-settings-section vn-settings-full">{{pinnedButtonsField}}</div>
 </div>
 `.trim();
 

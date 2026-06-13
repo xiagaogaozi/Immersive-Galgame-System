@@ -4,15 +4,15 @@ import path from 'node:path';
 const appRoot = path.resolve(import.meta.dirname, '..');
 const projectRoot = path.resolve(appRoot, '..');
 const loaderRoot = path.join(projectRoot, 'loader');
-const jsPath = path.join(loaderRoot, 'igs-loader.js');
-const jsonPath = path.join(loaderRoot, 'igs-loader.json');
+const jsPath = path.join(loaderRoot, 'vn-loader.js');
+const jsonPath = path.join(loaderRoot, 'vn-loader.json');
 const packageJson = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8'));
 const releaseJsonName = `酒馆助手脚本-Visual Novel（自动更新） v${packageJson.version}.json`;
 const releaseJsonPath = path.join(loaderRoot, releaseJsonName);
 
 const content = fs.readFileSync(jsPath, 'utf8');
-if (!content.includes('igs.bundle.js') || !content.includes('igs.bundle.css')) {
-    throw new Error('Loader source must reference igs.bundle.js and igs.bundle.css.');
+if (!content.includes('vn.bundle.js') || !content.includes('vn.bundle.css')) {
+    throw new Error('Loader source must reference vn.bundle.js and vn.bundle.css.');
 }
 
 const loaderJson = {
@@ -23,7 +23,7 @@ const loaderJson = {
     content,
     info: [
         'Visual Novel 自动更新 loader。',
-        '默认从 GitHub/jsDelivr 加载 app/dist/igs.bundle.css 与 app/dist/igs.bundle.js。',
+        '默认从 GitHub/jsDelivr 加载 app/dist/vn.bundle.css 与 app/dist/vn.bundle.js。',
         '测试前请确认仓库或发布资产为公开可访问。',
     ].join('\n'),
     button: {

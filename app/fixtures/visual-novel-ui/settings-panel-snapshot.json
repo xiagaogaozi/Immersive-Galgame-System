@@ -1,13 +1,13 @@
 {
   "requiredSelectors": [
-    "#vnm-unified-settings",
-    ".vnm-settings-shell",
-    ".vnm-settings-head",
-    ".vnm-settings-tabs",
-    ".vnm-settings-body",
-    ".vnm-segmented",
-    ".vnm-source-filter",
-    ".vnm-settings-preview"
+    "#vn-unified-settings",
+    ".vn-settings-shell",
+    ".vn-settings-head",
+    ".vn-settings-tabs",
+    ".vn-settings-body",
+    ".vn-segmented",
+    ".vn-source-filter",
+    ".vn-settings-preview"
   ],
   "tabs": [
     {
@@ -77,11 +77,11 @@
     }
   ],
   "styleChecks": {
-    "viewportLeft": "left:var(--vnm-settings-vleft)",
-    "viewportTop": "top:var(--vnm-settings-vtop)",
-    "viewportWidth": "width:var(--vnm-settings-vw)",
-    "viewportHeight": "height:var(--vnm-settings-vh)",
-    "shellWidth": "width:var(--vnm-settings-width)",
+    "viewportLeft": "left:var(--vn-settings-vleft)",
+    "viewportTop": "top:var(--vn-settings-vtop)",
+    "viewportWidth": "width:var(--vn-settings-vw)",
+    "viewportHeight": "height:var(--vn-settings-vh)",
+    "shellWidth": "width:var(--vn-settings-width)",
     "headerHeight": "height:54px",
     "segmentedHeight": "height:40px",
     "switchHeight": "height:38px",

@@ -9,7 +9,7 @@ export function createVisualNovelCompatApi(app) {
         openSettings(options = {}) {
             const payload = cloneData(options);
             if (app.events && typeof app.events.emit === 'function') {
-                app.events.emit('igs:settings-requested', payload);
+                app.events.emit('vn:settings-requested', payload);
             }
             if (!app.visualNovelUi || typeof app.visualNovelUi.openSettings !== 'function') {
                 return { ok: false, reason: 'settings-ui-not-mounted', options: payload };

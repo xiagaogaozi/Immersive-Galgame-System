@@ -54,14 +54,14 @@ const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
 ]);
 
 const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
-    '#vnm-unified-settings',
-    '.vnm-settings-shell',
-    '.vnm-settings-head',
-    '.vnm-settings-tabs',
-    '.vnm-settings-body',
-    '.vnm-segmented',
-    '.vnm-source-filter',
-    '.vnm-settings-preview',
+    '#vn-unified-settings',
+    '.vn-settings-shell',
+    '.vn-settings-head',
+    '.vn-settings-tabs',
+    '.vn-settings-body',
+    '.vn-segmented',
+    '.vn-source-filter',
+    '.vn-settings-preview',
 ]);
 
 const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
@@ -756,9 +756,9 @@ export function createVisualNovelReaderHost(options = {}) {
             stage.layers && stage.layers.background && stage.layers.background.resource && stage.layers.background.resource.url,
             '',
         );
-        const overlayClasses = ['vnm-mode-' + mode];
-        if (mode === 'pc' || mode === 'mobile') overlayClasses.push('vnm-floating');
-        if (mode === 'mobile') overlayClasses.push('vnm-floating-mobile');
+        const overlayClasses = ['vn-mode-' + mode];
+        if (mode === 'pc' || mode === 'mobile') overlayClasses.push('vn-floating');
+        if (mode === 'mobile') overlayClasses.push('vn-floating-mobile');
 
         return {
             mode,
@@ -766,22 +766,22 @@ export function createVisualNovelReaderHost(options = {}) {
             selectors: Array.from(ORIGINAL_READER_REQUIRED_SELECTORS),
             classes: overlayClasses,
             styles: {
-                '#vnm-overlay': {
+                '#vn-overlay': {
                     zIndex: ORIGINAL_READER_STYLE_CONTRACT.overlayZIndex,
                     background: '#000',
                 },
-                '.vnm-dialog': {
+                '.vn-dialog': {
                     width: ORIGINAL_READER_STYLE_CONTRACT.dialogWidth,
                     borderRadius: '22px',
                     padding: '22px 26px 18px',
                 },
-                '.vnm-input': {
+                '.vn-input': {
                     height: ORIGINAL_READER_STYLE_CONTRACT.inputHeight,
                 },
-                '.vnm-send-btn': {
+                '.vn-send-btn': {
                     minWidth: ORIGINAL_READER_STYLE_CONTRACT.sendButtonMinWidth,
                 },
-                '.vnm-icon-btn': {
+                '.vn-icon-btn': {
                     width: ORIGINAL_READER_STYLE_CONTRACT.toolbarButtonSize,
                     height: ORIGINAL_READER_STYLE_CONTRACT.toolbarButtonSize,
                 },
@@ -813,8 +813,8 @@ export function createVisualNovelReaderHost(options = {}) {
                 enterSends: true,
                 shiftEnterSends: false,
             },
-            html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.16'),
+            html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
+            source: getOriginalReaderSource(options.version || '0.3.17'),
         };
     }
 
@@ -823,7 +823,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const tab = normalizeSettingsTab(settingsState.tab);
         const body = renderSettingsBody(tab, draft, settingsState.asyncState);
         const tabsHtml = SETTINGS_TAB_DEFS.map(([id, label]) => {
-            return `<button type="button" class="vnm-settings-tab${tab === id ? ' is-active' : ''}" data-tab="${id}">${label}</button>`;
+            return `<button type="button" class="vn-settings-tab${tab === id ? ' is-active' : ''}" data-tab="${id}">${label}</button>`;
         }).join('');
 
         return {
@@ -838,8 +838,8 @@ export function createVisualNovelReaderHost(options = {}) {
                 requiredActions: Array.from((SETTINGS_PANEL_TAB_CONTRACT[id] || {}).requiredActions || []),
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
-            html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.16'),
+            html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
+                version: esc(options.version || '0.3.17'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -860,7 +860,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         if (tab === 'basic') {
             return renderTemplate(getSettingsTabTemplate('basic'), {
-                openModeField: `<div class="vnm-settings-full vnm-segmented-field">${field(
+                openModeField: `<div class="vn-settings-full vn-segmented-field">${field(
                     'bridge.openMode',
                     '切换模式',
                     segmentedInput(
@@ -909,7 +909,7 @@ export function createVisualNovelReaderHost(options = {}) {
             return renderTemplate(getSettingsTabTemplate('image'), {
                 imageModeField: field('bridge.imageApi.mode', '图像模式', selectInput('bridge.imageApi.mode', imageApi.mode, [['extension', '使用现有插图扩展'], ['nai', 'VN 内置 NAI API']])),
                 adapterField: field('bridge.imageApi.externalAdapter', '插图扩展', selectInput('bridge.imageApi.externalAdapter', imageApi.externalAdapter, [['auto', '自动检测'], ['chatu8', 'st-chatu8 / chatu8'], ['chami', 'chami_tavern-scene-plugin']], imageApi.mode === 'nai'), imageModeNote),
-                apiGroupClass: 'vnm-settings-api-group' + (apiDisabled ? ' is-disabled' : ''),
+                apiGroupClass: 'vn-settings-api-group' + (apiDisabled ? ' is-disabled' : ''),
                 endpointField: field('bridge.imageApi.endpoint', '图像 API 地址', textInput('bridge.imageApi.endpoint', imageApi.endpoint, 'https://...', 'text', apiDisabled), apiDisabled ? '内置 NAI API 模式启用时可编辑。' : ''),
                 apiKeyField: field('bridge.imageApi.apiKey', 'API Key', secretInput('bridge.imageApi.apiKey', imageApi.apiKey, '留空则不发送 Authorization', apiDisabled)),
                 modelField: field('bridge.imageApi.model', '模型', modelPicker('bridge.imageApi.model', imageApi.model, imageApi.availableModels, 'fetch-image-models', 'nai-diffusion-3', apiDisabled)),
@@ -944,8 +944,8 @@ export function createVisualNovelReaderHost(options = {}) {
     function mountReaderDom(snapshot, controller) {
         const doc = getRootDocument(options.global);
         if (!doc) return null;
-        ensureStyleTag(doc, 'vnm-overlay-style', getOriginalReaderStyleText());
-        const existing = doc.getElementById('vnm-overlay');
+        ensureStyleTag(doc, 'vn-overlay-style', getOriginalReaderStyleText());
+        const existing = doc.getElementById('vn-overlay');
         if (existing) existing.remove();
 
         const root = doc.createElement('div');
@@ -959,7 +959,7 @@ export function createVisualNovelReaderHost(options = {}) {
             await controller.invokeAction(action);
         });
         root.addEventListener('keydown', async (event) => {
-            if (event.target && event.target.id === 'vnm-input') {
+            if (event.target && event.target.id === 'vn-input') {
                 const result = await controller.keydown({
                     key: event.key,
                     shiftKey: event.shiftKey,
@@ -1011,8 +1011,8 @@ export function createVisualNovelReaderHost(options = {}) {
     function mountSettingsDom(controller) {
         const doc = getRootDocument(options.global);
         if (!doc) return null;
-        ensureStyleTag(doc, 'vnm-unified-settings-style', getSettingsStyleText());
-        const existing = doc.getElementById('vnm-unified-settings');
+        ensureStyleTag(doc, 'vn-unified-settings-style', getSettingsStyleText());
+        const existing = doc.getElementById('vn-unified-settings');
         if (existing) existing.remove();
 
         const root = doc.createElement('div');
@@ -1036,7 +1036,7 @@ export function createVisualNovelReaderHost(options = {}) {
             const action = event.target.closest('[data-action]');
             if (action) {
                 if (action.getAttribute('data-action') === 'toggle-secret') {
-                    const wrap = action.closest('.vnm-settings-secret');
+                    const wrap = action.closest('.vn-settings-secret');
                     const input = wrap ? wrap.querySelector('input') : null;
                     if (input) {
                         const show = input.type === 'password';
@@ -1105,113 +1105,113 @@ export function createVisualNovelReaderHost(options = {}) {
     function hydrateReaderMount(container, snapshot) {
         clearChildren(container);
         container.innerHTML = snapshot.html;
-        let overlay = container.querySelector('#vnm-overlay');
+        let overlay = container.querySelector('#vn-overlay');
         if (!overlay) {
             overlay = buildFallbackReaderOverlay(container.ownerDocument || getRootDocument(options.global));
             if (overlay) container.appendChild(overlay);
         }
         return {
             overlay,
-            dialog: overlay ? overlay.querySelector('#vnm-dialog') : null,
-            input: overlay ? overlay.querySelector('#vnm-input') : null,
-            sendButton: overlay ? overlay.querySelector('#vnm-send-btn') : null,
-            toast: overlay ? overlay.querySelector('#vnm-toast') : null,
-            clickLayer: overlay ? overlay.querySelector('#vnm-click-layer') : null,
-            text: overlay ? overlay.querySelector('#vnm-text') : null,
-            progress: overlay ? overlay.querySelector('#vnm-progress') : null,
+            dialog: overlay ? overlay.querySelector('#vn-dialog') : null,
+            input: overlay ? overlay.querySelector('#vn-input') : null,
+            sendButton: overlay ? overlay.querySelector('#vn-send-btn') : null,
+            toast: overlay ? overlay.querySelector('#vn-toast') : null,
+            clickLayer: overlay ? overlay.querySelector('#vn-click-layer') : null,
+            text: overlay ? overlay.querySelector('#vn-text') : null,
+            progress: overlay ? overlay.querySelector('#vn-progress') : null,
         };
     }
 
     function buildFallbackReaderOverlay(doc) {
         if (!doc || typeof doc.createElement !== 'function') return null;
         const overlay = doc.createElement('div');
-        overlay.id = 'vnm-overlay';
+        overlay.id = 'vn-overlay';
 
         const bgBlur = doc.createElement('div');
-        bgBlur.id = 'vnm-bg-blur';
+        bgBlur.id = 'vn-bg-blur';
         overlay.appendChild(bgBlur);
 
         const bg = doc.createElement('div');
-        bg.id = 'vnm-bg';
+        bg.id = 'vn-bg';
         overlay.appendChild(bg);
 
         const clickLayer = doc.createElement('div');
-        clickLayer.id = 'vnm-click-layer';
+        clickLayer.id = 'vn-click-layer';
         overlay.appendChild(clickLayer);
 
         const dialog = doc.createElement('div');
-        dialog.id = 'vnm-dialog';
-        dialog.className = 'vnm-dialog';
+        dialog.id = 'vn-dialog';
+        dialog.className = 'vn-dialog';
         overlay.appendChild(dialog);
 
         const ctrlBar = doc.createElement('div');
-        ctrlBar.id = 'vnm-ctrl-bar';
-        ctrlBar.className = 'vnm-ctrl-bar';
+        ctrlBar.id = 'vn-ctrl-bar';
+        ctrlBar.className = 'vn-ctrl-bar';
         dialog.appendChild(ctrlBar);
 
         const barBtns = doc.createElement('div');
-        barBtns.id = 'vnm-bar-btns';
+        barBtns.id = 'vn-bar-btns';
         ctrlBar.appendChild(barBtns);
         for (const button of ORIGINAL_READER_TOOLBAR_BUTTONS) {
             barBtns.appendChild(createReaderButton(doc, button.id, button.title, button.html));
         }
 
         const settings = doc.createElement('div');
-        settings.id = 'vnm-settings';
+        settings.id = 'vn-settings';
         settings.setAttribute('aria-hidden', 'true');
         ctrlBar.appendChild(settings);
 
         const pinned = doc.createElement('div');
-        pinned.id = 'vnm-bar-pinned';
+        pinned.id = 'vn-bar-pinned';
         ctrlBar.appendChild(pinned);
 
         ctrlBar.appendChild(createReaderButton(doc, 'toggle-bar', '收纳/展开按钮', ORIGINAL_READER_ICONS.toggleBar));
         ctrlBar.appendChild(createReaderButton(doc, 'close', '退出', ORIGINAL_READER_ICONS.close));
 
         const progress = doc.createElement('div');
-        progress.id = 'vnm-progress';
-        progress.className = 'vnm-progress';
+        progress.id = 'vn-progress';
+        progress.className = 'vn-progress';
         dialog.appendChild(progress);
 
         const text = doc.createElement('div');
-        text.id = 'vnm-text';
-        text.className = 'vnm-text';
+        text.id = 'vn-text';
+        text.className = 'vn-text';
         dialog.appendChild(text);
 
         const controls = doc.createElement('div');
-        controls.className = 'vnm-controls';
+        controls.className = 'vn-controls';
         dialog.appendChild(controls);
 
         const sendStatus = doc.createElement('div');
-        sendStatus.id = 'vnm-send-status';
+        sendStatus.id = 'vn-send-status';
         sendStatus.setAttribute('aria-live', 'polite');
         controls.appendChild(sendStatus);
 
         const spinner = doc.createElement('span');
-        spinner.className = 'vnm-spinner';
+        spinner.className = 'vn-spinner';
         sendStatus.appendChild(spinner);
 
         const sendStatusText = doc.createElement('span');
-        sendStatusText.id = 'vnm-send-status-text';
+        sendStatusText.id = 'vn-send-status-text';
         sendStatusText.textContent = '已发送，等待 AI 回复…';
         sendStatus.appendChild(sendStatusText);
 
         const input = doc.createElement('input');
-        input.id = 'vnm-input';
-        input.className = 'vnm-input';
+        input.id = 'vn-input';
+        input.className = 'vn-input';
         input.type = 'text';
         input.placeholder = '输入内容后按 Enter 发送';
         controls.appendChild(input);
 
         const sendButton = doc.createElement('button');
-        sendButton.id = 'vnm-send-btn';
-        sendButton.className = 'vnm-send-btn';
+        sendButton.id = 'vn-send-btn';
+        sendButton.className = 'vn-send-btn';
         sendButton.type = 'button';
         sendButton.textContent = '发送';
         controls.appendChild(sendButton);
 
         const toast = doc.createElement('div');
-        toast.id = 'vnm-toast';
+        toast.id = 'vn-toast';
         toast.setAttribute('aria-live', 'polite');
         dialog.appendChild(toast);
 
@@ -1220,8 +1220,8 @@ export function createVisualNovelReaderHost(options = {}) {
 
     function createReaderButton(doc, id, title, html) {
         const button = doc.createElement('button');
-        button.id = `vnm-btn-${id}`;
-        button.className = 'vnm-icon-btn';
+        button.id = `vn-btn-${id}`;
+        button.className = 'vn-icon-btn';
         button.type = 'button';
         button.setAttribute('data-act', id);
         button.setAttribute('title', title);
@@ -1232,32 +1232,32 @@ export function createVisualNovelReaderHost(options = {}) {
     function buildFallbackSettingsOverlay(doc, snapshot) {
         if (!doc || typeof doc.createElement !== 'function') return null;
         const overlay = doc.createElement('div');
-        overlay.id = 'vnm-unified-settings';
-        overlay.setAttribute('data-igs-vn-ui', 'true');
+        overlay.id = 'vn-unified-settings';
+        overlay.setAttribute('data-vn-vn-ui', 'true');
 
         const shell = doc.createElement('div');
-        shell.className = 'vnm-settings-shell';
+        shell.className = 'vn-settings-shell';
         shell.setAttribute('role', 'dialog');
         shell.setAttribute('aria-modal', 'true');
         shell.setAttribute('aria-label', '设置');
         overlay.appendChild(shell);
 
         const head = doc.createElement('div');
-        head.className = 'vnm-settings-head';
+        head.className = 'vn-settings-head';
         shell.appendChild(head);
 
         const title = doc.createElement('div');
-        title.className = 'vnm-settings-title';
+        title.className = 'vn-settings-title';
         title.textContent = '设置';
         head.appendChild(title);
 
         const badge = doc.createElement('div');
-        badge.className = 'vnm-settings-badge';
-        badge.textContent = options.version || '0.3.16';
+        badge.className = 'vn-settings-badge';
+        badge.textContent = options.version || '0.3.17';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
-        close.className = 'vnm-settings-close';
+        close.className = 'vn-settings-close';
         close.type = 'button';
         close.setAttribute('data-action', 'close');
         close.setAttribute('aria-label', '关闭');
@@ -1265,11 +1265,11 @@ export function createVisualNovelReaderHost(options = {}) {
         head.appendChild(close);
 
         const tabs = doc.createElement('div');
-        tabs.className = 'vnm-settings-tabs';
+        tabs.className = 'vn-settings-tabs';
         shell.appendChild(tabs);
         for (const tab of snapshot.tabs || []) {
             const button = doc.createElement('button');
-            button.className = `vnm-settings-tab${tab.active ? ' is-active' : ''}`;
+            button.className = `vn-settings-tab${tab.active ? ' is-active' : ''}`;
             button.type = 'button';
             button.setAttribute('data-tab', tab.id);
             button.textContent = tab.label;
@@ -1277,7 +1277,7 @@ export function createVisualNovelReaderHost(options = {}) {
         }
 
         const body = doc.createElement('div');
-        body.className = 'vnm-settings-body';
+        body.className = 'vn-settings-body';
         body.innerHTML = renderSettingsBody(snapshot.tab, snapshot.draft, {
             imageResult: snapshot.resultText && snapshot.resultText.image,
             imageModelsMessage: snapshot.resultText && snapshot.resultText.imageModels,
@@ -1293,7 +1293,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const container = current.dom.root;
         clearChildren(container);
         container.innerHTML = snapshot.html;
-        current.dom.overlay = container.querySelector('#vnm-unified-settings');
+        current.dom.overlay = container.querySelector('#vn-unified-settings');
         if (!current.dom.overlay) {
             current.dom.overlay = buildFallbackSettingsOverlay(container.ownerDocument || getRootDocument(options.global), snapshot);
             if (current.dom.overlay) container.appendChild(current.dom.overlay);
@@ -1305,18 +1305,18 @@ export function createVisualNovelReaderHost(options = {}) {
 
     function applyReaderSnapshotToDom(root, snapshot, current) {
         root.className = snapshot.classes.join(' ');
-        root.setAttribute('data-igs-vn-ui', 'true');
+        root.setAttribute('data-vn-vn-ui', 'true');
 
-        const bg = root.querySelector('#vnm-bg');
-        const bgBlur = root.querySelector('#vnm-bg-blur');
-        const textEl = root.querySelector('#vnm-text');
-        const progress = root.querySelector('#vnm-progress');
-        const input = root.querySelector('#vnm-input');
-        const send = root.querySelector('#vnm-send-btn');
-        const dialog = root.querySelector('#vnm-dialog');
-        const toolbar = root.querySelector('#vnm-ctrl-bar');
-        const clickLayer = root.querySelector('#vnm-click-layer');
-        const toast = root.querySelector('#vnm-toast');
+        const bg = root.querySelector('#vn-bg');
+        const bgBlur = root.querySelector('#vn-bg-blur');
+        const textEl = root.querySelector('#vn-text');
+        const progress = root.querySelector('#vn-progress');
+        const input = root.querySelector('#vn-input');
+        const send = root.querySelector('#vn-send-btn');
+        const dialog = root.querySelector('#vn-dialog');
+        const toolbar = root.querySelector('#vn-ctrl-bar');
+        const clickLayer = root.querySelector('#vn-click-layer');
+        const toast = root.querySelector('#vn-toast');
 
         if (bg && snapshot.content.backgroundImage) {
             bg.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
@@ -1369,9 +1369,9 @@ export function createVisualNovelReaderHost(options = {}) {
             dialog.addEventListener('click', (event) => {
                 if (current.hidden) return;
                 if (event.target && event.target.closest && (
-                    event.target.closest('.vnm-controls')
-                    || event.target.closest('#vnm-ctrl-bar')
-                    || event.target.closest('#vnm-settings')
+                    event.target.closest('.vn-controls')
+                    || event.target.closest('#vn-ctrl-bar')
+                    || event.target.closest('#vn-settings')
                 )) {
                     return;
                 }
@@ -1387,7 +1387,7 @@ export function createVisualNovelReaderHost(options = {}) {
             });
         }
         if (dialog) {
-            dialog.classList.toggle('vnm-hidden', current.hidden);
+            dialog.classList.toggle('vn-hidden', current.hidden);
             if (snapshot.readerSettings.glassOpacity != null) {
                 dialog.style.background = `rgba(20,20,22,${snapshot.readerSettings.glassOpacity})`;
             }
@@ -1403,8 +1403,8 @@ export function createVisualNovelReaderHost(options = {}) {
 
     function applyToolbarState(root, current) {
         if (!root || !current) return;
-        const collapsible = root.querySelector('#vnm-bar-btns');
-        const pinned = root.querySelector('#vnm-bar-pinned');
+        const collapsible = root.querySelector('#vn-bar-btns');
+        const pinned = root.querySelector('#vn-bar-pinned');
         const pins = new Set(
             current.snapshot
             && current.snapshot.readerSettings
@@ -1414,7 +1414,7 @@ export function createVisualNovelReaderHost(options = {}) {
         );
 
         for (const [id] of TOOLBAR_ACTIONS) {
-            const button = root.querySelector(`#vnm-btn-${id}`);
+            const button = root.querySelector(`#vn-btn-${id}`);
             if (!button) continue;
             if (pins.has(id) && pinned) {
                 pinned.appendChild(button);
@@ -1436,10 +1436,10 @@ export function createVisualNovelReaderHost(options = {}) {
     }
 
     function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
-        const dialog = refs.dialog || root.querySelector('#vnm-dialog');
-        const textEl = refs.textEl || root.querySelector('#vnm-text');
-        const toolbar = refs.toolbar || root.querySelector('#vnm-ctrl-bar');
-        const controls = root.querySelector('.vnm-controls');
+        const dialog = refs.dialog || root.querySelector('#vn-dialog');
+        const textEl = refs.textEl || root.querySelector('#vn-text');
+        const toolbar = refs.toolbar || root.querySelector('#vn-ctrl-bar');
+        const controls = root.querySelector('.vn-controls');
         const readerSettings = snapshot.readerSettings || {};
         const inlineMode = snapshot.mode === 'pc' || snapshot.mode === 'mobile';
         const win = getOwnerWindow(root);
@@ -1645,7 +1645,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
     function installFloatingDragRuntime(root, runtime, current, floatingState, onSuppressClick) {
         if (!root || !runtime || !current) return;
-        const layer = root.querySelector('#vnm-click-layer');
+        const layer = root.querySelector('#vn-click-layer');
         const doc = runtime.doc;
         if (!layer || !doc || typeof doc.addEventListener !== 'function') return;
         let active = false;
@@ -1857,7 +1857,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.16' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.17' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1868,7 +1868,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.16',
+            version: snapshot.version || options.version || '0.3.17',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -1983,7 +1983,7 @@ function renderTemplate(template, values) {
 }
 
 function field(path, label, inputHtml, note) {
-    return `<label class="vnm-settings-field"><span>${esc(label)}</span>${inputHtml}${note ? `<em>${esc(note)}</em>` : ''}</label>`;
+    return `<label class="vn-settings-field"><span>${esc(label)}</span>${inputHtml}${note ? `<em>${esc(note)}</em>` : ''}</label>`;
 }
 
 function disabledAttr(disabled) {
@@ -1999,7 +1999,7 @@ function textareaInput(path, value, placeholder = '') {
 }
 
 function secretInput(path, value, placeholder, disabled) {
-    return `<div class="vnm-settings-secret">${textInput(path, value, placeholder, 'password', disabled)}<button type="button" class="vnm-settings-secret-toggle" data-action="toggle-secret" aria-label="显示或隐藏密钥" aria-pressed="false"${disabledAttr(disabled)}>显示</button></div>`;
+    return `<div class="vn-settings-secret">${textInput(path, value, placeholder, 'password', disabled)}<button type="button" class="vn-settings-secret-toggle" data-action="toggle-secret" aria-label="显示或隐藏密钥" aria-pressed="false"${disabledAttr(disabled)}>显示</button></div>`;
 }
 
 function numberInput(path, value, min, max, disabled) {
@@ -2007,7 +2007,7 @@ function numberInput(path, value, min, max, disabled) {
 }
 
 function checkbox(path, value, label) {
-    return `<button type="button" class="vnm-switch${value ? ' is-on' : ''}" data-switch="${esc(path)}" aria-pressed="${value ? 'true' : 'false'}"><i></i><span>${esc(label)}</span></button>`;
+    return `<button type="button" class="vn-switch${value ? ' is-on' : ''}" data-switch="${esc(path)}" aria-pressed="${value ? 'true' : 'false'}"><i></i><span>${esc(label)}</span></button>`;
 }
 
 function selectInput(path, value, items, disabled = false) {
@@ -2020,10 +2020,10 @@ function selectInput(path, value, items, disabled = false) {
 
 function segmentedInput(path, value, items, label) {
     const activeIndex = Math.max(0, items.findIndex((item) => String(item[0]) === String(value)));
-    return `<div class="vnm-segmented" role="radiogroup" aria-label="${esc(label || '')}" data-count="${esc(items.length)}" data-active-index="${esc(activeIndex)}" style="--vnm-segment-count:${esc(items.length)};--vnm-active-index:${esc(activeIndex)};"><span class="vnm-segmented-indicator" aria-hidden="true"></span>${items.map((item) => {
+    return `<div class="vn-segmented" role="radiogroup" aria-label="${esc(label || '')}" data-count="${esc(items.length)}" data-active-index="${esc(activeIndex)}" style="--vn-segment-count:${esc(items.length)};--vn-active-index:${esc(activeIndex)};"><span class="vn-segmented-indicator" aria-hidden="true"></span>${items.map((item) => {
         const selected = String(item[0]) === String(value);
-        const icon = item[2] ? `<span class="vnm-segmented-btn-icon" aria-hidden="true">${item[2]}</span>` : '';
-        return `<button type="button" class="vnm-segmented-btn${item[2] ? ' has-icon' : ''}${selected ? ' is-active' : ''}" data-segment-path="${esc(path)}" data-segment-value="${esc(item[0])}" role="radio" aria-checked="${selected ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}">${icon}<span class="vnm-segmented-btn-label">${esc(item[1])}</span></button>`;
+        const icon = item[2] ? `<span class="vn-segmented-btn-icon" aria-hidden="true">${item[2]}</span>` : '';
+        return `<button type="button" class="vn-segmented-btn${item[2] ? ' has-icon' : ''}${selected ? ' is-active' : ''}" data-segment-path="${esc(path)}" data-segment-value="${esc(item[0])}" role="radio" aria-checked="${selected ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}">${icon}<span class="vn-segmented-btn-label">${esc(item[1])}</span></button>`;
     }).join('')}</div>`;
 }
 
@@ -2033,16 +2033,16 @@ function modelPicker(path, value, models, action, placeholder, disabled) {
         const selected = model === value ? ' selected' : '';
         return `<option value="${esc(model)}"${selected}>${esc(model)}</option>`;
     })).join('');
-    return `<div class="vnm-settings-model"><div class="vnm-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vnm-settings-action vnm-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
+    return `<div class="vn-settings-model"><div class="vn-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vn-settings-action vn-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
 }
 
 function renderPinnedButtons(value) {
     const pins = Array.isArray(value) ? value : [];
     const buttons = TOOLBAR_ACTIONS.map(([id, label]) => {
         const active = pins.includes(id);
-        return `<button type="button" class="vnm-settings-action vnm-settings-inline-action${active ? ' is-active' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" aria-pressed="${active ? 'true' : 'false'}">${esc(label)}</button>`;
+        return `<button type="button" class="vn-settings-action vn-settings-inline-action${active ? ' is-active' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" aria-pressed="${active ? 'true' : 'false'}">${esc(label)}</button>`;
     }).join('');
-    return `<div class="vnm-settings-field"><span>常驻按钮</span><div class="vnm-settings-row">${buttons}</div><em>亮起的按钮会固定在原版工具栏常驻区，未常驻按钮由收纳按钮展开。</em></div>`;
+    return `<div class="vn-settings-field"><span>常驻按钮</span><div class="vn-settings-row">${buttons}</div><em>亮起的按钮会固定在原版工具栏常驻区，未常驻按钮由收纳按钮展开。</em></div>`;
 }
 
 function getRootDocument(globalObject) {
@@ -2165,10 +2165,10 @@ function syncSettingsViewportVars(root) {
     const height = viewport && Number.isFinite(viewport.height) && viewport.height > 0
         ? viewport.height
         : (win && win.innerHeight) || docEl.clientHeight || 480;
-    root.style.setProperty('--vnm-settings-vleft', `${Math.round(left)}px`);
-    root.style.setProperty('--vnm-settings-vtop', `${Math.round(top)}px`);
-    root.style.setProperty('--vnm-settings-vw', `${Math.round(width)}px`);
-    root.style.setProperty('--vnm-settings-vh', `${Math.round(height)}px`);
+    root.style.setProperty('--vn-settings-vleft', `${Math.round(left)}px`);
+    root.style.setProperty('--vn-settings-vtop', `${Math.round(top)}px`);
+    root.style.setProperty('--vn-settings-vw', `${Math.round(width)}px`);
+    root.style.setProperty('--vn-settings-vh', `${Math.round(height)}px`);
 }
 
 function normalizeReaderMode(mode, bridge) {
@@ -2259,7 +2259,7 @@ function applyToastToReader(current, allowed, message) {
     if (!current || !message || allowed === false) return;
     clearReaderToast(current);
     current.toastMessage = String(message);
-    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector('#vnm-toast') : null;
+    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector('#vn-toast') : null;
     if (toast) {
         toast.textContent = current.toastMessage;
         toast.style.opacity = '1';
@@ -2282,7 +2282,7 @@ function clearReaderToast(current) {
         current.toastTimer = null;
     }
     current.toastMessage = '';
-    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector('#vnm-toast') : null;
+    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector('#vn-toast') : null;
     if (toast) {
         toast.textContent = '';
         toast.style.opacity = '0';

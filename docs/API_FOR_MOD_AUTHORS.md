@@ -5,8 +5,8 @@ Visual Novel 的二创 API 面向会写 JS 的作者。Mod 默认从对应能力
 ## 全局对象
 
 ```js
-window.IGS
-window.ImmersiveGalgameSystem
+window.VN
+window.VisualNovel
 ```
 
 ## Mod 文件
@@ -36,18 +36,18 @@ export default {
 ## 能力分组
 
 ```js
-IGS.api.imageProviders.register(provider);
-IGS.api.imageProviders.unregister(id);
-IGS.api.imageRequestBuilders.register(builder);
-IGS.api.actions.register(action);
-IGS.api.components.register(component);
-IGS.api.choiceComponents.register(component);
-IGS.api.sceneRules.register(rule);
-IGS.api.themePresets.register(preset);
-IGS.api.uiSkins.register(preset);
-IGS.api.backgroundPacks.register(pack);
-IGS.api.characterPacks.register(pack);
-IGS.api.promptPresets.register(preset);
+VN.api.imageProviders.register(provider);
+VN.api.imageProviders.unregister(id);
+VN.api.imageRequestBuilders.register(builder);
+VN.api.actions.register(action);
+VN.api.components.register(component);
+VN.api.choiceComponents.register(component);
+VN.api.sceneRules.register(rule);
+VN.api.themePresets.register(preset);
+VN.api.uiSkins.register(preset);
+VN.api.backgroundPacks.register(pack);
+VN.api.characterPacks.register(pack);
+VN.api.promptPresets.register(preset);
 ```
 
 ## 常见可扩展内容

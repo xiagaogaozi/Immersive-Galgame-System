@@ -1,56 +1,56 @@
 {
   "requiredSelectors": [
-    "#vnm-overlay",
-    "#vnm-bg",
-    "#vnm-bg-blur",
-    "#vnm-click-layer",
-    ".vnm-dialog",
-    ".vnm-ctrl-bar",
-    "#vnm-bar-btns",
-    "#vnm-settings",
-    ".vnm-controls",
-    "#vnm-send-status",
-    "#vnm-input",
-    "#vnm-send-btn",
-    "#vnm-toast"
+    "#vn-overlay",
+    "#vn-bg",
+    "#vn-bg-blur",
+    "#vn-click-layer",
+    ".vn-dialog",
+    ".vn-ctrl-bar",
+    "#vn-bar-btns",
+    "#vn-settings",
+    ".vn-controls",
+    "#vn-send-status",
+    "#vn-input",
+    "#vn-send-btn",
+    "#vn-toast"
   ],
   "styles": {
-    "#vnm-overlay": {
+    "#vn-overlay": {
       "zIndex": "2147483000",
       "background": "#000"
     },
-    ".vnm-dialog": {
+    ".vn-dialog": {
       "width": "min(880px,calc(100vw - 32px))",
       "padding": "22px 26px 18px",
       "borderRadius": "22px"
     },
-    ".vnm-input": {
+    ".vn-input": {
       "height": "32px"
     },
-    ".vnm-send-btn": {
+    ".vn-send-btn": {
       "minWidth": "58px"
     },
-    ".vnm-icon-btn": {
+    ".vn-icon-btn": {
       "width": "36px",
       "height": "36px"
     },
-    "#vnm-overlay.vnm-floating #vnm-click-layer": {
+    "#vn-overlay.vn-floating #vn-click-layer": {
       "cursor": "grab",
       "touchAction": "none"
     },
-    "#vnm-overlay.vnm-floating.is-dragging #vnm-click-layer": {
+    "#vn-overlay.vn-floating.is-dragging #vn-click-layer": {
       "cursor": "grabbing"
     },
-    "#vnm-overlay.vnm-floating .vnm-progress": {
+    "#vn-overlay.vn-floating .vn-progress": {
       "flexShrink": "0"
     },
-    "#vnm-overlay.vnm-floating .vnm-text": {
+    "#vn-overlay.vn-floating .vn-text": {
       "minHeight": "0",
       "overflowY": "auto",
       "marginBottom": "12px",
       "flex": "1 1 auto"
     },
-    "#vnm-overlay.vnm-floating .vnm-controls": {
+    "#vn-overlay.vn-floating .vn-controls": {
       "flexShrink": "0"
     }
   }

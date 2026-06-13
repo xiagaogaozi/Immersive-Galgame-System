@@ -41,11 +41,11 @@ generateImage()
 destroy()
 ```
 
-迁移或兼容这些能力时，先在 IGS 中增加 fixtures 和模拟测试，再考虑修改 `Visual Novel` 本体。
+迁移或兼容这些能力时，先在 VN 中增加 fixtures 和模拟测试，再考虑修改 `Visual Novel` 本体。
 
-## IGS 源码与产物
+## VN 源码与产物
 
-IGS 项目根：
+VN 项目根：
 
 ```text
 D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel
@@ -60,38 +60,38 @@ app/src/
 构建产物：
 
 ```text
-app/dist/igs.bundle.js
-app/dist/igs.bundle.css
+app/dist/vn.bundle.js
+app/dist/vn.bundle.css
 app/dist/manifest.json
 ```
 
-`app/dist/igs.bundle.js` 必须是自包含发布文件，不得在运行时继续 `import ../src/index.js` 或其它 `app/src` 模块。loader 只会给入口 bundle 加 cache bust，如果入口再静态导入未带刷新参数的源码子模块，酒馆同一页面可能继续复用旧模块，导致已修复逻辑没有真正生效。
+`app/dist/vn.bundle.js` 必须是自包含发布文件，不得在运行时继续 `import ../src/index.js` 或其它 `app/src` 模块。loader 只会给入口 bundle 加 cache bust，如果入口再静态导入未带刷新参数的源码子模块，酒馆同一页面可能继续复用旧模块，导致已修复逻辑没有真正生效。
 
 酒馆导入产物：
 
 ```text
-loader/igs-loader.json
+loader/vn-loader.json
 loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json
 ```
 
-`loader/igs-loader.json` 是固定内部入口，便于脚本和测试稳定定位；`loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json` 是给用户导入的版本化发布文件。两者内容必须一致，且 JSON 的 `name` 必须保持 `Visual Novel（自动更新）`。
+`loader/vn-loader.json` 是固定内部入口，便于脚本和测试稳定定位；`loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json` 是给用户导入的版本化发布文件。两者内容必须一致，且 JSON 的 `name` 必须保持 `Visual Novel（自动更新）`。
 
 loader 源码：
 
 ```text
-loader/igs-loader.js
+loader/vn-loader.js
 ```
 
-`loader/igs-loader.js` 只允许做这些事：
+`loader/vn-loader.js` 只允许做这些事：
 
 - 检查是否重复加载。
 - 解析远程版本或固定版本。
-- 注入 `igs.bundle.css`。
-- 注入 `igs.bundle.js`。
+- 注入 `vn.bundle.css`。
+- 注入 `vn.bundle.js`。
 - 给控制台输出加载状态和错误原因。
 
-`loader/igs-loader.js` 不允许承载阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 或业务 UI。
-`loader/igs-loader.json` 不提供额外酒馆助手按钮；真正用户入口只能由 `app/src/host/magic-wand-entry.js` 注入酒馆魔法棒菜单。
+`loader/vn-loader.js` 不允许承载阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 或业务 UI。
+`loader/vn-loader.json` 不提供额外酒馆助手按钮；真正用户入口只能由 `app/src/host/magic-wand-entry.js` 注入酒馆魔法棒菜单。
 
 ## 模式判定
 
@@ -99,8 +99,8 @@ loader/igs-loader.js
 
 | 阶段 | 模式 | 输出 | 入口 |
 | --- | --- | --- | --- |
-| IGS 主程序开发 | B. JS-Slash-Runner 纯 JS 脚本 / 独立 bundle 源码 | `app/dist/igs.bundle.js` | `window.IGS` / `window.ImmersiveGalgameSystem` |
-| 酒馆导入发布 | A. JS-Slash-Runner Script JSON | `loader/igs-loader.json` + `loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json` | `window.TavernHelper` 环境中的 loader |
+| VN 主程序开发 | B. JS-Slash-Runner 纯 JS 脚本 / 独立 bundle 源码 | `app/dist/vn.bundle.js` | `window.VN` / `window.VisualNovel` |
+| 酒馆导入发布 | A. JS-Slash-Runner Script JSON | `loader/vn-loader.json` + `loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json` | `window.TavernHelper` 环境中的 loader |
 
 不要把最终导入 JSON 写进 `app/src/`。不要把主程序业务逻辑写进 `loader/`。
 
@@ -121,11 +121,11 @@ structure -> static -> test -> simulate -> perf -> build
 ```
 
 如果只改文档，可以不跑 `npm run gate`，但最终回复必须说明 skipped 原因。
-`npm run build` 会检查 `igs.bundle.js` 不含运行时 `import`；`npm run test` 也会通过 `gate:dist-bundle:is-self-contained-for-loader-cache-bust` 防止发布入口退化成源码转发壳。
+`npm run build` 会检查 `vn.bundle.js` 不含运行时 `import`；`npm run test` 也会通过 `gate:dist-bundle:is-self-contained-for-loader-cache-bust` 防止发布入口退化成源码转发壳。
 
 ## loader JSON 格式
 
-`loader/igs-loader.json` 和版本化中文发布文件必须保持这种结构：
+`loader/vn-loader.json` 和版本化中文发布文件必须保持这种结构：
 
 ```json
 {
@@ -133,7 +133,7 @@ structure -> static -> test -> simulate -> perf -> build
   "enabled": false,
   "name": "Visual Novel（自动更新）",
   "id": "<固定 UUID>",
-  "content": "<loader/igs-loader.js 的原文>",
+  "content": "<loader/vn-loader.js 的原文>",
   "info": "Visual Novel 自动更新 loader。",
   "button": {
     "enabled": false,
@@ -150,8 +150,8 @@ structure -> static -> test -> simulate -> perf -> build
 `content` 必须是可直接执行的 JavaScript 字符串。JSON 反序列化后应满足：
 
 ```js
-JSON.parse(fs.readFileSync('loader/igs-loader.json', 'utf8')).content === fs.readFileSync('loader/igs-loader.js', 'utf8')
-JSON.parse(fs.readFileSync('loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json', 'utf8')).content === fs.readFileSync('loader/igs-loader.js', 'utf8')
+JSON.parse(fs.readFileSync('loader/vn-loader.json', 'utf8')).content === fs.readFileSync('loader/vn-loader.js', 'utf8')
+JSON.parse(fs.readFileSync('loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json', 'utf8')).content === fs.readFileSync('loader/vn-loader.js', 'utf8')
 ```
 
 ## 远程 bundle 地址规则
@@ -173,11 +173,11 @@ https://github.com/xiagaogaozi/Visual-Novel
 当前 loader 默认链路：
 
 ```text
-GitHub API branches/main -> jsDelivr @<commit>/app/dist/igs.bundle.* -> 失败时 fallback 到 jsDelivr @main/app/dist/igs.bundle.*
+GitHub API branches/main -> jsDelivr @<commit>/app/dist/vn.bundle.* -> 失败时 fallback 到 jsDelivr @main/app/dist/vn.bundle.*
 ```
 
-loader 默认读取 `main` 的最新提交哈希，并优先加载不可变的 `@<commit>` bundle，避免 jsDelivr `@main` 分支文件缓存卡住旧代码，也避免新版本标签短时未同步；不再需要每次发版都修改 `loader/igs-loader.js` 的内置版本号。
-为了让魔法棒入口更早出现，loader 会在远程主程序加载完成前先注册一个临时入口；正式 IGS 运行时加载后会替换为正式入口。需要临时锁定旧版本或测试分支时，可由用户手动设置 `window.IGS_LOADER_REF = 'v0.3.6'`、`window.IGS_LOADER_REF = 'main'` 或 `window.IGS_LOADER_CONFIG.ref`。如果手动指定的非 `main` ref 在 jsDelivr 上不可用，loader 会 fallback 到 `@main`，避免导入脚本直接失败。
+loader 默认读取 `main` 的最新提交哈希，并优先加载不可变的 `@<commit>` bundle，避免 jsDelivr `@main` 分支文件缓存卡住旧代码，也避免新版本标签短时未同步；不再需要每次发版都修改 `loader/vn-loader.js` 的内置版本号。
+为了让魔法棒入口更早出现，loader 会在远程主程序加载完成前先注册一个临时入口；正式 VN 运行时加载后会替换为正式入口。需要临时锁定旧版本或测试分支时，可由用户手动设置 `window.VN_LOADER_REF = 'v0.3.6'`、`window.VN_LOADER_REF = 'main'` 或 `window.VN_LOADER_CONFIG.ref`。如果手动指定的非 `main` ref 在 jsDelivr 上不可用，loader 会 fallback 到 `@main`，避免导入脚本直接失败。
 
 ## 推荐发布步骤
 
@@ -216,11 +216,11 @@ git ls-remote --tags origin v<当前版本>
 
 `git rev-parse --show-toplevel` 必须返回 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`。如果标签已存在，不强推覆盖，提升 patch 版本后重新发布。
 
-真正生成 `loader/igs-loader.json` 和版本化中文发布文件后，还需要验证：
+真正生成 `loader/vn-loader.json` 和版本化中文发布文件后，还需要验证：
 
 ```powershell
-node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); if(j.type!=='script'||typeof j.content!=='string'||!j.content.includes('igs.bundle.js')) throw new Error('bad loader json');"
-node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); const b=JSON.parse(fs.readFileSync('loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json','utf8')); if(a.content!==b.content||a.name!==b.name) throw new Error('release json mismatch');"
+node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('loader/vn-loader.json','utf8')); if(j.type!=='script'||typeof j.content!=='string'||!j.content.includes('vn.bundle.js')) throw new Error('bad loader json');"
+node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/vn-loader.json','utf8')); const b=JSON.parse(fs.readFileSync('loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json','utf8')); if(a.content!==b.content||a.name!==b.name) throw new Error('release json mismatch');"
 ```
 
 ## 更新日志要求
@@ -233,8 +233,8 @@ node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/igs-
 
 ## 未来实现清单
 
-- [x] 新增 `loader/igs-loader.js`。
-- [x] 新增生成 `loader/igs-loader.json` 的脚本。
+- [x] 新增 `loader/vn-loader.js`。
+- [x] 新增生成 `loader/vn-loader.json` 的脚本。
 - [x] 给 loader JSON 增加反解校验。
 - [ ] 确认公开远程 bundle 地址。
 - [x] 在模拟测试中加入 loader 字段校验。

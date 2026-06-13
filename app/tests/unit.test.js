@@ -115,14 +115,14 @@ test('gate:presets:bad-preset-does-not-overwrite-current', () => {
     assert.equal(after.data.pattern, '@bubble:([^|\\n]+)\\|([^|\\n]+)\\|([^\\n]+)');
 });
 
-test('gate:presets:export-group-keeps-igs-bundle-shape', () => {
+test('gate:presets:export-group-keeps-vn-bundle-shape', () => {
     const bundle = readJson('fixtures/presets/text-presets-import-bundle.json');
     const registry = createPresetRegistry();
 
     registry.importBundle(bundle);
     const exported = registry.exportGroup('text-format-preset');
 
-    assert.equal(exported.type, 'igs-import-bundle');
+    assert.equal(exported.type, 'vn-import-bundle');
     assert.equal(exported.items.length, 1);
     assert.equal(exported.items[0].type, 'text-format-preset');
 });
@@ -264,7 +264,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.16',
+            version: '0.3.17',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -291,7 +291,7 @@ test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.16',
+            version: '0.3.17',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -317,7 +317,7 @@ test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-mul
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.16',
+            version: '0.3.17',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -370,8 +370,8 @@ test('gate:visual-reader-state:normalizes-settings', () => {
     assert.equal(state.toolbarLayout, 'vertical');
     assert.equal(state.toolbarPlacement, 'bottom-right');
     assert.equal(state.avatarVisible, true);
-    assert.equal(state.cssVars['--igs-dialogue-font-size'], '15px');
-    assert.equal(state.attributes['data-igs-dialogue-style'], 'panel');
+    assert.equal(state.cssVars['--vn-dialogue-font-size'], '15px');
+    assert.equal(state.attributes['data-vn-dialogue-style'], 'panel');
 });
 
 test('gate:visual-responsive-layout:desktop-portrait-landscape', () => {
@@ -394,7 +394,7 @@ test('gate:visual-stage-model:exposes-stable-stage-shape', () => {
         visualMode: 'background-character',
     }, readerState);
 
-    assert.equal(stage.type, 'igs-stage-model');
+    assert.equal(stage.type, 'vn-stage-model');
     assert.equal(stage.layers.background.visible, true);
     assert.equal(stage.layers.generated.visible, false);
     assert.equal(stage.layers.dialogue.text, '我们到了。');
@@ -419,7 +419,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.16',
+        version: '0.3.17',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),
@@ -427,15 +427,15 @@ test('gate:api:public api attaches stable global aliases', async () => {
     });
 
     attachPublicApi(globalObject, api);
-    assert.equal(globalObject.IGS, api);
-    assert.equal(globalObject.ImmersiveGalgameSystem, api);
+    assert.equal(globalObject.VN, api);
+    assert.equal(globalObject.VisualNovel, api);
     assert.equal(api.api.imageProviders.register({ id: 'provider.fake' }).ok, true);
     assert.equal(api.api.imageProviders.list().length, 1);
     assert.equal(api.api.textFilterPresets.register(readJson('fixtures/text/text-filter-preset.json')).ok, true);
     assert.equal(typeof api.api.textFilterPresets.setCurrent, 'function');
     assert.equal(api.api.textFilterPresets.setCurrent('preset.text-filter.content-only').ok, true);
     assert.equal(api.api.textFilterPresets.getCurrent().id, 'preset.text-filter.content-only');
-    assert.equal(api.api.textFilterPresets.exportAll().type, 'igs-import-bundle');
+    assert.equal(api.api.textFilterPresets.exportAll().type, 'vn-import-bundle');
     assert.equal(api.ensureMagicWandEntry().reason, 'magic-wand-entry-not-mounted');
 });
 
@@ -706,7 +706,7 @@ test('gate:host:ensure-message-image-placeholders-reuses-owned-placeholder', () 
     assert.equal(second.ok, true);
     assert.equal(second.reason, 'placeholder-present');
     assert.equal(mesText.children.length, 1);
-    assert.equal(mesText.children[0].getAttribute('data-igs-image-placeholder'), '1');
+    assert.equal(mesText.children[0].getAttribute('data-vn-image-placeholder'), '1');
     assert.match(mesText.children[0].textContent, /image###one###/);
     assert.match(mesText.children[0].textContent, /image###two###/);
 });
@@ -837,12 +837,12 @@ function createTestMesTextRoot() {
         },
         querySelectorAll(selector) {
             const owned = children.filter((child) => {
-                const hasOwnedClass = String(child.className || '').split(/\s+/).includes('igs-image-placeholder');
-                const hasOwnedAttr = child.getAttribute && child.getAttribute('data-igs-image-placeholder') === '1';
-                const hasLegacyClass = String(child.className || '').split(/\s+/).includes('vnm-img-ph');
-                return selector === '[data-igs-image-placeholder="1"], .igs-image-placeholder'
+                const hasOwnedClass = String(child.className || '').split(/\s+/).includes('vn-image-placeholder');
+                const hasOwnedAttr = child.getAttribute && child.getAttribute('data-vn-image-placeholder') === '1';
+                const hasLegacyClass = String(child.className || '').split(/\s+/).includes('vn-img-ph');
+                return selector === '[data-vn-image-placeholder="1"], .vn-image-placeholder'
                     ? hasOwnedClass || hasOwnedAttr
-                    : selector === '.vnm-img-ph'
+                    : selector === '.vn-img-ph'
                         ? hasLegacyClass
                         : false;
             });

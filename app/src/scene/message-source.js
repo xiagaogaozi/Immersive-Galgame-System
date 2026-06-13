@@ -73,7 +73,7 @@ export function getVisibleMessageTextFromElement(mesElement) {
     if (!mesText || typeof mesText.cloneNode !== 'function') return '';
     const cloneNode = mesText.cloneNode(true);
     if (typeof cloneNode.querySelectorAll === 'function') {
-        cloneNode.querySelectorAll('script,style,iframe,button,[role="button"],[data-vnm-internal-reader],.vnm-img-ph,.igs-image-placeholder,[data-igs-image-placeholder="1"],.mes_buttons,.extraMesButtons').forEach((node) => {
+        cloneNode.querySelectorAll('script,style,iframe,button,[role="button"],[data-vn-internal-reader],.vn-img-ph,.vn-image-placeholder,[data-vn-image-placeholder="1"],.mes_buttons,.extraMesButtons').forEach((node) => {
             if (node && typeof node.remove === 'function') node.remove();
         });
     }
@@ -194,7 +194,7 @@ export function applyVisualNovelBodyFormat(raw, rule) {
 export function buildFormattedReaderSource(formattedText, imageSource) {
     const parts = [
         '<now_plot>',
-        '<content data-vnm-formatted="1">',
+        '<content data-vn-formatted="1">',
         String(formattedText || '').trim(),
         '</content>',
         '</now_plot>',

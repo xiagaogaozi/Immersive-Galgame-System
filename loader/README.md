@@ -8,12 +8,12 @@
 - loader 不属于奶龙工具箱 `tavern helper/` 发布壳。
 - loader 不负责业务逻辑、Mod 管理、shujuku 表格或 UI 渲染。
 - loader 的发布形态参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`。
-- loader JSON 的 `content` 必须来自 `igs-loader.js` 原文。
+- loader JSON 的 `content` 必须来自 `vn-loader.js` 原文。
 
 ## 预计产物
 
-- `igs-loader.js`
-- `igs-loader.json`
+- `vn-loader.js`
+- `vn-loader.json`
 
 生成命令：
 
@@ -24,13 +24,13 @@ npm run build:loader
 
 ## 固定职责
 
-`igs-loader.js` 只允许：
+`vn-loader.js` 只允许：
 
 - 阻止重复加载。
 - 选择远程 ref，默认追踪 `main` 最新 bundle。
 - 远程主程序加载完成前，先注册一个临时魔法棒入口。
-- 注入 `igs.bundle.css`。
-- 注入 `igs.bundle.js`。
+- 注入 `vn.bundle.css`。
+- 注入 `vn.bundle.js`。
 - 输出加载状态和失败原因。
 
 主程序业务逻辑必须放在 `../app/src/`，构建后进入 `../app/dist/`。

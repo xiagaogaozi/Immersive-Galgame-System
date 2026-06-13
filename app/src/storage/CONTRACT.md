@@ -9,8 +9,8 @@
 
 ## 存储前缀
 
-- IndexedDB：`igs`
-- key 前缀：`igs:*`
+- IndexedDB：`vn`
+- key 前缀：`vn:*`
 - Blob URL 必须可重建，不作为唯一长期来源。
 - `preset-store.js` 当前以 localStorage-compatible / memory adapter 固定契约，后续再替换为异步 IndexedDB adapter。
 

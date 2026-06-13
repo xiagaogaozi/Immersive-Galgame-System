@@ -1,4 +1,4 @@
-export { bootstrapIGS, destroyIGS } from './core/bootstrap.js';
+export { bootstrapVN, destroyVN } from './core/bootstrap.js';
 export { createPublicApi, attachPublicApi } from './api/public-api.js';
 export { createTavernHelperAdapter } from './host/tavern-helper-adapter.js';
 export { createMagicWandEntry } from './host/magic-wand-entry.js';

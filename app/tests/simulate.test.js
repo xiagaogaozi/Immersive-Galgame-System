@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { bootstrapIGS, createMemoryStorage, createPresetRegistry, PRESET_STORE_KEY } from '../src/index.js';
+import { bootstrapVN, createMemoryStorage, createPresetRegistry, PRESET_STORE_KEY } from '../src/index.js';
 import { createShujukuClient } from '../src/data/shujuku/client.js';
 import { createResourceCache } from '../src/media/resource-cache.js';
 import { buildVisualNovelTextPayload } from '../src/scene/message-source.js';
@@ -16,7 +16,7 @@ test('gate:simulation:minimal loop reads fake message, resolves scene, renders l
     const sent = [];
     const rendered = [];
     const globalObject = {};
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: globalObject,
         hostAdapter: {
             getCurrentMessage: async () => message,
@@ -34,7 +34,7 @@ test('gate:simulation:minimal loop reads fake message, resolves scene, renders l
         },
     });
 
-    const result = await igs.refresh({
+    const result = await vn.refresh({
         backgroundRules: [
             { id: 'bg.library.rain', priority: 20, match: { location: ['图书馆'], time: ['夜晚'], weather: ['雨'] } },
         ],
@@ -42,25 +42,25 @@ test('gate:simulation:minimal loop reads fake message, resolves scene, renders l
             { id: 'char.eli.smile', character: '艾莉', emotion: '微笑' },
         ],
     });
-    const sendResult = await igs.typeAndSend('选择：继续调查');
+    const sendResult = await vn.typeAndSend('选择：继续调查');
 
-    assert.equal(globalObject.IGS, igs);
+    assert.equal(globalObject.VN, vn);
     assert.equal(result.ok, true);
     assert.equal(result.scene.speaker, '艾莉');
     assert.equal(result.scene.background.id, 'bg.library.rain');
     assert.equal(rendered.length, 1);
     assert.equal(result.render.stage.layers.dialogue.text, '艾莉: 我们从这里开始。');
     assert.equal(result.render.stage.layers.hud.toolbar.layout, 'horizontal');
-    assert.equal(result.render.stage.attributes['data-igs-toolbar-placement'], 'top-right');
+    assert.equal(result.render.stage.attributes['data-vn-toolbar-placement'], 'top-right');
     assert.equal(rendered[0].stage.layers.dialogue.speaker, '艾莉');
     assert.deepEqual(sendResult, { ok: true });
     assert.deepEqual(sent, ['选择：继续调查']);
-    assert.deepEqual(igs.destroy(), { ok: true });
+    assert.deepEqual(vn.destroy(), { ok: true });
 });
 
 test('gate:simulation:reader-stage-generated-image-slot', async () => {
     const message = readJson('fixtures/tavern/generated-message.json');
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         hostAdapter: {
             getCurrentMessage: async () => message,
@@ -68,13 +68,13 @@ test('gate:simulation:reader-stage-generated-image-slot', async () => {
         },
     });
 
-    const result = await igs.refresh();
+    const result = await vn.refresh();
     assert.equal(result.scene.visualMode, VISUAL_MODES.GENERATED_FIRST);
     assert.equal(result.scene.generatedImage.value, 'prompt://moon-rooftop');
     assert.equal(result.render.stage.layers.generated.visible, true);
     assert.equal(result.render.stage.layers.background.visible, false);
     assert.equal(result.render.stage.layers.character.visible, false);
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:fake shujuku update calls refresh worldbook', async () => {
@@ -112,7 +112,7 @@ test('gate:simulation:visual-novel-open-latest-and-open-message-use-compat-api',
     const latestMessage = readJson('fixtures/tavern/standard-message.json');
     const specificMessage = readJson('fixtures/visual-novel/vn-message.json');
     const rendered = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         hostAdapter: {
             getCurrentMessage: async () => latestMessage,
@@ -130,25 +130,25 @@ test('gate:simulation:visual-novel-open-latest-and-open-message-use-compat-api',
         },
     });
 
-    const latestResult = await igs.openLatestAvailable('mobile');
-    const byIdResult = await igs.openViewerFromMessage(specificMessage.id, 'pc');
-    const missingResult = await igs.openViewerFromMessage(999, 'pc');
+    const latestResult = await vn.openLatestAvailable('mobile');
+    const byIdResult = await vn.openViewerFromMessage(specificMessage.id, 'pc');
+    const missingResult = await vn.openViewerFromMessage(999, 'pc');
 
     assert.equal(latestResult.ok, true);
     assert.equal(latestResult.scene.speaker, '艾莉');
     assert.equal(latestResult.reader.snapshot.mode, 'mobile');
-    assert.ok(latestResult.reader.snapshot.selectors.includes('#vnm-overlay'));
+    assert.ok(latestResult.reader.snapshot.selectors.includes('#vn-overlay'));
     assert.equal(byIdResult.ok, true);
     assert.equal(byIdResult.scene.speaker, '玉子');
     assert.equal(byIdResult.scene.generatedImage.value, 'prompt://library-rain-night');
-    assert.ok(byIdResult.reader.snapshot.selectors.includes('#vnm-send-btn'));
+    assert.ok(byIdResult.reader.snapshot.selectors.includes('#vn-send-btn'));
     assert.equal(missingResult.ok, false);
     assert.equal(missingResult.reason, 'message-not-found');
     assert.equal(rendered.length, 2);
     assert.equal(rendered[0].layers.dialogue.visible, true);
     assert.equal(rendered[1].layers.generated.visible, true);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
@@ -157,13 +157,13 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
     menu.id = 'extensionsMenu';
     document.body.appendChild(menu);
     const legacyEntry = document.createElement('a');
-    legacyEntry.setAttribute('data-igs-magic-entry', '1');
-    legacyEntry.setAttribute('data-igs-version', '0.2.10');
+    legacyEntry.setAttribute('data-vn-magic-entry', '1');
+    legacyEntry.setAttribute('data-vn-version', '0.2.10');
     menu.appendChild(legacyEntry);
 
     const latestMessage = readJson('fixtures/tavern/standard-message.json');
     const sent = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {
             document,
             setInterval: () => 1,
@@ -181,30 +181,30 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
         },
     });
 
-    const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
+    const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.16');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.3.17');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
-    assert.equal(igs.getMagicWandEntryState().attached, true);
-    assert.equal(menu.querySelectorAll('[data-vnm-magic-entry="1"]').length, 1);
-    assert.equal(menu.querySelector('[data-igs-magic-entry="1"]'), null);
+    assert.equal(vn.getMagicWandEntryState().attached, true);
+    assert.equal(menu.querySelectorAll('[data-vn-magic-entry="1"]').length, 1);
+    assert.equal(menu.querySelector('[data-vn-version="0.2.10"]'), null);
 
     const clickResult = entry.click();
     await clickResult;
-    const state = igs.getState();
+    const state = vn.getState();
 
     assert.equal(state.visualNovelUi.activeReader.mode, 'pc');
     assert.equal(state.visualNovelUi.activeReader.snapshot.content.speaker, '艾莉');
     assert.equal(sent.length, 0);
 
-    igs.destroy();
-    assert.equal(menu.querySelector('[data-vnm-magic-entry="1"]'), null);
+    vn.destroy();
+    assert.equal(menu.querySelector('[data-vn-magic-entry="1"]'), null);
 });
 
 test('gate:simulation:visual-novel-reader-falls-back-to-visible-text-when-raw-message-is-host-ui-html', async () => {
     const latestMessage = readJson('fixtures/tavern/host-ui-leak-message.json');
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -213,7 +213,7 @@ test('gate:simulation:visual-novel-reader-falls-back-to-visible-text-when-raw-me
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const snapshot = opened.reader.snapshot;
 
     assert.equal(opened.ok, true);
@@ -223,13 +223,13 @@ test('gate:simulation:visual-novel-reader-falls-back-to-visible-text-when-raw-me
     assert.equal(snapshot.content.displayText.includes('<div'), false);
     assert.equal(snapshot.content.errors.some((item) => item.code === 'host-ui-html-leaked'), false);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-open-settings-renders-four-tabs', () => {
     const legacyStorage = readJson('fixtures/visual-novel/legacy-storage.json');
     const storage = createMemoryStorage(legacyStorage);
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { localStorage: storage },
         hostAdapter: {
             getCurrentMessage: async () => null,
@@ -237,20 +237,20 @@ test('gate:simulation:visual-novel-ui-open-settings-renders-four-tabs', () => {
         },
     });
 
-    const result = igs.openSettings({ tab: 'basic', mode: 'pc' });
+    const result = vn.openSettings({ tab: 'basic', mode: 'pc' });
 
     assert.equal(result.ok, true);
     assert.deepEqual(result.snapshot.tabs.map((item) => item.label), ['基础', '正文替换', '图像', '阅读器']);
     assert.equal(result.snapshot.tabs[0].active, true);
-    assert.ok(result.snapshot.selectors.includes('#vnm-unified-settings'));
+    assert.ok(result.snapshot.selectors.includes('#vn-unified-settings'));
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-settings-save-updates-reader-state', () => {
     const legacyStorage = readJson('fixtures/visual-novel/legacy-storage.json');
     const storage = createMemoryStorage(legacyStorage);
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { localStorage: storage },
         hostAdapter: {
             getCurrentMessage: async () => null,
@@ -258,11 +258,11 @@ test('gate:simulation:visual-novel-ui-settings-save-updates-reader-state', () =>
         },
     });
 
-    const opened = igs.openSettings({ tab: 'reader', mode: 'mobile' });
+    const opened = vn.openSettings({ tab: 'reader', mode: 'mobile' });
     const switched = opened.controller.setValue('readerMode', 'mobile');
     const updated = opened.controller.setValue('readerSettings.fontSize', 20);
-    const current = igs.getUnifiedSettings({ mode: 'mobile' });
-    const savedStorage = JSON.parse(storage.getItem('vnm-reader-settings-v9-mobile'));
+    const current = vn.getUnifiedSettings({ mode: 'mobile' });
+    const savedStorage = JSON.parse(storage.getItem('vn-reader-settings-v9-mobile'));
 
     assert.equal(switched.ok, true);
     assert.equal(updated.ok, true);
@@ -270,13 +270,13 @@ test('gate:simulation:visual-novel-ui-settings-save-updates-reader-state', () =>
     assert.equal(savedStorage.fontSize, 20);
     assert.equal(updated.snapshot.readerMode, 'mobile');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-enter-sends-and-shift-enter-does-not', async () => {
     const latestMessage = readJson('fixtures/tavern/standard-message.json');
     const sent = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         hostAdapter: {
             getCurrentMessage: async () => latestMessage,
@@ -287,7 +287,7 @@ test('gate:simulation:visual-novel-ui-enter-sends-and-shift-enter-does-not', asy
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const controller = opened.reader.controller;
     controller.setInputValue('第一行');
     const shiftResult = await controller.keydown({ key: 'Enter', shiftKey: true, value: '第一行' });
@@ -298,7 +298,7 @@ test('gate:simulation:visual-novel-ui-enter-sends-and-shift-enter-does-not', asy
     assert.equal(enterResult.sent, true);
     assert.deepEqual(sent, ['第二行']);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-close', async () => {
@@ -307,7 +307,7 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
         text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。',
     };
     const storage = createMemoryStorage();
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { localStorage: storage },
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -316,18 +316,18 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const controller = opened.reader.controller;
     assert.equal(opened.reader.snapshot.content.progress, '1 / 2');
-    assert.equal(igs.getState().visualNovelUi.activeReader.toolbarCollapsed, true);
+    assert.equal(vn.getState().visualNovelUi.activeReader.toolbarCollapsed, true);
 
     const settingsResult = await controller.invokeAction('settings');
     assert.equal(settingsResult.ok, true);
-    assert.equal(igs.getState().visualNovelUi.activeSettings.tab, 'basic');
+    assert.equal(vn.getState().visualNovelUi.activeSettings.tab, 'basic');
 
     const modeResult = settingsResult.controller.setValue('bridge.openMode', 'mobile');
     assert.equal(modeResult.ok, true);
-    assert.equal(igs.getState().visualNovelUi.activeReader.mode, 'mobile');
+    assert.equal(vn.getState().visualNovelUi.activeReader.mode, 'mobile');
 
     const toggleResult = await controller.invokeAction('toggle-bar');
     assert.equal(toggleResult.ok, true);
@@ -344,7 +344,7 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
 
     const prevTurnResult = await controller.invokeAction('prev-turn');
     const closeResult = await controller.invokeAction('close');
-    const finalState = igs.getState();
+    const finalState = vn.getState();
 
     assert.equal(prevTurnResult.ok, true);
     assert.equal(prevTurnResult.reason, 'turn-switch-host-required');
@@ -352,7 +352,7 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
     assert.equal(finalState.visualNovelUi.activeReader, null);
     assert.equal(finalState.visualNovelUi.activeSettings, null);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-one-line-or-paragraph-per-page', async () => {
@@ -366,7 +366,7 @@ test('gate:simulation:visual-novel-ui-one-line-or-paragraph-per-page', async () 
             text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。',
         },
     ];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -376,8 +376,8 @@ test('gate:simulation:visual-novel-ui-one-line-or-paragraph-per-page', async () 
         },
     });
 
-    const singleLine = await igs.openLatestAvailable('pc');
-    const paragraph = await igs.openViewerFromMessage(31, 'pc');
+    const singleLine = await vn.openLatestAvailable('pc');
+    const paragraph = await vn.openViewerFromMessage(31, 'pc');
     const nextParagraph = await paragraph.reader.controller.invokeAction('next');
 
     assert.equal(singleLine.ok, true);
@@ -389,7 +389,7 @@ test('gate:simulation:visual-novel-ui-one-line-or-paragraph-per-page', async () 
     assert.equal(nextParagraph.ok, true);
     assert.equal(nextParagraph.progress, '2 / 2');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-inline-modes-keep-original-floating-geometry', async () => {
@@ -399,7 +399,7 @@ test('gate:simulation:visual-novel-ui-inline-modes-keep-original-floating-geomet
         id: 18,
         text: '[角色: 艾莉]\n艾莉: 第一段。 第二段。',
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: globalObject,
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -408,22 +408,22 @@ test('gate:simulation:visual-novel-ui-inline-modes-keep-original-floating-geomet
         },
     });
 
-    await igs.openLatestAvailable('pc');
-    let overlay = document.getElementById('vnm-overlay');
+    await vn.openLatestAvailable('pc');
+    let overlay = document.getElementById('vn-overlay');
     assert.equal(overlay.style.width, '900px');
     assert.equal(overlay.style.height, '540px');
     assert.equal(overlay.style.borderRadius, '18px');
     assert.equal(overlay.style.boxShadow, '0 20px 64px rgba(0,0,0,0.42)');
-    assert.match(overlay.className, /vnm-floating/);
+    assert.match(overlay.className, /vn-floating/);
 
-    await igs.openLatestAvailable('mobile');
-    overlay = document.getElementById('vnm-overlay');
+    await vn.openLatestAvailable('mobile');
+    overlay = document.getElementById('vn-overlay');
     assert.equal(overlay.style.width, '480px');
     assert.equal(overlay.style.height, '680px');
     assert.equal(overlay.style.borderRadius, '22px');
-    assert.match(overlay.className, /vnm-floating-mobile/);
+    assert.match(overlay.className, /vn-floating-mobile/);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-floating-window-drag', async () => {
@@ -433,7 +433,7 @@ test('gate:simulation:visual-novel-ui-floating-window-drag', async () => {
         id: 32,
         text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。',
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: globalObject,
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -442,9 +442,9 @@ test('gate:simulation:visual-novel-ui-floating-window-drag', async () => {
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
-    const overlay = document.getElementById('vnm-overlay');
-    const clickLayer = overlay.querySelector('#vnm-click-layer');
+    const opened = await vn.openLatestAvailable('pc');
+    const overlay = document.getElementById('vn-overlay');
+    const clickLayer = overlay.querySelector('#vn-click-layer');
     const beforeLeft = overlay.style.left;
     const beforeTop = overlay.style.top;
 
@@ -473,16 +473,16 @@ test('gate:simulation:visual-novel-ui-floating-window-drag', async () => {
     assert.notEqual(overlay.style.left, beforeLeft);
     assert.notEqual(overlay.style.top, beforeTop);
     assert.equal(overlay.style.transform, 'none');
-    assert.equal(igs.getState().visualNovelUi.activeReader.floatingState.dragged, true);
+    assert.equal(vn.getState().visualNovelUi.activeReader.floatingState.dragged, true);
 
-    const progressBeforeClick = igs.getState().visualNovelUi.activeReader.snapshot.content.progress;
+    const progressBeforeClick = vn.getState().visualNovelUi.activeReader.snapshot.content.progress;
     clickLayer.click();
-    assert.equal(igs.getState().visualNovelUi.activeReader.snapshot.content.progress, progressBeforeClick);
+    assert.equal(vn.getState().visualNovelUi.activeReader.snapshot.content.progress, progressBeforeClick);
 
     globalObject.dispatchEvent({ type: 'resize' });
     assert.equal(overlay.style.transform, 'none');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-web-mode-locks-scroll-and-restores-on-close', async () => {
@@ -502,7 +502,7 @@ test('gate:simulation:visual-novel-ui-web-mode-locks-scroll-and-restores-on-clos
         id: 19,
         text: '[角色: 艾莉]\n艾莉: 第一段。 第二段。',
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: globalObject,
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -511,8 +511,8 @@ test('gate:simulation:visual-novel-ui-web-mode-locks-scroll-and-restores-on-clos
         },
     });
 
-    const opened = await igs.openLatestAvailable('web');
-    const overlay = document.getElementById('vnm-overlay');
+    const opened = await vn.openLatestAvailable('web');
+    const overlay = document.getElementById('vn-overlay');
 
     assert.equal(document.body.style.overflow, 'hidden');
     assert.equal(document.body.style.position, 'fixed');
@@ -529,7 +529,7 @@ test('gate:simulation:visual-novel-ui-web-mode-locks-scroll-and-restores-on-clos
     assert.equal(document.documentElement.style.overflow, '');
     assert.equal(globalObject.scrollY, 128);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-fullscreen-mode-requests-browser-fullscreen-and-closes-on-exit', async () => {
@@ -545,7 +545,7 @@ test('gate:simulation:visual-novel-ui-fullscreen-mode-requests-browser-fullscree
         id: 20,
         text: '[角色: 艾莉]\n艾莉: 第一段。 第二段。',
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: globalObject,
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -554,15 +554,15 @@ test('gate:simulation:visual-novel-ui-fullscreen-mode-requests-browser-fullscree
         },
     });
 
-    await igs.openLatestAvailable('fullscreen');
+    await vn.openLatestAvailable('fullscreen');
     assert.equal(requested, 1);
     assert.equal(document.fullscreenElement, document.documentElement);
 
     document.fullscreenElement = null;
     document.dispatchEvent({ type: 'fullscreenchange' });
-    assert.equal(igs.getState().visualNovelUi.activeReader, null);
+    assert.equal(vn.getState().visualNovelUi.activeReader, null);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-settings-follows-visual-viewport-in-web-and-fullscreen', async () => {
@@ -584,7 +584,7 @@ test('gate:simulation:visual-novel-ui-settings-follows-visual-viewport-in-web-an
                 return Promise.resolve();
             };
         }
-        const igs = bootstrapIGS({
+        const vn = bootstrapVN({
             global: globalObject,
             autoAttachMagicWand: false,
             hostAdapter: {
@@ -596,20 +596,20 @@ test('gate:simulation:visual-novel-ui-settings-follows-visual-viewport-in-web-an
             },
         });
 
-        const opened = await igs.openLatestAvailable(mode);
+        const opened = await vn.openLatestAvailable(mode);
         const settingsResult = await opened.reader.controller.invokeAction('settings');
-        const overlay = document.getElementById('vnm-unified-settings');
+        const overlay = document.getElementById('vn-unified-settings');
 
         assert.equal(settingsResult.ok, true);
         assert.ok(overlay, `${mode} should mount settings overlay`);
-        assert.ok(overlay.querySelector('.vnm-settings-shell'));
-        assert.ok(overlay.querySelector('.vnm-settings-head'));
-        assert.equal(overlay.querySelectorAll('.vnm-settings-tab').length, 4);
-        assert.ok(overlay.querySelector('.vnm-settings-body'));
-        assert.equal(overlay.style['--vnm-settings-vleft'], '36px');
-        assert.equal(overlay.style['--vnm-settings-vtop'], '22px');
-        assert.equal(overlay.style['--vnm-settings-vw'], '980px');
-        assert.equal(overlay.style['--vnm-settings-vh'], '540px');
+        assert.ok(overlay.querySelector('.vn-settings-shell'));
+        assert.ok(overlay.querySelector('.vn-settings-head'));
+        assert.equal(overlay.querySelectorAll('.vn-settings-tab').length, 4);
+        assert.ok(overlay.querySelector('.vn-settings-body'));
+        assert.equal(overlay.style['--vn-settings-vleft'], '36px');
+        assert.equal(overlay.style['--vn-settings-vtop'], '22px');
+        assert.equal(overlay.style['--vn-settings-vw'], '980px');
+        assert.equal(overlay.style['--vn-settings-vh'], '540px');
 
         globalObject.visualViewport.offsetLeft = 48;
         globalObject.visualViewport.offsetTop = 40;
@@ -617,14 +617,14 @@ test('gate:simulation:visual-novel-ui-settings-follows-visual-viewport-in-web-an
         globalObject.visualViewport.height = 500;
         globalObject.visualViewport.dispatchEvent({ type: 'scroll' });
 
-        assert.equal(overlay.style['--vnm-settings-vleft'], '48px');
-        assert.equal(overlay.style['--vnm-settings-vtop'], '40px');
-        assert.equal(overlay.style['--vnm-settings-vw'], '920px');
-        assert.equal(overlay.style['--vnm-settings-vh'], '500px');
+        assert.equal(overlay.style['--vn-settings-vleft'], '48px');
+        assert.equal(overlay.style['--vn-settings-vtop'], '40px');
+        assert.equal(overlay.style['--vn-settings-vw'], '920px');
+        assert.equal(overlay.style['--vn-settings-vh'], '500px');
 
         settingsResult.controller.close();
-        assert.equal(document.getElementById('vnm-unified-settings'), null);
-        igs.destroy();
+        assert.equal(document.getElementById('vn-unified-settings'), null);
+        vn.destroy();
     }
 });
 
@@ -635,7 +635,7 @@ test('gate:simulation:visual-novel-ui-hidden-state-can-be-restored-and-toast-sho
         id: 21,
         text: '[角色: 艾莉]\n艾莉: 第一段。 第二段。',
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: globalObject,
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -644,28 +644,28 @@ test('gate:simulation:visual-novel-ui-hidden-state-can-be-restored-and-toast-sho
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     await opened.reader.controller.invokeAction('hide');
-    let overlay = document.getElementById('vnm-overlay');
-    let dialog = overlay.querySelector('#vnm-dialog');
-    let clickLayer = overlay.querySelector('#vnm-click-layer');
+    let overlay = document.getElementById('vn-overlay');
+    let dialog = overlay.querySelector('#vn-dialog');
+    let clickLayer = overlay.querySelector('#vn-click-layer');
 
-    assert.equal(dialog.classList.contains('vnm-hidden'), true);
+    assert.equal(dialog.classList.contains('vn-hidden'), true);
     clickLayer.click();
 
-    overlay = document.getElementById('vnm-overlay');
-    dialog = overlay.querySelector('#vnm-dialog');
-    assert.equal(igs.getState().visualNovelUi.activeReader.hidden, false);
-    assert.equal(dialog.classList.contains('vnm-hidden'), false);
+    overlay = document.getElementById('vn-overlay');
+    dialog = overlay.querySelector('#vn-dialog');
+    assert.equal(vn.getState().visualNovelUi.activeReader.hidden, false);
+    assert.equal(dialog.classList.contains('vn-hidden'), false);
 
     await opened.reader.controller.invokeAction('prev');
-    assert.match(overlay.querySelector('#vnm-toast').textContent, /第一段/);
+    assert.match(overlay.querySelector('#vn-toast').textContent, /第一段/);
 
     const prevTurnResult = await opened.reader.controller.invokeAction('prev-turn');
     assert.equal(prevTurnResult.reason, 'turn-switch-host-required');
-    assert.match(document.getElementById('vnm-overlay').querySelector('#vnm-toast').textContent, /楼层切换需要宿主消息列表/);
+    assert.match(document.getElementById('vn-overlay').querySelector('#vn-toast').textContent, /楼层切换需要宿主消息列表/);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps_original_entry_mode', async () => {
@@ -675,7 +675,7 @@ test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps
         { id: 9, text: '[角色: 艾莉]\n艾莉: 下一轮第一句。\n下一轮第二句。' },
     ];
     const jumped = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -693,10 +693,10 @@ test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const nextTurnResult = await opened.reader.controller.invokeAction('next-turn');
     const prevTurnResult = await nextTurnResult.reader.controller.invokeAction('prev-turn');
-    const state = igs.getState();
+    const state = vn.getState();
 
     assert.equal(opened.reader.snapshot.messageId, 8);
     assert.equal(nextTurnResult.ok, true);
@@ -710,7 +710,7 @@ test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps
     assert.deepEqual(jumped, [9, 8]);
     assert.equal(state.visualNovelUi.activeReader.snapshot.messageId, 8);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-turn-navigation-skips-user-messages', async () => {
@@ -720,7 +720,7 @@ test('gate:simulation:visual-novel-ui-turn-navigation-skips-user-messages', asyn
         { id: 9, text: '[角色: 艾莉]\n艾莉: 下一轮第一句。', isUser: false, isSystem: false, isHidden: false },
     ];
     const jumped = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -735,7 +735,7 @@ test('gate:simulation:visual-novel-ui-turn-navigation-skips-user-messages', asyn
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const prevTurnResult = await opened.reader.controller.invokeAction('prev-turn');
     const nextTurnResult = await prevTurnResult.reader.controller.invokeAction('next-turn');
 
@@ -746,7 +746,7 @@ test('gate:simulation:visual-novel-ui-turn-navigation-skips-user-messages', asyn
     assert.equal(nextTurnResult.reader.snapshot.messageId, 9);
     assert.deepEqual(jumped, [7, 9]);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-collects-provider-images-and-save-returns-downloadable-url', async () => {
@@ -761,7 +761,7 @@ test('gate:simulation:visual-novel-ui-collects-provider-images-and-save-returns-
             ],
         }),
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { document },
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -770,7 +770,7 @@ test('gate:simulation:visual-novel-ui-collects-provider-images-and-save-returns-
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const saveResult = await opened.reader.controller.invokeAction('save');
 
     assert.equal(opened.ok, true);
@@ -779,9 +779,9 @@ test('gate:simulation:visual-novel-ui-collects-provider-images-and-save-returns-
     assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/scene-1.png');
     assert.equal(saveResult.ok, true);
     assert.equal(saveResult.url, 'https://example.com/scene-1.png');
-    assert.equal(saveResult.filename, 'igs-20-1.png');
+    assert.equal(saveResult.filename, 'vn-20-1.png');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-regen-polls-external-provider-and-updates-background', async () => {
@@ -800,7 +800,7 @@ test('gate:simulation:visual-novel-ui-regen-polls-external-provider-and-updates-
     });
     messageRoot.__regenButtons.push(button);
 
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { document, setTimeout },
         autoAttachMagicWand: false,
         config: {
@@ -816,9 +816,9 @@ test('gate:simulation:visual-novel-ui-regen-polls-external-provider-and-updates-
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const regenResult = await opened.reader.controller.invokeAction('regen');
-    const state = igs.getState();
+    const state = vn.getState();
 
     assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/old-scene.png');
     assert.equal(regenResult.ok, true);
@@ -828,7 +828,7 @@ test('gate:simulation:visual-novel-ui-regen-polls-external-provider-and-updates-
     assert.equal(state.visualNovelUi.activeReader.snapshot.content.backgroundImage, 'https://example.com/new-scene.png');
     assert.equal(button.clickCount, 1);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-image-settings-fetch-models-and-test-nai-use-real-service-chain', async () => {
@@ -839,7 +839,7 @@ test('gate:simulation:visual-novel-ui-image-settings-fetch-models-and-test-nai-u
     };
     const base64Image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Zq4cAAAAASUVORK5CYII=';
     const calls = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {
             document,
             fetch: async (url, options = {}) => {
@@ -883,7 +883,7 @@ test('gate:simulation:visual-novel-ui-image-settings-fetch-models-and-test-nai-u
         },
     });
 
-    const settings = igs.openSettings({ tab: 'image', mode: 'pc' });
+    const settings = vn.openSettings({ tab: 'image', mode: 'pc' });
     const modelsResult = await settings.controller.invoke('fetch-image-models');
     const testResult = await settings.controller.invoke('test-image');
     const snapshot = settings.controller.getSnapshot();
@@ -899,7 +899,7 @@ test('gate:simulation:visual-novel-ui-image-settings-fetch-models-and-test-nai-u
     assert.equal(calls[0].url, 'https://example.com/v1/models');
     assert.equal(calls[1].url, 'https://example.com/v1/images/generations');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-external-adapter-filter-and-detection-use-real-provider-counts', async () => {
@@ -913,7 +913,7 @@ test('gate:simulation:visual-novel-ui-external-adapter-filter-and-detection-use-
             chamiButtons: [createFakeRegenerateButton(() => {})],
         }),
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { document },
         autoAttachMagicWand: false,
         config: {
@@ -928,7 +928,7 @@ test('gate:simulation:visual-novel-ui-external-adapter-filter-and-detection-use-
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const settings = opened.reader.controller.openSettings('image');
     await settings.controller.invoke('test-image');
     const snapshot = settings.controller.getSnapshot();
@@ -938,7 +938,7 @@ test('gate:simulation:visual-novel-ui-external-adapter-filter-and-detection-use-
     assert.match(snapshot.resultText.image, /已检测到 chami 插图扩展/);
     assert.match(snapshot.resultText.image, /图片 1/);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-collects-iframe-data-src-images-and-finds-regen-buttons', async () => {
@@ -962,7 +962,7 @@ test('gate:simulation:visual-novel-ui-collects-iframe-data-src-images-and-finds-
             frameDocuments: [iframeDoc],
         }),
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {
             document,
             setTimeout(callback) {
@@ -986,7 +986,7 @@ test('gate:simulation:visual-novel-ui-collects-iframe-data-src-images-and-finds-
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const regenResult = await opened.reader.controller.invokeAction('regen');
 
     assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/frame-scene-old.png');
@@ -996,7 +996,7 @@ test('gate:simulation:visual-novel-ui-collects-iframe-data-src-images-and-finds-
     assert.equal(regenResult.imageState.currentUrl, 'https://example.com/frame-scene-new.png');
     assert.equal(frameButton.clickCount, 1);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-third-segment-and-regens-matching-slot', async () => {
@@ -1034,7 +1034,7 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-th
             chamiButtons: [button],
         }),
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {
             document,
             setTimeout(callback) {
@@ -1059,9 +1059,9 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-th
         },
     });
 
-    const opened = await igs.openViewerFromMessage(37, 'pc', { startAtEnd: true });
+    const opened = await vn.openViewerFromMessage(37, 'pc', { startAtEnd: true });
     const regenResult = await opened.reader.controller.invokeAction('regen');
-    const snapshot = igs.getState().visualNovelUi.activeReader.snapshot.content;
+    const snapshot = vn.getState().visualNovelUi.activeReader.snapshot.content;
 
     assert.equal(opened.ok, true);
     assert.equal(opened.reader.snapshot.content.progress, '3 / 3   [3/6 图]');
@@ -1080,7 +1080,7 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-keeps-third-image-on-th
     assert.equal(snapshot.backgroundImage, 'https://example.com/slot-3-new.png');
     assert.equal(button.clickCount, 1);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-slot-scope-blocks-outside-message-images-and-injects-placeholders', async () => {
@@ -1101,7 +1101,7 @@ test('gate:simulation:visual-novel-ui-slot-scope-blocks-outside-message-images-a
         text: source,
         element: messageRoot,
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { document },
         autoAttachMagicWand: false,
         config: {
@@ -1116,9 +1116,9 @@ test('gate:simulation:visual-novel-ui-slot-scope-blocks-outside-message-images-a
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const mesText = messageRoot.querySelector('.mes_text');
-    const placeholders = mesText.querySelectorAll('[data-igs-image-placeholder="1"], .igs-image-placeholder');
+    const placeholders = mesText.querySelectorAll('[data-vn-image-placeholder="1"], .vn-image-placeholder');
 
     assert.equal(opened.ok, true);
     assert.equal(opened.reader.snapshot.content.imageCount, 6);
@@ -1130,7 +1130,7 @@ test('gate:simulation:visual-novel-ui-slot-scope-blocks-outside-message-images-a
     assert.match(placeholders[0].textContent, /image###slot-6###/);
     assert.equal(roleCardImage.closest('.mes_text'), null);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-image-slot-binding-falls-back-to-scan-order-when-image-tags-disabled', async () => {
@@ -1149,7 +1149,7 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-falls-back-to-scan-orde
             ],
         }),
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { document },
         autoAttachMagicWand: false,
         config: {
@@ -1167,14 +1167,14 @@ test('gate:simulation:visual-novel-ui-image-slot-binding-falls-back-to-scan-orde
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
 
     assert.equal(opened.ok, true);
     assert.equal(opened.reader.snapshot.content.imageCount, 1);
     assert.equal(opened.reader.snapshot.content.progress, '1 / 3   [1/1 图]');
     assert.equal(opened.reader.snapshot.content.currentImageUrl, 'https://example.com/fallback-scene.png');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-generic-message-images-follow-image-tags-while-paging', async () => {
@@ -1191,7 +1191,7 @@ test('gate:simulation:visual-novel-ui-generic-message-images-follow-image-tags-w
             })),
         }),
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { document },
         autoAttachMagicWand: false,
         config: {
@@ -1206,7 +1206,7 @@ test('gate:simulation:visual-novel-ui-generic-message-images-follow-image-tags-w
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
 
     assert.equal(opened.ok, true);
     assert.equal(opened.reader.snapshot.content.imageCount, 6);
@@ -1215,14 +1215,14 @@ test('gate:simulation:visual-novel-ui-generic-message-images-follow-image-tags-w
     assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/prism-generated-1.png');
 
     const nextResult = await opened.reader.controller.invokeAction('next');
-    const snapshot = igs.getState().visualNovelUi.activeReader.snapshot.content;
+    const snapshot = vn.getState().visualNovelUi.activeReader.snapshot.content;
 
     assert.equal(nextResult.ok, true);
     assert.equal(snapshot.progress, '2 / 3   [2/6 图]');
     assert.equal(snapshot.currentImageUrl, 'https://example.com/prism-generated-2.png');
     assert.equal(snapshot.backgroundImage, 'https://example.com/prism-generated-2.png');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:host-adapter-hide-state-skips-hidden-turns-in-real-bootstrap', async () => {
@@ -1234,7 +1234,7 @@ test('gate:simulation:host-adapter-hide-state-skips-hidden-turns-in-real-bootstr
         { message_id: 2, mes: '隐藏楼层' },
         { message_id: 3, mes: '第二条 AI 楼层' },
     ];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {
             document,
             TavernHelper: {
@@ -1252,7 +1252,7 @@ test('gate:simulation:host-adapter-hide-state-skips-hidden-turns-in-real-bootstr
         autoAttachMagicWand: false,
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const prevTurn = await opened.reader.controller.invokeAction('prev-turn');
 
     assert.equal(opened.reader.snapshot.messageId, 3);
@@ -1260,12 +1260,12 @@ test('gate:simulation:host-adapter-hide-state-skips-hidden-turns-in-real-bootstr
     assert.equal(prevTurn.messageId, 1);
     assert.deepEqual(jumps, ['/chat-jump 1']);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:host-adapter-opens-reader-from-sillytavern-context-without-tavernhelper', async () => {
     const document = createFakeDocument();
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {
             document,
             SillyTavern: {
@@ -1283,13 +1283,13 @@ test('gate:simulation:host-adapter-opens-reader-from-sillytavern-context-without
         autoAttachMagicWand: false,
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
 
     assert.equal(opened.ok, true);
     assert.equal(opened.reader.snapshot.messageId, 2);
     assert.match(opened.reader.snapshot.content.text, /第二条 AI 楼层/);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:visual-novel-ui-long-text-scrolls-not-overlaps-input', async () => {
@@ -1297,7 +1297,7 @@ test('gate:simulation:visual-novel-ui-long-text-scrolls-not-overlaps-input', asy
         id: 33,
         text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。\n第三段。\n第四段。',
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         autoAttachMagicWand: false,
         hostAdapter: {
@@ -1306,13 +1306,13 @@ test('gate:simulation:visual-novel-ui-long-text-scrolls-not-overlaps-input', asy
         },
     });
 
-    const opened = await igs.openLatestAvailable('pc');
+    const opened = await vn.openLatestAvailable('pc');
     const styleText = opened.reader.snapshot.source.styleText;
 
-    assert.match(styleText, /#vnm-overlay\.vnm-floating \.vnm-text\{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;\}/);
-    assert.match(styleText, /#vnm-overlay\.vnm-floating \.vnm-controls\{flex-shrink:0;\}/);
+    assert.match(styleText, /#vn-overlay\.vn-floating \.vn-text\{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;\}/);
+    assert.match(styleText, /#vn-overlay\.vn-floating \.vn-controls\{flex-shrink:0;\}/);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:text-preset-pipeline-refresh', async () => {
@@ -1321,7 +1321,7 @@ test('gate:simulation:text-preset-pipeline-refresh', async () => {
     const textFormatPreset = readJson('fixtures/text/text-format-preset.json');
     const sceneRegexPreset = readJson('fixtures/text/scene-regex-preset.json');
     const rendered = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         hostAdapter: {
             getCurrentMessage: async () => message,
@@ -1336,7 +1336,7 @@ test('gate:simulation:text-preset-pipeline-refresh', async () => {
         },
     });
 
-    const result = await igs.refresh({
+    const result = await vn.refresh({
         textFilterPreset,
         textFormatPreset,
         sceneRegexPreset,
@@ -1357,7 +1357,7 @@ test('gate:simulation:text-preset-pipeline-refresh', async () => {
     assert.equal(result.render.stage.layers.dialogue.text, '你好，欢迎来到图书馆。');
     assert.equal(rendered[0].layers.dialogue.speaker, '玉子');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:preset-registry-current-drives-refresh', async () => {
@@ -1367,7 +1367,7 @@ test('gate:simulation:preset-registry-current-drives-refresh', async () => {
         [PRESET_STORE_KEY]: JSON.stringify(snapshot),
     });
     const rendered = [];
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { localStorage: storage },
         hostAdapter: {
             getCurrentMessage: async () => message,
@@ -1382,7 +1382,7 @@ test('gate:simulation:preset-registry-current-drives-refresh', async () => {
         },
     });
 
-    const result = await igs.refresh({
+    const result = await vn.refresh({
         backgroundRules: [
             { id: 'bg.library.rain', priority: 20, match: { location: ['图书馆'], time: ['夜晚'], weather: ['雨'] } },
         ],
@@ -1396,7 +1396,7 @@ test('gate:simulation:preset-registry-current-drives-refresh', async () => {
     assert.equal(result.render.stage.layers.dialogue.speaker, '玉子');
     assert.equal(rendered.length, 1);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 test('gate:simulation:bad-import-keeps-last-working-refresh', async () => {
@@ -1407,7 +1407,7 @@ test('gate:simulation:bad-import-keeps-last-working-refresh', async () => {
         [PRESET_STORE_KEY]: JSON.stringify(snapshot),
     });
     const presetRegistry = createPresetRegistry({ storage });
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: { localStorage: storage },
         presetRegistry,
         hostAdapter: {
@@ -1417,7 +1417,7 @@ test('gate:simulation:bad-import-keeps-last-working-refresh', async () => {
     });
 
     const importResult = presetRegistry.importBundle(badBundle);
-    const result = await igs.refresh({
+    const result = await vn.refresh({
         backgroundRules: [
             { id: 'bg.library.rain', priority: 20, match: { location: ['图书馆'], time: ['夜晚'], weather: ['雨'] } },
         ],
@@ -1431,7 +1431,7 @@ test('gate:simulation:bad-import-keeps-last-working-refresh', async () => {
     assert.equal(result.scene.text, '你好，欢迎来到图书馆。');
     assert.equal(result.scene.textPipelineErrors.length, 0);
 
-    igs.destroy();
+    vn.destroy();
 });
 
 function readJson(relativePath) {
@@ -1463,7 +1463,7 @@ function createFakeDocument(viewOptions = {}) {
             return queryAll(document.documentElement, selector);
         },
         elementFromPoint() {
-            return document.getElementById('vnm-overlay') || document.body;
+            return document.getElementById('vn-overlay') || document.body;
         },
         exitFullscreen() {
             document.fullscreenElement = null;
@@ -1708,11 +1708,11 @@ function matchesSelector(element, selector) {
         return element.classList.contains('list-group')
             && Boolean(element.parentNode && element.parentNode.classList && element.parentNode.classList.contains('extensions_block'));
     }
-    if (selector === '[data-vnm-magic-entry="1"]') {
-        return element.getAttribute('data-vnm-magic-entry') === '1';
+    if (selector === '[data-vn-magic-entry="1"]') {
+        return element.getAttribute('data-vn-magic-entry') === '1';
     }
-    if (selector === '[data-igs-magic-entry="1"]') {
-        return element.getAttribute('data-igs-magic-entry') === '1';
+    if (selector === '[data-vn-magic-entry="1"]') {
+        return element.getAttribute('data-vn-magic-entry') === '1';
     }
     if (selector.startsWith('#')) return element.id === selector.slice(1);
     if (selector.startsWith('.')) {

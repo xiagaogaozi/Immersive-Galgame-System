@@ -5,10 +5,10 @@ import {
 } from '../scene/message-source.js';
 import { collectDomRegenerateButtonCandidates } from '../generated-images/dom-image-candidates.js';
 
-const INTERNAL_READER_ATTR = 'data-vnm-internal-reader';
+const INTERNAL_READER_ATTR = 'data-vn-internal-reader';
 const HIDDEN_CACHE_WINDOW_MS = 300;
-const IGS_IMAGE_PLACEHOLDER_SELECTOR = '[data-igs-image-placeholder="1"], .igs-image-placeholder';
-const LEGACY_IMAGE_PLACEHOLDER_SELECTOR = '.vnm-img-ph';
+const VN_IMAGE_PLACEHOLDER_SELECTOR = '[data-vn-image-placeholder="1"], .vn-image-placeholder';
+const LEGACY_IMAGE_PLACEHOLDER_SELECTOR = '.vn-img-ph';
 
 export function createTavernHelperAdapter(globalObject = globalThis.window || globalThis) {
     let hiddenMessageCache = { at: 0, ids: null };
@@ -261,7 +261,7 @@ function normalizeImagePlaceholderBlocks(imageSlots) {
 function getOwnedImagePlaceholders(mesText) {
     if (!mesText || typeof mesText.querySelectorAll !== 'function') return [];
     try {
-        return Array.from(mesText.querySelectorAll(IGS_IMAGE_PLACEHOLDER_SELECTOR));
+        return Array.from(mesText.querySelectorAll(VN_IMAGE_PLACEHOLDER_SELECTOR));
     } catch (error) {
         return [];
     }
@@ -272,10 +272,10 @@ function createMessageImagePlaceholderNode(ownerDocument, textContent) {
         ? ownerDocument.createElement('div')
         : buildFallbackPlaceholderNode();
     if (typeof node.setAttribute === 'function') {
-        node.setAttribute('data-vnm-placeholder', '1');
-        node.setAttribute('data-igs-image-placeholder', '1');
+        node.setAttribute('data-vn-placeholder', '1');
+        node.setAttribute('data-vn-image-placeholder', '1');
     }
-    node.className = 'vnm-img-ph igs-image-placeholder';
+    node.className = 'vn-img-ph vn-image-placeholder';
     node.style = node.style || {};
     node.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;font-size:0';
     node.textContent = String(textContent || '');

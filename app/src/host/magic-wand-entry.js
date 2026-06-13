@@ -4,8 +4,8 @@ const DEFAULT_MENU_SELECTORS = Object.freeze([
     '.extensions_block .list-group',
 ]);
 
-const ENTRY_SELECTOR = '[data-vnm-magic-entry="1"]';
-const LEGACY_ENTRY_SELECTOR = '[data-igs-magic-entry="1"]';
+const ENTRY_SELECTOR = '[data-vn-magic-entry="1"]';
+const LEGACY_ENTRY_SELECTOR = '[data-vn-magic-entry="1"]';
 
 export function createMagicWandEntry(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
@@ -63,7 +63,7 @@ export function createMagicWandEntry(options = {}) {
                 entries += 1;
                 continue;
             }
-            const usePrimaryId = !found.doc.getElementById('vnm-magic-entry-btn');
+            const usePrimaryId = !found.doc.getElementById('vn-magic-entry-btn');
             found.menu.appendChild(createMagicEntryButton(found.doc, usePrimaryId));
             entries += 1;
         }
@@ -123,11 +123,11 @@ export function createMagicWandEntry(options = {}) {
 
     function createMagicEntryButton(doc, usePrimaryId) {
         const button = doc.createElement('a');
-        if (usePrimaryId) button.id = 'vnm-magic-entry-btn';
-        button.className = 'list-group-item vnm-magic-entry';
+        if (usePrimaryId) button.id = 'vn-magic-entry-btn';
+        button.className = 'list-group-item vn-magic-entry';
         button.href = 'javascript:void(0)';
-        button.setAttribute('data-vnm-magic-entry', '1');
-        button.setAttribute('data-vnm-version', version);
+        button.setAttribute('data-vn-magic-entry', '1');
+        button.setAttribute('data-vn-version', version);
         button.setAttribute('title', `打开${label}`);
         button.setAttribute('aria-label', `打开${label}`);
         button.innerHTML = `<span class="fa-solid fa-book-open" aria-hidden="true"></span> ${escapeHtml(label)}`;
@@ -142,17 +142,17 @@ export function createMagicWandEntry(options = {}) {
         }
         const mode = resolveSafeMode();
         if (!open) {
-            notify('IGS 入口尚未绑定打开函数。', 'error');
+            notify('VN 入口尚未绑定打开函数。', 'error');
             return { ok: false, reason: 'missing-open-handler' };
         }
 
         const result = open(mode);
         Promise.resolve(result).then((resolved) => {
             if (!resolved || resolved.ok === false) {
-                notify(`IGS 阅读器打开失败：${resolveErrorMessage(resolved)}`, 'error');
+                notify(`VN 阅读器打开失败：${resolveErrorMessage(resolved)}`, 'error');
             }
         }).catch((error) => {
-            notify(`IGS 阅读器打开失败：${error && error.message || String(error)}`, 'error');
+            notify(`VN 阅读器打开失败：${error && error.message || String(error)}`, 'error');
         });
 
         closeMagicWandMenu(forcedCurrentTarget || event && event.currentTarget);
@@ -269,7 +269,7 @@ export function createMagicWandEntry(options = {}) {
         [ENTRY_SELECTOR, LEGACY_ENTRY_SELECTOR].forEach((selector) => {
             safeQueryAll(candidateDoc, selector).forEach((button) => {
                 const isLegacy = selector === LEGACY_ENTRY_SELECTOR;
-                const versionAttr = isLegacy ? 'data-igs-version' : 'data-vnm-version';
+                const versionAttr = isLegacy ? 'data-vn-version' : 'data-vn-version';
                 const shouldRemove = isLegacy
                     || !menuElements.includes(button.parentNode)
                     || !isMagicEntryListItem(button)
@@ -337,9 +337,9 @@ function escapeHtml(value) {
 function defaultNotify(message, type = 'info') {
     const root = globalThis.window || globalThis;
     if (root.toastr && typeof root.toastr[type] === 'function') {
-        root.toastr[type](message, 'IGS');
+        root.toastr[type](message, 'VN');
         return;
     }
     const logger = type === 'error' ? console.error : console.info;
-    logger('[IGS]', message);
+    logger('[VN]', message);
 }

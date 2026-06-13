@@ -7,33 +7,33 @@
 
 ## 必须覆盖的命名空间
 
-- `.igs-stage-*`
-- `.igs-toolbar-*`
-- `.igs-dialogue-*`
-- `.igs-bubble-*`
-- `.igs-nameplate-*`
-- `.igs-avatar-*`
-- `.igs-hud-*`
-- `.igs-choice-*`
-- `.igs-system-*`
-- `.igs-settings-*`
-- `.igs-shujuku-*`
-- `.igs-resource-*`
-- `.igs-provider-*`
+- `.vn-stage-*`
+- `.vn-toolbar-*`
+- `.vn-dialogue-*`
+- `.vn-bubble-*`
+- `.vn-nameplate-*`
+- `.vn-avatar-*`
+- `.vn-hud-*`
+- `.vn-choice-*`
+- `.vn-system-*`
+- `.vn-settings-*`
+- `.vn-shujuku-*`
+- `.vn-resource-*`
+- `.vn-provider-*`
 
 ## 稳定槽位
 
 换皮 CSS 必须保留这些核心 DOM 槽位，不允许用 `display:none` 或重建 DOM 的方式破坏设置联动：
 
-- `.igs-stage`
-- `.igs-background-layer`
-- `.igs-generated-layer`
-- `.igs-character-layer`
-- `.igs-dialogue-layer`
-- `.igs-hud-layer`
-- `.igs-toolbar`
-- `.igs-choice-layer`
-- `.igs-system-layer`
+- `.vn-stage`
+- `.vn-background-layer`
+- `.vn-generated-layer`
+- `.vn-character-layer`
+- `.vn-dialogue-layer`
+- `.vn-hud-layer`
+- `.vn-toolbar`
+- `.vn-choice-layer`
+- `.vn-system-layer`
 
 ## 覆盖范围
 
@@ -49,17 +49,17 @@
 
 `设置 -> 阅读器` 写入语义配置，样式系统负责同步为 CSS 变量和属性：
 
-- `data-igs-toolbar-layout`
-- `data-igs-toolbar-placement`
-- `data-igs-dialogue-style`
-- `data-igs-nameplate-visible`
-- `data-igs-avatar-visible`
-- `--igs-dialogue-font-size`
-- `--igs-dialogue-width`
-- `--igs-dialogue-height`
-- `--igs-dialogue-opacity`
-- `--igs-toolbar-placement-x`
-- `--igs-toolbar-placement-y`
+- `data-vn-toolbar-layout`
+- `data-vn-toolbar-placement`
+- `data-vn-dialogue-style`
+- `data-vn-nameplate-visible`
+- `data-vn-avatar-visible`
+- `--vn-dialogue-font-size`
+- `--vn-dialogue-width`
+- `--vn-dialogue-height`
+- `--vn-dialogue-opacity`
+- `--vn-toolbar-placement-x`
+- `--vn-toolbar-placement-y`
 
 Skin CSS 应优先读取这些变量和属性，而不是写死尺寸。
 

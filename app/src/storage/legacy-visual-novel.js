@@ -1,7 +1,7 @@
 export const LEGACY_VN_KEYS = Object.freeze({
-    bridge: 'vnm_visual_novel_bridge_config',
-    readerPrefix: 'vnm-reader-settings-v9-',
-    displayMode: 'vnm-display-mode',
+    bridge: 'vn_visual_novel_bridge_config',
+    readerPrefix: 'vn-reader-settings-v9-',
+    displayMode: 'vn-display-mode',
 });
 
 export const LEGACY_READER_MODES = Object.freeze(['pc', 'mobile', 'web', 'fullscreen']);

@@ -19,7 +19,7 @@ import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 
-export function bootstrapIGS(options = {}) {
+export function bootstrapVN(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
     const events = options.events || createEventBus();
     const hostAdapter = options.hostAdapter || createTavernHelperAdapter(globalObject);
@@ -47,7 +47,7 @@ export function bootstrapIGS(options = {}) {
     };
 
     const app = {
-        version: '0.3.16',
+        version: '0.3.17',
         global: globalObject,
         events,
         hostAdapter,
@@ -131,7 +131,7 @@ export function bootstrapIGS(options = {}) {
         app.magicWandEntry.attach();
     }
     state.status = 'ready';
-    events.emit('igs:ready', publicApi);
+    events.emit('vn:ready', publicApi);
 
     return publicApi;
 
@@ -167,7 +167,7 @@ export function bootstrapIGS(options = {}) {
         });
         state.currentScene = renderedScene;
         state.lastRender = renderResult;
-        events.emit('igs:scene', renderedScene);
+        events.emit('vn:scene', renderedScene);
         return { ok: true, scene: renderedScene, render: renderResult };
     }
 
@@ -284,7 +284,7 @@ export function bootstrapIGS(options = {}) {
             ...cloneData(state.config || {}),
             ...cloneData(nextBridge),
         };
-        events.emit('igs:legacy-settings-updated', cloneData(state.legacyVisualNovel));
+        events.emit('vn:legacy-settings-updated', cloneData(state.legacyVisualNovel));
         return {
             ok: true,
             legacy: cloneData(state.legacyVisualNovel),
@@ -303,14 +303,14 @@ export function bootstrapIGS(options = {}) {
             app.magicWandEntry.destroy();
         }
         detachPublicApi(globalObject, publicApi);
-        events.emit('igs:destroy', publicApi);
+        events.emit('vn:destroy', publicApi);
         events.clear();
         return { ok: true };
     }
 
     function ensureAlive() {
         if (state.destroyed) {
-            throw new Error('IGS instance has been destroyed.');
+            throw new Error('VN instance has been destroyed.');
         }
     }
 
@@ -394,9 +394,9 @@ export function bootstrapIGS(options = {}) {
     }
 }
 
-export function destroyIGS(globalObject = globalThis.window || globalThis) {
-    if (globalObject && globalObject.IGS && typeof globalObject.IGS.destroy === 'function') {
-        return globalObject.IGS.destroy();
+export function destroyVN(globalObject = globalThis.window || globalThis) {
+    if (globalObject && globalObject.VN && typeof globalObject.VN.destroy === 'function') {
+        return globalObject.VN.destroy();
     }
     return { ok: true, reason: 'not-running' };
 }

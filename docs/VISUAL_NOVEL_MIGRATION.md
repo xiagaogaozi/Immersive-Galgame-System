@@ -1,6 +1,6 @@
 # Visual Novel 迁移说明
 
-本文件记录 `Visual Novel v9.6.6` 到 IGS 的分阶段迁移面，避免后续重构时一边搬代码一边猜行为。
+本文件记录 `Visual Novel v9.6.6` 到 VN 的分阶段迁移面，避免后续重构时一边搬代码一边猜行为。
 
 ## 当前参考源
 
@@ -33,18 +33,18 @@ destroy()
 ## 原版旧存储键
 
 ```text
-vnm_visual_novel_bridge_config
-vnm-reader-settings-v9-pc
-vnm-reader-settings-v9-mobile
-vnm-reader-settings-v9-web
-vnm-reader-settings-v9-fullscreen
-vnm-display-mode
+vn_visual_novel_bridge_config
+vn-reader-settings-v9-pc
+vn-reader-settings-v9-mobile
+vn-reader-settings-v9-web
+vn-reader-settings-v9-fullscreen
+vn-display-mode
 ```
 
 ## 第一阶段目标
 
-- 在 `window.IGS` 上保留同名兼容方法。
-- 支持只读读取旧 `vnm_*` 配置。
+- 在 `window.VN` 上保留同名兼容方法。
+- 支持只读读取旧 `vn_*` 配置。
 - 用 fixtures 和 `npm run gate` 固化兼容行为。
 - 不直接迁移完整阅读器 DOM。
 - 不修改原版 `Visual Novel` 项目。
@@ -58,7 +58,7 @@ vnm-display-mode
 
 ## 第二阶段已接入
 
-- `app/src/visual/reader-state.js`：把 reader mode、legacy reader settings、viewport 和 `data-igs-*` / `--igs-*` 桥接字段归一化。
+- `app/src/visual/reader-state.js`：把 reader mode、legacy reader settings、viewport 和 `data-vn-*` / `--vn-*` 桥接字段归一化。
 - `app/src/visual/stage-model.js`：把 scene 转成稳定槽位的 stage model，供 style contract 和模拟测试直接校验。
 - `app/src/visual/stage-renderer.js` 与 `app/src/visual/layer-controller.js`：渲染结果不再只透传 scene，而是返回包含 `stage`、`renderedLayers` 的可测试结构。
 - 当前仍不迁移原版完整阅读器 DOM；第二阶段的目标是先固定 reader state 与视觉槽位边界。
@@ -72,10 +72,10 @@ vnm-display-mode
 
 ## 第四阶段已接入
 
-- `app/src/visual/visual-novel-ui/original-reader-source.js`：固定原版阅读器 overlay 的 HTML/CSS/selectors 契约，保留 `#vnm-overlay`、`.vnm-dialog`、`.vnm-ctrl-bar`、`#vnm-input`、`#vnm-send-btn`、`#vnm-settings`、`#vnm-toast` 等结构。
-- `app/src/visual/visual-novel-ui/settings-shell.js`、`settings-style.js`、`settings-tabs.js`、`icons.js`：拆出原版统一设置面板的 shell、样式、四个 tab 模板和 reader mode 图标，作为 IGS 内部的原版 UI 等价层。
+- `app/src/visual/visual-novel-ui/original-reader-source.js`：固定原版阅读器 overlay 的 HTML/CSS/selectors 契约，保留 `#vn-overlay`、`.vn-dialog`、`.vn-ctrl-bar`、`#vn-input`、`#vn-send-btn`、`#vn-settings`、`#vn-toast` 等结构。
+- `app/src/visual/visual-novel-ui/settings-shell.js`、`settings-style.js`、`settings-tabs.js`、`icons.js`：拆出原版统一设置面板的 shell、样式、四个 tab 模板和 reader mode 图标，作为 VN 内部的原版 UI 等价层。
 - `app/src/visual/visual-novel-ui/reader-host.js`：提供浏览器真 DOM 挂载和 Node snapshot/controller 双轨宿主，接通 `openSettings()`、`openLatestAvailable()`、`openViewerFromMessage()` 与 `typeAndSend()` 的最小闭环。
-- `app/src/storage/legacy-visual-novel.js`：从只读旧 `vnm_*` 存储升级为读写兼容，统一设置面板即时保存后会同步回写旧 key。
+- `app/src/storage/legacy-visual-novel.js`：从只读旧 `vn_*` 存储升级为读写兼容，统一设置面板即时保存后会同步回写旧 key。
 - `app/fixtures/visual-novel-ui/*` 与对应 gate：新增原版阅读器 selector/几何快照、统一设置面板 tab/字段/动作快照，以及 `Enter` 发送 / `Shift+Enter` 不发送的模拟验收。
 
 ## 第四阶段仍不做
