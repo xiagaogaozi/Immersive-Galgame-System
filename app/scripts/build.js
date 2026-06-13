@@ -21,7 +21,7 @@ const css = [
 ].join('\n');
 
 const manifest = {
-    name: 'immersive-galgame-system',
+    name: '沉浸式 Galgame 系统',
     version: packageJson.version,
     entry: 'igs.bundle.js',
     style: 'igs.bundle.css',

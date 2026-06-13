@@ -6,6 +6,9 @@ const projectRoot = path.resolve(appRoot, '..');
 const loaderRoot = path.join(projectRoot, 'loader');
 const jsPath = path.join(loaderRoot, 'igs-loader.js');
 const jsonPath = path.join(loaderRoot, 'igs-loader.json');
+const packageJson = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8'));
+const releaseJsonName = `酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v${packageJson.version}.json`;
+const releaseJsonPath = path.join(loaderRoot, releaseJsonName);
 
 const content = fs.readFileSync(jsPath, 'utf8');
 if (!content.includes('igs.bundle.js') || !content.includes('igs.bundle.css')) {
@@ -35,10 +38,16 @@ const loaderJson = {
 };
 
 fs.writeFileSync(jsonPath, `${JSON.stringify(loaderJson, null, 2)}\n`, 'utf8');
+fs.writeFileSync(releaseJsonPath, `${JSON.stringify(loaderJson, null, 2)}\n`, 'utf8');
 
 const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
 if (parsed.content !== content) {
     throw new Error('Loader JSON content does not match loader source.');
 }
+const releaseParsed = JSON.parse(fs.readFileSync(releaseJsonPath, 'utf8'));
+if (releaseParsed.content !== content || releaseParsed.name !== loaderJson.name) {
+    throw new Error('Versioned release JSON does not match loader source.');
+}
 
 console.log(`loader:build ok ${path.relative(projectRoot, jsonPath)}`);
+console.log(`loader:release ok ${path.relative(projectRoot, releaseJsonPath)}`);

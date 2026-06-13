@@ -71,7 +71,10 @@ app/dist/manifest.json
 
 ```text
 loader/igs-loader.json
+loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json
 ```
+
+`loader/igs-loader.json` 是固定内部入口，便于脚本和测试稳定定位；`loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json` 是给用户导入的版本化发布文件。两者内容必须一致，且 JSON 的 `name` 必须保持 `沉浸式 Galgame 系统（自动更新）`。
 
 loader 源码：
 
@@ -97,7 +100,7 @@ loader/igs-loader.js
 | 阶段 | 模式 | 输出 | 入口 |
 | --- | --- | --- | --- |
 | IGS 主程序开发 | B. JS-Slash-Runner 纯 JS 脚本 / 独立 bundle 源码 | `app/dist/igs.bundle.js` | `window.IGS` / `window.ImmersiveGalgameSystem` |
-| 酒馆导入发布 | A. JS-Slash-Runner Script JSON | `loader/igs-loader.json` | `window.TavernHelper` 环境中的 loader |
+| 酒馆导入发布 | A. JS-Slash-Runner Script JSON | `loader/igs-loader.json` + `loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json` | `window.TavernHelper` 环境中的 loader |
 
 不要把最终导入 JSON 写进 `app/src/`。不要把主程序业务逻辑写进 `loader/`。
 
@@ -122,7 +125,7 @@ structure -> static -> test -> simulate -> perf -> build
 
 ## loader JSON 格式
 
-`loader/igs-loader.json` 必须保持这种结构：
+`loader/igs-loader.json` 和版本化中文发布文件必须保持这种结构：
 
 ```json
 {
@@ -148,6 +151,7 @@ structure -> static -> test -> simulate -> perf -> build
 
 ```js
 JSON.parse(fs.readFileSync('loader/igs-loader.json', 'utf8')).content === fs.readFileSync('loader/igs-loader.js', 'utf8')
+JSON.parse(fs.readFileSync('loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json', 'utf8')).content === fs.readFileSync('loader/igs-loader.js', 'utf8')
 ```
 
 ## 远程 bundle 地址规则
@@ -212,10 +216,11 @@ git ls-remote --tags origin v<当前版本>
 
 `git rev-parse --show-toplevel` 必须返回 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\沉浸式galgame系统`。如果标签已存在，不强推覆盖，提升 patch 版本后重新发布。
 
-真正生成 `loader/igs-loader.json` 后，还需要验证：
+真正生成 `loader/igs-loader.json` 和版本化中文发布文件后，还需要验证：
 
 ```powershell
 node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); if(j.type!=='script'||typeof j.content!=='string'||!j.content.includes('igs.bundle.js')) throw new Error('bad loader json');"
+node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); const b=JSON.parse(fs.readFileSync('loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json','utf8')); if(a.content!==b.content||a.name!==b.name) throw new Error('release json mismatch');"
 ```
 
 ## 更新日志要求

@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vnm-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.14');
+    assert.equal(entry.getAttribute('data-vnm-version'), '0.3.15');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式 Galgame 系统/);
     assert.equal(igs.getMagicWandEntryState().attached, true);

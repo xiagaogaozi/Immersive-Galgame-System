@@ -19,6 +19,7 @@
 - `app/dist/igs.bundle.css`
 - `app/dist/manifest.json`
 - `loader/igs-loader.json`
+- `loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json`
 - `loader/igs-loader.js`
 
 `app/dist/igs.bundle.js` 是给 loader 远程加载的自包含主程序文件。它不能只是 `import ../src/index.js` 的转发入口，否则 cache bust 只会刷新入口文件，浏览器或酒馆仍可能复用旧的源码子模块。
@@ -29,11 +30,11 @@
 - loader 只负责加载远程 bundle。
 - 主程序逻辑只来自 `app/`。
 - 原版 Visual Novel 只作为迁移来源和兼容参考，路径是 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
-- 最终给用户导入的是 `loader/igs-loader.json`，不是 `app/dist/igs.bundle.js`。
+- 最终给用户导入的是版本化中文发布文件 `loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json`，不是 `app/dist/igs.bundle.js`。`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
 
 ## loader JSON 格式
 
-`loader/igs-loader.json` 必须是 JS-Slash-Runner 可导入脚本：
+`loader/igs-loader.json` 和版本化中文发布文件必须都是 JS-Slash-Runner 可导入脚本：
 
 ```json
 {
@@ -84,6 +85,7 @@ npm run perf
 
 ```powershell
 node -e "const fs=require('fs'); const js=fs.readFileSync('loader/igs-loader.js','utf8'); const j=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); if(j.type!=='script'||j.content!==js||!j.content.includes('igs.bundle.js')) throw new Error('bad loader json');"
+node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('loader/igs-loader.json','utf8')); const b=JSON.parse(fs.readFileSync('loader/酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v<当前版本>.json','utf8')); if(a.content!==b.content||a.name!==b.name) throw new Error('release json mismatch');"
 ```
 
 ## 上传流程

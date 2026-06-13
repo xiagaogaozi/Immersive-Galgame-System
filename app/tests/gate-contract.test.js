@@ -87,16 +87,23 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.doesNotMatch(loaderJson.content, /yuzi-phone/i);
     assert.equal(loaderJson.button.enabled, false);
     assert.deepEqual(loaderJson.button.buttons, []);
+
+    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', '酒馆助手脚本-沉浸式 Galgame 系统（自动更新） v0.3.15.json'), 'utf8'));
+    assert.equal(releaseJson.name, loaderJson.name);
+    assert.equal(releaseJson.content, loaderSource);
 });
 
 test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
     const bundle = fs.readFileSync(path.join(appRoot, 'dist', 'igs.bundle.js'), 'utf8');
+    const manifest = readJson('dist/manifest.json');
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0\.3\.14/);
+    assert.match(bundle, /IGS version: 0\.3\.15/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
+    assert.equal(manifest.name, '沉浸式 Galgame 系统');
+    assert.equal(manifest.version, '0.3.15');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -349,7 +356,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.14');
+    const source = getOriginalReaderSource('0.3.15');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

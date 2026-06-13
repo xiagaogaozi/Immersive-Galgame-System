@@ -264,7 +264,7 @@ test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.14',
+            version: '0.3.15',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -291,7 +291,7 @@ test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.14',
+            version: '0.3.15',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -317,7 +317,7 @@ test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-mul
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.3.14',
+            version: '0.3.15',
             bridge: { openMode: 'pc', showToasts: true },
             readerMode: 'pc',
             readerSettings: {},
@@ -419,7 +419,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.3.14',
+        version: '0.3.15',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),

@@ -32,7 +32,7 @@ export function createPublicApi(app) {
     const visualNovelCompatApi = createVisualNovelCompatApi(app);
 
     return {
-        name: 'Immersive Galgame System',
+        name: '沉浸式 Galgame 系统',
         version: app.version,
         api: groupedApi,
 
