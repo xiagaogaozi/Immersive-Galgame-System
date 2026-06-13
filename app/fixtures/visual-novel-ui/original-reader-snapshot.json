@@ -9,6 +9,7 @@
     "#vnm-bar-btns",
     "#vnm-settings",
     ".vnm-controls",
+    "#vnm-send-status",
     "#vnm-input",
     "#vnm-send-btn",
     "#vnm-toast"

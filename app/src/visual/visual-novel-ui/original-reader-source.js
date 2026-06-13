@@ -1,4 +1,4 @@
-const ICONS = Object.freeze({
+export const ORIGINAL_READER_ICONS = Object.freeze({
     prev: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="15 18 9 12 15 6"/></svg>',
     next: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="9 18 15 12 9 6"/></svg>',
     regen: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
@@ -11,16 +11,16 @@ const ICONS = Object.freeze({
     close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
 });
 
-const TOOLBAR_BUTTONS = [
-    { id: 'prev', title: '上一段', html: ICONS.prev },
-    { id: 'next', title: '下一段', html: ICONS.next },
-    { id: 'regen', title: '重新生成背景图', html: ICONS.regen },
-    { id: 'save', title: '保存背景图', html: ICONS.save },
-    { id: 'settings', title: '设置', html: ICONS.settings },
-    { id: 'hide', title: '隐藏/显示对话框', html: ICONS.hide },
-    { id: 'prev-turn', title: '上一轮', html: ICONS.prevTurn },
-    { id: 'next-turn', title: '下一轮', html: ICONS.nextTurn },
-];
+export const ORIGINAL_READER_TOOLBAR_BUTTONS = Object.freeze([
+    { id: 'prev', title: '上一段', html: ORIGINAL_READER_ICONS.prev },
+    { id: 'next', title: '下一段', html: ORIGINAL_READER_ICONS.next },
+    { id: 'regen', title: '重新生成背景图', html: ORIGINAL_READER_ICONS.regen },
+    { id: 'save', title: '保存背景图', html: ORIGINAL_READER_ICONS.save },
+    { id: 'settings', title: '设置', html: ORIGINAL_READER_ICONS.settings },
+    { id: 'hide', title: '隐藏/显示对话框', html: ORIGINAL_READER_ICONS.hide },
+    { id: 'prev-turn', title: '上一轮', html: ORIGINAL_READER_ICONS.prevTurn },
+    { id: 'next-turn', title: '下一轮', html: ORIGINAL_READER_ICONS.nextTurn },
+]);
 
 const ORIGINAL_READER_STYLE_TEXT = `
 #vnm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;height:100dvh;z-index:900;background:#000;overflow:hidden;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#fff;}
@@ -50,6 +50,9 @@ const ORIGINAL_READER_STYLE_TEXT = `
 .vnm-send-btn:hover{background:rgba(255,255,255,.14);color:rgba(255,255,255,.92);}
 .vnm-send-btn:focus{border-color:rgba(92,170,255,.58);box-shadow:0 0 0 2px rgba(92,170,255,.18);outline:none;}
 .vnm-send-btn:disabled{opacity:.55;pointer-events:none;}
+@keyframes vnm-spin{to{transform:rotate(360deg);}}
+.vnm-spinner{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:vnm-spin .8s linear infinite;}
+#vnm-send-status{display:none;flex:1;align-items:center;gap:8px;padding:8px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;font-size:13px;color:rgba(255,255,255,.55);letter-spacing:.3px;}
 #vnm-settings{display:none;position:absolute;right:0;bottom:calc(100% + 10px);min-width:232px;background:rgba(16,16,20,.92);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(40px) saturate(180%);border-radius:18px;padding:16px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.6);z-index:30;}
 #vnm-toast{position:absolute;left:50%;top:24px;transform:translateX(-50%);min-width:200px;max-width:min(420px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;background:rgba(16,16,20,.88);border:1px solid rgba(255,255,255,.12);font-size:12px;line-height:1.45;opacity:0;pointer-events:none;}
 `.trim();
@@ -61,18 +64,19 @@ const ORIGINAL_READER_HTML = `
 <div class="vnm-dialog" id="vnm-dialog">
   <div class="vnm-ctrl-bar" id="vnm-ctrl-bar">
     <div id="vnm-bar-btns">
-      ${TOOLBAR_BUTTONS.map((button) => (
+      ${ORIGINAL_READER_TOOLBAR_BUTTONS.map((button) => (
         `<button class="vnm-icon-btn" id="vnm-btn-${button.id}" data-act="${button.id}" title="${button.title}" type="button">${button.html}</button>`
       )).join('')}
     </div>
     <div id="vnm-settings" aria-hidden="true"></div>
     <div id="vnm-bar-pinned"></div>
-    <button class="vnm-icon-btn" data-act="toggle-bar" title="收纳/展开按钮" type="button">${ICONS.toggleBar}</button>
-    <button class="vnm-icon-btn" data-act="close" title="退出" type="button">${ICONS.close}</button>
+    <button class="vnm-icon-btn" data-act="toggle-bar" title="收纳/展开按钮" type="button">${ORIGINAL_READER_ICONS.toggleBar}</button>
+    <button class="vnm-icon-btn" data-act="close" title="退出" type="button">${ORIGINAL_READER_ICONS.close}</button>
   </div>
   <div class="vnm-progress" id="vnm-progress"></div>
   <div class="vnm-text" id="vnm-text"></div>
   <div class="vnm-controls">
+    <div id="vnm-send-status" aria-live="polite"><span class="vnm-spinner"></span><span id="vnm-send-status-text">已发送，等待 AI 回复…</span></div>
     <input class="vnm-input" id="vnm-input" type="text" placeholder="输入内容后按 Enter 发送">
     <button class="vnm-send-btn" id="vnm-send-btn" type="button">发送</button>
   </div>
@@ -90,6 +94,7 @@ export const ORIGINAL_READER_REQUIRED_SELECTORS = Object.freeze([
     '#vnm-bar-btns',
     '#vnm-settings',
     '.vnm-controls',
+    '#vnm-send-status',
     '#vnm-input',
     '#vnm-send-btn',
     '#vnm-toast',
@@ -111,7 +116,7 @@ export function getOriginalReaderHtml() {
     return ORIGINAL_READER_HTML;
 }
 
-export function getOriginalReaderSource(version = '0.2.14') {
+export function getOriginalReaderSource(version = '0.3.0') {
     return {
         version,
         styleText: ORIGINAL_READER_STYLE_TEXT,

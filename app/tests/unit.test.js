@@ -21,6 +21,7 @@ import { resolveVisualMode, VISUAL_MODES } from '../src/visual/visual-mode.js';
 import { createPromptAdapter } from '../src/prompts/adapters/prompt-adapter.js';
 import { naiRequestBuilder } from '../src/generated-images/request-builders/nai-builder.js';
 import { createPublicApi, attachPublicApi } from '../src/api/public-api.js';
+import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 
@@ -204,6 +205,33 @@ test('gate:scene:visual-novel-message-source:formats-default-bubble-body', () =>
     assert.equal(payload.virtualRegexChanged, true);
 });
 
+test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-readable-text', () => {
+    const host = createVisualNovelReaderHost({
+        global: {},
+        getUnifiedSettings: () => ({
+            version: '0.3.0',
+            bridge: { openMode: 'pc', showToasts: true },
+            readerMode: 'pc',
+            readerSettings: {},
+        }),
+        saveUnifiedSettings: () => ({ ok: true, legacy: {}, unified: {} }),
+    });
+
+    const opened = host.openReader({
+        messageId: 99,
+        scene: {
+            speaker: '艾莉',
+            text: '',
+        },
+        formattedText: '可读正文',
+    }, { mode: 'pc' });
+
+    assert.equal(opened.ok, true);
+    assert.equal(opened.snapshot.content.text, '可读正文');
+    assert.equal(opened.snapshot.content.displayText, '艾莉: 可读正文');
+    host.destroy();
+});
+
 test('gate:scene:visual-novel-message-source:clean-narrative-source-strips-host-ui-tags', () => {
     const cleaned = cleanNarrativeSource(readJson('fixtures/tavern/host-ui-leak-message.json').text);
 
@@ -284,7 +312,7 @@ test('gate:prompts:nai request builder renders prompt context', () => {
 test('gate:api:public api attaches stable global aliases', async () => {
     const globalObject = {};
     const api = createPublicApi({
-        version: '0.2.14',
+        version: '0.3.0',
         refresh: async () => ({ ok: true }),
         typeAndSend: async () => ({ ok: true }),
         getState: () => ({ config: { mode: 'test' } }),

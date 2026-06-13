@@ -9,10 +9,12 @@ import {
 } from '../../scene/message-source.js';
 import {
     getOriginalReaderHtml,
+    ORIGINAL_READER_ICONS,
     getOriginalReaderSource,
     getOriginalReaderStyleText,
     ORIGINAL_READER_REQUIRED_SELECTORS,
     ORIGINAL_READER_STYLE_CONTRACT,
+    ORIGINAL_READER_TOOLBAR_BUTTONS,
 } from './original-reader-source.js';
 import { getSettingsShellTemplate } from './settings-shell.js';
 import { getSettingsStyleText } from './settings-style.js';
@@ -189,9 +191,12 @@ export function createVisualNovelReaderHost(options = {}) {
             hidden: false,
             toolbarCollapsed: true,
             lastAction: '',
+            toastMessage: '',
             snapshot,
             controller,
             dom: domState,
+            runtime: null,
+            toastTimer: null,
         };
         updateMountedReader(snapshot);
 
@@ -259,6 +264,8 @@ export function createVisualNovelReaderHost(options = {}) {
         const current = state.activeReader;
         if (!current) return { ok: true, reason: 'reader-not-open' };
         closeSettings();
+        clearReaderToast(current);
+        clearReaderModeRuntime(current);
         if (current.dom && typeof current.dom.dispose === 'function') {
             current.dom.dispose();
         }
@@ -284,6 +291,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 toolbarCollapsed: state.activeReader.toolbarCollapsed,
                 lastAction: state.activeReader.lastAction,
                 inputValue: state.activeReader.inputValue,
+                toastMessage: state.activeReader.toastMessage,
                 snapshot: cloneData(state.activeReader.snapshot),
             } : null,
             activeSettings: state.activeSettings ? {
@@ -682,7 +690,7 @@ export function createVisualNovelReaderHost(options = {}) {
             virtualRegex: payload.virtualRegex,
             visibleText: payload.visibleText,
         });
-        const text = normalizeDisplayText(firstDefined(
+        const text = firstRenderableText(
             scene.text,
             scene.formattedText,
             payload.formattedText,
@@ -691,8 +699,7 @@ export function createVisualNovelReaderHost(options = {}) {
             extracted.cleanedRaw,
             getMessagePrimaryText(payload.message),
             payload.raw,
-            '',
-        ));
+        );
         const segments = buildTextSegments(text);
         const normalizedIndex = Math.max(0, Math.min(segments.length - 1, Number(index) || 0));
         const imageState = normalizeSnapshotImageState(payload.imageState, normalizedIndex);
@@ -762,7 +769,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vnm-overlay" class="${overlayClasses.join(' ')}" data-igs-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.2.14'),
+            source: getOriginalReaderSource(options.version || '0.3.0'),
         };
     }
 
@@ -787,7 +794,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vnm-unified-settings" data-igs-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.2.14'),
+                version: esc(options.version || '0.3.0'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -919,9 +926,28 @@ export function createVisualNovelReaderHost(options = {}) {
             }
         });
         const keydownHandler = (event) => {
-            if (event.key !== 'Escape') return;
-            event.preventDefault();
-            controller.close();
+            if (!state.activeReader) return;
+            const input = state.activeReader.dom && state.activeReader.dom.input;
+            if (doc.activeElement === input && event.key !== 'Escape') return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                controller.close();
+                return;
+            }
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                event.preventDefault();
+                controller.invokeAction('next');
+                return;
+            }
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                controller.invokeAction('prev');
+                return;
+            }
+            if (event.key === 'h' || event.key === 'H') {
+                event.preventDefault();
+                controller.invokeAction('hide');
+            }
         };
         if (typeof doc.addEventListener === 'function') {
             doc.addEventListener('keydown', keydownHandler, true);
@@ -1011,14 +1037,143 @@ export function createVisualNovelReaderHost(options = {}) {
     function updateMountedReader(snapshot) {
         const current = state.activeReader;
         if (!current || !current.dom || !current.dom.root) return;
-        const container = current.dom.root;
+        const refs = hydrateReaderMount(current.dom.root, snapshot);
+        current.dom.overlay = refs.overlay;
+        current.dom.dialog = refs.dialog;
+        current.dom.input = refs.input;
+        current.dom.sendButton = refs.sendButton;
+        current.dom.toast = refs.toast;
+        current.dom.clickLayer = refs.clickLayer;
+        current.dom.text = refs.text;
+        current.dom.progress = refs.progress;
+        if (current.dom.overlay) applyReaderSnapshotToDom(current.dom.overlay, snapshot, current);
+    }
+
+    function hydrateReaderMount(container, snapshot) {
+        clearChildren(container);
         container.innerHTML = snapshot.html;
-        current.dom.overlay = container.querySelector('#vnm-overlay');
-        current.dom.input = container.querySelector('#vnm-input');
-        current.dom.sendButton = container.querySelector('#vnm-send-btn');
-        if (current.dom.overlay) {
-            applyReaderSnapshotToDom(current.dom.overlay, snapshot, current);
+        let overlay = container.querySelector('#vnm-overlay');
+        if (!overlay) {
+            overlay = buildFallbackReaderOverlay(container.ownerDocument || getRootDocument(options.global));
+            if (overlay) container.appendChild(overlay);
         }
+        return {
+            overlay,
+            dialog: overlay ? overlay.querySelector('#vnm-dialog') : null,
+            input: overlay ? overlay.querySelector('#vnm-input') : null,
+            sendButton: overlay ? overlay.querySelector('#vnm-send-btn') : null,
+            toast: overlay ? overlay.querySelector('#vnm-toast') : null,
+            clickLayer: overlay ? overlay.querySelector('#vnm-click-layer') : null,
+            text: overlay ? overlay.querySelector('#vnm-text') : null,
+            progress: overlay ? overlay.querySelector('#vnm-progress') : null,
+        };
+    }
+
+    function buildFallbackReaderOverlay(doc) {
+        if (!doc || typeof doc.createElement !== 'function') return null;
+        const overlay = doc.createElement('div');
+        overlay.id = 'vnm-overlay';
+
+        const bgBlur = doc.createElement('div');
+        bgBlur.id = 'vnm-bg-blur';
+        overlay.appendChild(bgBlur);
+
+        const bg = doc.createElement('div');
+        bg.id = 'vnm-bg';
+        overlay.appendChild(bg);
+
+        const clickLayer = doc.createElement('div');
+        clickLayer.id = 'vnm-click-layer';
+        overlay.appendChild(clickLayer);
+
+        const dialog = doc.createElement('div');
+        dialog.id = 'vnm-dialog';
+        dialog.className = 'vnm-dialog';
+        overlay.appendChild(dialog);
+
+        const ctrlBar = doc.createElement('div');
+        ctrlBar.id = 'vnm-ctrl-bar';
+        ctrlBar.className = 'vnm-ctrl-bar';
+        dialog.appendChild(ctrlBar);
+
+        const barBtns = doc.createElement('div');
+        barBtns.id = 'vnm-bar-btns';
+        ctrlBar.appendChild(barBtns);
+        for (const button of ORIGINAL_READER_TOOLBAR_BUTTONS) {
+            barBtns.appendChild(createReaderButton(doc, button.id, button.title, button.html));
+        }
+
+        const settings = doc.createElement('div');
+        settings.id = 'vnm-settings';
+        settings.setAttribute('aria-hidden', 'true');
+        ctrlBar.appendChild(settings);
+
+        const pinned = doc.createElement('div');
+        pinned.id = 'vnm-bar-pinned';
+        ctrlBar.appendChild(pinned);
+
+        ctrlBar.appendChild(createReaderButton(doc, 'toggle-bar', '收纳/展开按钮', ORIGINAL_READER_ICONS.toggleBar));
+        ctrlBar.appendChild(createReaderButton(doc, 'close', '退出', ORIGINAL_READER_ICONS.close));
+
+        const progress = doc.createElement('div');
+        progress.id = 'vnm-progress';
+        progress.className = 'vnm-progress';
+        dialog.appendChild(progress);
+
+        const text = doc.createElement('div');
+        text.id = 'vnm-text';
+        text.className = 'vnm-text';
+        dialog.appendChild(text);
+
+        const controls = doc.createElement('div');
+        controls.className = 'vnm-controls';
+        dialog.appendChild(controls);
+
+        const sendStatus = doc.createElement('div');
+        sendStatus.id = 'vnm-send-status';
+        sendStatus.setAttribute('aria-live', 'polite');
+        controls.appendChild(sendStatus);
+
+        const spinner = doc.createElement('span');
+        spinner.className = 'vnm-spinner';
+        sendStatus.appendChild(spinner);
+
+        const sendStatusText = doc.createElement('span');
+        sendStatusText.id = 'vnm-send-status-text';
+        sendStatusText.textContent = '已发送，等待 AI 回复…';
+        sendStatus.appendChild(sendStatusText);
+
+        const input = doc.createElement('input');
+        input.id = 'vnm-input';
+        input.className = 'vnm-input';
+        input.type = 'text';
+        input.placeholder = '输入内容后按 Enter 发送';
+        controls.appendChild(input);
+
+        const sendButton = doc.createElement('button');
+        sendButton.id = 'vnm-send-btn';
+        sendButton.className = 'vnm-send-btn';
+        sendButton.type = 'button';
+        sendButton.textContent = '发送';
+        controls.appendChild(sendButton);
+
+        const toast = doc.createElement('div');
+        toast.id = 'vnm-toast';
+        toast.setAttribute('aria-live', 'polite');
+        dialog.appendChild(toast);
+
+        return overlay;
+    }
+
+    function createReaderButton(doc, id, title, html) {
+        const button = doc.createElement('button');
+        button.id = `vnm-btn-${id}`;
+        button.className = 'vnm-icon-btn';
+        button.type = 'button';
+        button.setAttribute('data-act', id);
+        button.setAttribute('title', title);
+        button.innerHTML = html;
+        return button;
     }
 
     function updateMountedSettings(snapshot) {
@@ -1035,7 +1190,6 @@ export function createVisualNovelReaderHost(options = {}) {
     function applyReaderSnapshotToDom(root, snapshot, current) {
         root.className = snapshot.classes.join(' ');
         root.setAttribute('data-igs-vn-ui', 'true');
-        root.innerHTML = getOriginalReaderHtml();
 
         const bg = root.querySelector('#vnm-bg');
         const bgBlur = root.querySelector('#vnm-bg-blur');
@@ -1045,6 +1199,8 @@ export function createVisualNovelReaderHost(options = {}) {
         const send = root.querySelector('#vnm-send-btn');
         const dialog = root.querySelector('#vnm-dialog');
         const toolbar = root.querySelector('#vnm-ctrl-bar');
+        const clickLayer = root.querySelector('#vnm-click-layer');
+        const toast = root.querySelector('#vnm-toast');
 
         if (bg && snapshot.content.backgroundImage) {
             bg.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
@@ -1075,23 +1231,52 @@ export function createVisualNovelReaderHost(options = {}) {
                 await current.controller.submit(input ? input.value : current.inputValue);
             });
         }
+        if (clickLayer) {
+            clickLayer.addEventListener('click', () => {
+                if (current.hidden) {
+                    current.controller.toggleHidden();
+                    return;
+                }
+                if (state.activeSettings) {
+                    closeSettings();
+                    return;
+                }
+                handleReaderAction('next');
+            });
+        }
+        if (dialog) {
+            dialog.addEventListener('click', (event) => {
+                if (current.hidden) return;
+                if (event.target && event.target.closest && (
+                    event.target.closest('.vnm-controls')
+                    || event.target.closest('#vnm-ctrl-bar')
+                    || event.target.closest('#vnm-settings')
+                )) {
+                    return;
+                }
+                const rect = typeof dialog.getBoundingClientRect === 'function'
+                    ? dialog.getBoundingClientRect()
+                    : { left: 0, width: 0 };
+                const clientX = Number(event.clientX);
+                if (!Number.isFinite(clientX) || clientX < rect.left + rect.width / 2) {
+                    handleReaderAction('prev');
+                } else {
+                    handleReaderAction('next');
+                }
+            });
+        }
         if (dialog) {
             dialog.classList.toggle('vnm-hidden', current.hidden);
-            if (snapshot.readerSettings.dialogWidth != null) {
-                dialog.style.width = `${snapshot.readerSettings.dialogWidth}px`;
-            }
             if (snapshot.readerSettings.glassOpacity != null) {
                 dialog.style.background = `rgba(20,20,22,${snapshot.readerSettings.glassOpacity})`;
             }
         }
-        if (toolbar) {
-            toolbar.style.transform = `scale(${Number(snapshot.readerSettings.toolbarScale || 100) / 100})`;
-            toolbar.style.transformOrigin = 'right bottom';
-        }
         applyToolbarState(root, current);
-        const controls = root.querySelector('.vnm-controls');
-        if (controls) {
-            controls.style.zoom = String(Number(snapshot.readerSettings.inputScale || 100) / 100);
+        applyReaderSettingsToDom(root, snapshot, current, { dialog, textEl, toolbar });
+        applyReaderModeRuntime(root, snapshot, current);
+        if (toast) {
+            toast.textContent = current.toastMessage || '';
+            toast.style.opacity = current.toastMessage ? '1' : '0';
         }
     }
 
@@ -1129,10 +1314,289 @@ export function createVisualNovelReaderHost(options = {}) {
         }
     }
 
+    function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
+        const dialog = refs.dialog || root.querySelector('#vnm-dialog');
+        const textEl = refs.textEl || root.querySelector('#vnm-text');
+        const toolbar = refs.toolbar || root.querySelector('#vnm-ctrl-bar');
+        const controls = root.querySelector('.vnm-controls');
+        const readerSettings = snapshot.readerSettings || {};
+        const inlineMode = snapshot.mode === 'pc' || snapshot.mode === 'mobile';
+        const win = getOwnerWindow(root);
+        const overlayWidth = readElementWidth(root, win && win.innerWidth);
+        const overlayHeight = readElementHeight(root, win && win.innerHeight);
+
+        if (textEl) {
+            textEl.style.fontSize = `${readerSettings.fontSize}px`;
+            textEl.style.lineHeight = computeLineHeight(readerSettings.fontSize);
+            if (readerSettings.dialogHeight == null) {
+                textEl.style.minHeight = '0';
+            } else if (inlineMode) {
+                const maxHeight = Math.max(40, Math.floor((overlayHeight || 0) * 0.24));
+                textEl.style.minHeight = `${Math.min(readerSettings.dialogHeight, maxHeight || readerSettings.dialogHeight)}px`;
+            } else {
+                textEl.style.minHeight = `${readerSettings.dialogHeight}px`;
+            }
+        }
+
+        if (dialog) {
+            if (readerSettings.dialogWidth == null) {
+                dialog.style.width = '';
+            } else if (inlineMode) {
+                const clampedWidth = Math.max(180, Math.min(readerSettings.dialogWidth, Math.max(180, (overlayWidth || readerSettings.dialogWidth) - 24)));
+                dialog.style.width = `${clampedWidth}px`;
+            } else {
+                const viewportWidth = Number(win && win.innerWidth) || readerSettings.dialogWidth;
+                dialog.style.width = `${Math.max(260, Math.min(readerSettings.dialogWidth, Math.max(260, viewportWidth - 8)))}px`;
+            }
+            dialog.style.background = `rgba(20,20,22,${normalizeOpacity(readerSettings.glassOpacity, .62)})`;
+        }
+
+        if (toolbar) {
+            toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
+            toolbar.style.transformOrigin = 'right bottom';
+            toolbar.style.background = `rgba(20,20,22,${Math.max(0, normalizeOpacity(readerSettings.glassOpacity, .62) - 0.07)})`;
+        }
+
+        if (controls) {
+            controls.style.zoom = String(Number(readerSettings.inputScale || 100) / 100);
+        }
+    }
+
+    function applyReaderModeRuntime(root, snapshot, current) {
+        if (current.runtime && current.runtime.mode === snapshot.mode && current.runtime.root === root) {
+            return;
+        }
+        clearReaderModeRuntime(current);
+        const win = getOwnerWindow(root);
+        const doc = root && root.ownerDocument;
+        const runtime = {
+            cleanup: [],
+            mode: snapshot.mode,
+            win,
+            doc,
+            root,
+        };
+        current.runtime = runtime;
+
+        if (snapshot.mode === 'pc' || snapshot.mode === 'mobile') {
+            applyInlineReaderRuntime(root, snapshot.mode, runtime);
+            return;
+        }
+        if (snapshot.mode === 'web') {
+            applyWebReaderRuntime(root, runtime);
+            return;
+        }
+        if (snapshot.mode === 'fullscreen') {
+            applyFullscreenReaderRuntime(root, current, runtime);
+        }
+    }
+
+    function clearReaderModeRuntime(current) {
+        const runtime = current && current.runtime;
+        if (!runtime || !Array.isArray(runtime.cleanup)) return;
+        while (runtime.cleanup.length) {
+            const fn = runtime.cleanup.pop();
+            try {
+                fn();
+            } catch (error) {
+                // Best-effort cleanup.
+            }
+        }
+        current.runtime = null;
+    }
+
+    function addRuntimeCleanup(runtime, fn) {
+        if (runtime && typeof fn === 'function') runtime.cleanup.push(fn);
+    }
+
+    function applyInlineReaderRuntime(root, mode, runtime) {
+        const win = runtime.win || {};
+        const doc = runtime.doc || {};
+        root.style.top = 'auto';
+        root.style.right = 'auto';
+        root.style.left = '50%';
+        root.style.bottom = '24px';
+        root.style.transform = 'translateX(-50%)';
+        root.style.boxSizing = 'border-box';
+        root.style.zIndex = '2147483000';
+        root.style.width = mode === 'pc' ? 'min(900px,calc(100vw - 32px))' : 'min(480px,calc(100vw - 32px))';
+        root.style.height = mode === 'pc' ? 'min(540px,calc(100dvh - 32px))' : 'min(680px,calc(100dvh - 32px))';
+        root.style.borderRadius = mode === 'pc' ? '18px' : '22px';
+        root.style.boxShadow = '0 20px 64px rgba(0,0,0,0.42)';
+        root.style.overflow = 'hidden';
+
+        let scheduled = false;
+        const clamp = () => {
+            scheduled = false;
+            const viewport = getInlineViewportMetrics(win, doc);
+            const designWidth = mode === 'pc' ? 900 : 480;
+            const designHeight = mode === 'pc' ? 540 : 680;
+            const sideGap = 16;
+            const bottomGap = 24;
+            const minSize = 240;
+            const minExtremeSize = 180;
+            const safeWidth = Math.max(minSize, (viewport.width || (designWidth + sideGap * 2)) - sideGap * 2);
+            const safeHeight = Math.max(minSize, (viewport.height || (designHeight + sideGap * 2)) - sideGap * 2);
+            let targetWidth = Math.min(designWidth, safeWidth);
+            let targetHeight = Math.min(designHeight, safeHeight);
+            const availableHeight = (viewport.height || (targetHeight + sideGap + bottomGap)) - sideGap - bottomGap;
+            if (availableHeight < targetHeight) {
+                targetHeight = Math.max(minExtremeSize, Math.min(targetHeight, availableHeight));
+            }
+            let targetTop = viewport.top + (viewport.height || (targetHeight + bottomGap)) - bottomGap - targetHeight;
+            const minTop = viewport.top + sideGap;
+            const maxTop = viewport.bottom - sideGap - targetHeight;
+            if (targetTop < minTop) targetTop = minTop;
+            if (maxTop >= minTop && targetTop > maxTop) targetTop = maxTop;
+            root.style.maxWidth = `${safeWidth}px`;
+            root.style.maxHeight = `${safeHeight}px`;
+            root.style.width = `${targetWidth}px`;
+            root.style.height = `${targetHeight}px`;
+            root.style.left = `${Math.round(viewport.left + (viewport.width || targetWidth) / 2)}px`;
+            root.style.top = `${Math.round(targetTop)}px`;
+            root.style.right = 'auto';
+            root.style.bottom = 'auto';
+            root.style.transform = 'translateX(-50%)';
+        };
+        const schedule = () => {
+            if (scheduled) return;
+            scheduled = true;
+            const raf = typeof win.requestAnimationFrame === 'function'
+                ? win.requestAnimationFrame.bind(win)
+                : null;
+            if (raf) {
+                raf(clamp);
+            } else {
+                const setter = typeof win.setTimeout === 'function' ? win.setTimeout.bind(win) : setTimeout;
+                setter(clamp, 16);
+            }
+        };
+
+        clamp();
+        schedule();
+        addEventListenerWithCleanup(win, 'resize', schedule, runtime);
+        addEventListenerWithCleanup(win, 'orientationchange', schedule, runtime);
+        if (win.visualViewport) {
+            addEventListenerWithCleanup(win.visualViewport, 'resize', schedule, runtime);
+            addEventListenerWithCleanup(win.visualViewport, 'scroll', schedule, runtime);
+        }
+    }
+
+    function applyWebReaderRuntime(root, runtime) {
+        const win = runtime.win || {};
+        const doc = runtime.doc;
+        if (!doc || !doc.body || !doc.documentElement) return;
+        const savedScrollY = Number(win.scrollY) || 0;
+        const savedBody = {
+            overflow: doc.body.style.overflow || '',
+            position: doc.body.style.position || '',
+            width: doc.body.style.width || '',
+            top: doc.body.style.top || '',
+        };
+        const savedHtmlOverflow = doc.documentElement.style.overflow || '';
+
+        doc.body.style.overflow = 'hidden';
+        doc.body.style.position = 'fixed';
+        doc.body.style.width = '100%';
+        doc.body.style.top = `-${savedScrollY}px`;
+        doc.documentElement.style.overflow = 'hidden';
+
+        const syncHeight = () => {
+            const height = runtime.win && runtime.win.visualViewport && Number.isFinite(runtime.win.visualViewport.height)
+                ? runtime.win.visualViewport.height
+                : Number(runtime.win && runtime.win.innerHeight) || 0;
+            if (height > 0) root.style.height = `${Math.round(height)}px`;
+        };
+        syncHeight();
+        if (win.visualViewport) addEventListenerWithCleanup(win.visualViewport, 'resize', syncHeight, runtime);
+
+        addRuntimeCleanup(runtime, () => {
+            doc.body.style.overflow = savedBody.overflow;
+            doc.body.style.position = savedBody.position;
+            doc.body.style.width = savedBody.width;
+            doc.body.style.top = savedBody.top;
+            doc.documentElement.style.overflow = savedHtmlOverflow;
+            if (typeof win.scrollTo === 'function') win.scrollTo(0, savedScrollY);
+        });
+    }
+
+    function applyFullscreenReaderRuntime(root, current, runtime) {
+        const doc = runtime.doc;
+        if (!doc) return;
+        const target = doc.documentElement || doc.body;
+        const request = target && (target.requestFullscreen || target.webkitRequestFullscreen);
+        if (typeof request === 'function') {
+            try {
+                const result = request.call(target);
+                if (result && typeof result.catch === 'function') result.catch(() => {});
+            } catch (error) {
+                // Ignore fullscreen failures in simulation.
+            }
+        }
+        const onFullscreenChange = () => {
+            if (!state.activeReader || state.activeReader !== current) return;
+            if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+                closeReader();
+            }
+        };
+        addEventListenerWithCleanup(doc, 'fullscreenchange', onFullscreenChange, runtime);
+        addEventListenerWithCleanup(doc, 'webkitfullscreenchange', onFullscreenChange, runtime);
+        addRuntimeCleanup(runtime, () => {
+            const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+            if ((doc.fullscreenElement || doc.webkitFullscreenElement) && typeof exit === 'function') {
+                try {
+                    const result = exit.call(doc);
+                    if (result && typeof result.catch === 'function') result.catch(() => {});
+                } catch (error) {
+                    // Ignore exit failures.
+                }
+            }
+        });
+    }
+
+    function getInlineViewportMetrics(win, doc) {
+        const viewport = win && win.visualViewport;
+        const docEl = doc && doc.documentElement ? doc.documentElement : {};
+        const fallbackWidth = Math.round(Number(win && win.innerWidth) || Number(docEl.clientWidth) || 0);
+        const fallbackHeight = Math.round(Number(win && win.innerHeight) || Number(docEl.clientHeight) || 0);
+        let left = Math.round(viewport && Number.isFinite(viewport.offsetLeft) ? viewport.offsetLeft : 0);
+        let top = Math.round(viewport && Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0);
+        let width = Math.round(viewport && Number.isFinite(viewport.width) ? viewport.width : 0);
+        let height = Math.round(viewport && Number.isFinite(viewport.height) ? viewport.height : 0);
+        if (width < 240 && fallbackWidth >= 240) {
+            width = fallbackWidth;
+            left = 0;
+        }
+        if (height < 240 && fallbackHeight >= 240) {
+            height = fallbackHeight;
+            top = 0;
+        }
+        width = width || fallbackWidth || 320;
+        height = height || fallbackHeight || 480;
+        return {
+            left,
+            top,
+            width,
+            height,
+            right: left + width,
+            bottom: top + height,
+        };
+    }
+
+    function addEventListenerWithCleanup(target, type, handler, runtime) {
+        if (!target || typeof target.addEventListener !== 'function') return;
+        target.addEventListener(type, handler);
+        addRuntimeCleanup(runtime, () => {
+            if (typeof target.removeEventListener === 'function') {
+                target.removeEventListener(type, handler);
+            }
+        });
+    }
+
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.2.14' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.0' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1143,7 +1607,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.2.14',
+            version: snapshot.version || options.version || '0.3.0',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -1242,6 +1706,13 @@ export function createVisualNovelReaderHost(options = {}) {
         }
         return '';
     }
+
+    function writeToast(message) {
+        const current = state.activeReader;
+        if (!current) return;
+        const bridge = resolveBridgeConfigSnapshot({ mode: current.mode }).bridge;
+        applyToastToReader(current, bridge.showToasts !== false, message);
+    }
 }
 
 function renderTemplate(template, values) {
@@ -1323,6 +1794,29 @@ function getRootDocument(globalObject) {
     return null;
 }
 
+function getOwnerWindow(node) {
+    if (node && node.ownerDocument && node.ownerDocument.defaultView) {
+        return node.ownerDocument.defaultView;
+    }
+    const doc = getRootDocument(globalThis.window || globalThis);
+    return doc && doc.defaultView ? doc.defaultView : null;
+}
+
+function clearChildren(node) {
+    if (!node) return;
+    if (typeof node.replaceChildren === 'function') {
+        node.replaceChildren();
+    } else if (Array.isArray(node.children)) {
+        for (const child of [...node.children]) {
+            if (child && typeof child.remove === 'function') child.remove();
+        }
+        node.children = [];
+    }
+    if (Object.prototype.hasOwnProperty.call(node, 'innerHTML') || typeof node.innerHTML === 'string') {
+        node.innerHTML = '';
+    }
+}
+
 function ensureStyleTag(doc, id, text) {
     if (!doc || !doc.head) return;
     if (doc.getElementById(id)) return;
@@ -1395,6 +1889,32 @@ function setPath(target, path, value) {
     cursor[parts[parts.length - 1]] = value;
 }
 
+function readElementWidth(element, fallback = 0) {
+    return normalizeBoxMeasure(
+        element && (element.clientWidth || element.offsetWidth || readNumericPixels(element.style && element.style.width)),
+        fallback,
+    );
+}
+
+function readElementHeight(element, fallback = 0) {
+    return normalizeBoxMeasure(
+        element && (element.clientHeight || element.offsetHeight || readNumericPixels(element.style && element.style.height)),
+        fallback,
+    );
+}
+
+function normalizeBoxMeasure(value, fallback = 0) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    return Number(fallback) > 0 ? Number(fallback) : 0;
+}
+
+function readNumericPixels(value) {
+    if (value == null || value === '') return 0;
+    const match = String(value).match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) : 0;
+}
+
 function computeLineHeight(fontSize) {
     if (fontSize <= 8) return '2.0';
     if (fontSize <= 11) return '1.9';
@@ -1419,8 +1939,38 @@ function buildTextSegments(text) {
     return sentenceSegments.length ? sentenceSegments : [source];
 }
 
-function writeToast(message) {
-    if (!message) return;
+function applyToastToReader(current, allowed, message) {
+    if (!current || !message || allowed === false) return;
+    clearReaderToast(current);
+    current.toastMessage = String(message);
+    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector('#vnm-toast') : null;
+    if (toast) {
+        toast.textContent = current.toastMessage;
+        toast.style.opacity = '1';
+    }
+    const win = current.dom && current.dom.overlay ? getOwnerWindow(current.dom.overlay) : null;
+    const setter = win && typeof win.setTimeout === 'function' ? win.setTimeout.bind(win) : setTimeout;
+    current.toastTimer = setter(() => {
+        current.toastMessage = '';
+        if (toast) toast.style.opacity = '0';
+        current.toastTimer = null;
+    }, 1800);
+}
+
+function clearReaderToast(current) {
+    if (!current) return;
+    const win = current.dom && current.dom.overlay ? getOwnerWindow(current.dom.overlay) : null;
+    const clearer = win && typeof win.clearTimeout === 'function' ? win.clearTimeout.bind(win) : clearTimeout;
+    if (current.toastTimer) {
+        clearer(current.toastTimer);
+        current.toastTimer = null;
+    }
+    current.toastMessage = '';
+    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector('#vnm-toast') : null;
+    if (toast) {
+        toast.textContent = '';
+        toast.style.opacity = '0';
+    }
 }
 
 function buildProgressText(currentIndex, totalSegments, imageState) {
@@ -1495,6 +2045,14 @@ function cloneReaderPayload(payload = {}) {
 function normalizeDisplayText(value) {
     const text = String(value || '').trim();
     return looksLikeHostUiHtml(text) ? '' : text;
+}
+
+function firstRenderableText(...values) {
+    for (const value of values) {
+        const normalized = normalizeDisplayText(value);
+        if (String(normalized || '').trim()) return normalized;
+    }
+    return '';
 }
 
 function normalizeBoolean(value, fallback) {
