@@ -1,6 +1,6 @@
 {
   "name": "Visual Novel",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "entry": "vn.bundle.js",
   "style": "vn.bundle.css"
 }

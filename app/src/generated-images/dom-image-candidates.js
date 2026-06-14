@@ -381,8 +381,8 @@ function nodePathKey(node) {
     while (cursor && depth < 8) {
         const parent = cursor.parentElement;
         let index = 0;
-        if (parent && Array.isArray(parent.children)) {
-            index = Math.max(0, parent.children.indexOf(cursor));
+        if (parent && parent.children && parent.children.length != null) {
+            index = Math.max(0, Array.prototype.indexOf.call(parent.children, cursor));
         }
         parts.unshift(`${String(cursor.tagName || 'node').toLowerCase()}:${index}`);
         if (cursor.classList && cursor.classList.contains('mes')) break;
