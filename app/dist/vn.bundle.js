@@ -2481,9 +2481,9 @@ const DEFAULT_SOURCE_FILTER = Object.freeze({
 });
 const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     enabled: true,
-    pattern: '^@(?:vn-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$|^@bubble:([^|\\n]+)\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$',
+    pattern: '^@(?:vn-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
     flags: 'gm',
-    replacement: '[$1$3]：$2$4',
+    replacement: '[$1]：$2',
 });
 
 const HOST_UI_HTML_MARKERS = Object.freeze([
@@ -3196,7 +3196,6 @@ function resolveSceneStateAtIndex(directives, segmentIndex) {
     if (!Array.isArray(directives) || !directives.length) return state;
 
     for (const directive of directives) {
-        if (directive.lineIndex > segmentIndex) break;
         if (directive.scene) state.scene = directive.scene;
         if (directive.character) state.character = directive.character;
         if (directive.mood) state.mood = directive.mood;
@@ -6188,11 +6187,12 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
         if (sceneAssets && sceneAssets.enabled && sceneDirectives.length) {
             const sceneState = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
             const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
-            if (!backgroundImage && assetUrls.backgroundUrl) {
-                finalBackgroundImage = assetUrls.backgroundUrl;
-            }
-            if (!backgroundImage && assetUrls.spriteUrl) {
-                spriteImage = assetUrls.spriteUrl;
+            if (backgroundImage) {
+                finalBackgroundImage = backgroundImage;
+                spriteImage = null;
+            } else {
+                finalBackgroundImage = assetUrls.backgroundUrl || '';
+                spriteImage = assetUrls.spriteUrl || null;
             }
         }
         const overlayClasses = ['vn-mode-' + mode];

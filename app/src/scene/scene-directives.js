@@ -29,7 +29,6 @@ export function resolveSceneStateAtIndex(directives, segmentIndex) {
     if (!Array.isArray(directives) || !directives.length) return state;
 
     for (const directive of directives) {
-        if (directive.lineIndex > segmentIndex) break;
         if (directive.scene) state.scene = directive.scene;
         if (directive.character) state.character = directive.character;
         if (directive.mood) state.mood = directive.mood;

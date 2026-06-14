@@ -18,9 +18,9 @@ export const DEFAULT_SOURCE_FILTER = Object.freeze({
 
 export const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     enabled: true,
-    pattern: '^@(?:vn-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$|^@bubble:([^|\\n]+)\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$',
+    pattern: '^@(?:vn-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
     flags: 'gm',
-    replacement: '[$1$3]：$2$4',
+    replacement: '[$1]：$2',
 });
 
 const HOST_UI_HTML_MARKERS = Object.freeze([
