@@ -6352,6 +6352,8 @@ const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;function createVisualNovelReaderHost
         const current = state.activeSettings;
         if (!current || !current.dom || !current.dom.root) return;
         const container = current.dom.root;
+        const prevBody = container.querySelector('.vn-settings-body');
+        const scrollTop = prevBody ? prevBody.scrollTop : 0;
         clearChildren(container);
         container.innerHTML = snapshot.html;
         current.dom.overlay = container.querySelector('#vn-unified-settings');
@@ -6362,6 +6364,8 @@ const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;function createVisualNovelReaderHost
         if (current.dom.overlay) {
             attachSettingsViewportEvents(current.dom, current.dom.overlay);
         }
+        const nextBody = container.querySelector('.vn-settings-body');
+        if (nextBody && scrollTop) nextBody.scrollTop = scrollTop;
     }
 
     function applyReaderSnapshotToDom(root, snapshot, current) {
