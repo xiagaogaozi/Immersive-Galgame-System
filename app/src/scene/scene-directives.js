@@ -1,31 +1,27 @@
-const SCENE_DIRECTIVE_PATTERN = /^@vn-scene:([^|\n]*?)(?:\|([^|\n]*?)(?:\|([^|\n]*?))?)?$/gm;
-
 export function extractSceneDirectives(text) {
     const source = String(text || '');
     if (!source.trim()) return { directives: [], strippedText: source };
 
     const directives = [];
     const lines = source.split('\n');
-    const keepLines = [];
-    let directiveCount = 0;
+    let lineCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
         const trimmed = lines[i].trim();
-        const match = trimmed.match(/^@vn-scene:([^|\n]*?)(?:\|([^|\n]*?)(?:\|([^|\n]*?))?)?$/);
+        const match = trimmed.match(/^@vn-scene:([^|\n]*?)\|([^|\n]*?)\|([^|\n]*?)\|(.*)$/);
         if (match) {
             directives.push({
-                lineIndex: i - directiveCount,
-                scene: (match[1] || '').trim() || null,
-                character: (match[2] || '').trim() || null,
-                mood: (match[3] || '').trim() || null,
+                lineIndex: lineCount,
+                character: (match[1] || '').trim() || null,
+                mood: (match[2] || '').trim() || null,
+                scene: (match[3] || '').trim() || null,
+                dialogue: (match[4] || '').trim(),
             });
-            directiveCount++;
-        } else {
-            keepLines.push(lines[i]);
         }
+        lineCount++;
     }
 
-    return { directives, strippedText: keepLines.join('\n') };
+    return { directives, strippedText: source };
 }
 
 export function resolveSceneStateAtIndex(directives, segmentIndex) {

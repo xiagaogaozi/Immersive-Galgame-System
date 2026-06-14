@@ -18,9 +18,9 @@ export const DEFAULT_SOURCE_FILTER = Object.freeze({
 
 export const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     enabled: true,
-    pattern: '^@bubble:([^|\\n]+)\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$',
+    pattern: '^@(?:vn-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$|^@bubble:([^|\\n]+)\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$',
     flags: 'gm',
-    replacement: '[$1]：$2',
+    replacement: '[$1$3]：$2$4',
 });
 
 const HOST_UI_HTML_MARKERS = Object.freeze([
@@ -213,7 +213,7 @@ export function buildFormattedTextPipeline(raw, sourceFilter, formatRule, option
     const directiveResult = options.sceneAssetsEnabled
         ? extractSceneDirectives(filtered.textSource)
         : { directives: [], strippedText: filtered.textSource };
-    const formatted = applyVisualNovelBodyFormat(directiveResult.strippedText, formatRule);
+    const formatted = applyVisualNovelBodyFormat(filtered.textSource, formatRule);
     const formattedText = String(formatted.formattedRaw || '').trim();
 
     return {

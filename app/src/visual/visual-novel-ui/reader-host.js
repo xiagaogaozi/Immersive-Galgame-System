@@ -145,32 +145,68 @@ const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze(['hide']);
 const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
 const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
 
-const DEFAULT_SCENE_PROMPT_RULE = `[场景标注规范]
-每当场景发生变化（地点切换、角色出场/退场、角色情绪明显变化）时，在正文中插入以下标记（独占一行）：
+const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
+当角色产生想法、进行对白、突然的反应或者有莫名的声音、奇怪的低语出现时必须严格使用以下格式（全部在同一行内）：
 
-@vn-scene:场景名|角色名|情绪
+@vn-scene:角色名|情绪|场景名|[对白]
 
-规则：
+格式规则：
 1. @vn-scene: 是固定前缀，不可更改
-2. 三个字段用 | 分隔，全部在一行内
-3. 场景名：当前所在的地点/环境（如"教室"、"夜晚街道"、"咖啡厅"）
-4. 角色名：当前画面主要展示的角色（与 @bubble 中的角色名一致）
-5. 情绪：该角色当前的表情/状态
-6. 省略的字段表示沿用上一次的值（保留分隔符），如 @vn-scene:||紧张 表示只切情绪
-7. 此标记不会显示在正文中，仅用于画面切换
-8. 开头第一段正文之前必须有一个完整的 @vn-scene 标记
+2. 角色名、情绪、场景名、台词之间用 | 分隔，全部在一行内
+3. 角色名必须输出完整全名，不允许省略（如"城崎诺亚"不能只写"诺亚"）
+4. 角色名是立绘关联的唯一标识，每次输出必须完全一致
+5. 只有名没有姓的角色直接写名字（如"云儿"）
+6. 台词必须用 [ ] 方括号包裹
+7. 旁白和叙述文字正常书写，不加任何标记
+8. 每次角色说话都必须带上 @vn-scene 标记，不可省略
+9. 多个角色说话时，每个角色分别使用自己的角色名，包括系统声音
+10. 角色内心活动或心理描写也要使用此格式，写法为 @vn-scene:角色名|情绪|场景名|[*内心活动*]
+11. 心里话只按 *...* 外层结构识别
+12. 台词中不能包含 | 符号和 [ ] 符号
+13. 情绪字段不能省略，必须填写
+14. 场景名表示当前所处地点/环境（如"教室"、"走廊"、"夜晚街道"），场景未变时可留空（保留分隔符），如 @vn-scene:角色名|情绪||[台词]
+15. 场景名是背景图关联的唯一标识，同一地点每次输出必须完全一致
+16. 开头第一句对话前必须写完整的场景名，不可省略
+17. 如果场景内出现路人/同学/同事这类不重要的NPC，则使用 @vn-scene:男/女路人X|情绪|场景名|[对白]
+18. 如果是不知道名字的角色，使用 @vn-scene:？？？|情绪|场景名|[对白]
+
+[正文标签规则]
+<content> 标签外面必须包一层 <now_plot> 标签。
+
+输出结构：
+<now_plot>
+<content>
+（正文内容）
+</content>
+</now_plot>
 
 示例：
-@vn-scene:教室|城崎诺亚|欣喜
-@bubble:城崎诺亚|欣喜|[咦？真的吗？]
+<now_plot>
+<content>
+诺亚傻站着愣了半秒，忽闪着大眼睛直勾勾盯着我。
 
-（场景不变，角色情绪变化）
-@vn-scene:||紧张
-@bubble:城崎诺亚|紧张|[*（我真的能做好吗？）*]
+@vn-scene:城崎诺亚|欣喜|教室|[咦？真的吗？]
 
-（场景切换）
-@vn-scene:走廊|清野|兴奋
-@bubble:清野|兴奋|[刚刚你们在这边干什么呢！]`.trim();
+@vn-scene:城崎诺亚|紧张||[*（我真的能做好吗？）*]
+
+她似乎在脑海里搜索着相关的经验，过了一会儿，她居然真的点了点头。
+
+@vn-scene:城崎诺亚|开心||[听起来好像挺简单的。那诺亚试试看好了！]
+
+樱在旁边叹了口气，看起来并不想掺和这件事。
+
+@vn-scene:樱|无奈||[别把我拉进去啊。]
+
+@vn-scene:？？？|兴奋||[喂！你们！]
+
+@vn-scene:男同学A|慌张||[是……是清野同学，我们该撤了]
+
+那两个同学飞快的跑了，几人看到清野飞快的跑了过来
+
+@vn-scene:清野|兴奋|走廊|[刚刚你们在这边干什么呢！]
+
+</content>
+</now_plot>`.trim();
 
 export function createVisualNovelReaderHost(options = {}) {
     const state = {
@@ -760,6 +796,103 @@ export function createVisualNovelReaderHost(options = {}) {
                 }
             }
             return { ok: true };
+        }
+
+        if (normalizedAction.startsWith('scene-rename-bg:')) {
+            const oldName = normalizedAction.slice('scene-rename-bg:'.length);
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+            const scenes = settingsState.draft.bridge.sceneAssets.scenes;
+            if (Object.prototype.hasOwnProperty.call(scenes, oldName)) {
+                settingsState._pendingRename = { type: 'bg', oldName };
+                return rerenderSettings();
+            }
+            return { ok: true };
+        }
+
+        if (normalizedAction.startsWith('scene-confirm-rename-bg:')) {
+            const rest = normalizedAction.slice('scene-confirm-rename-bg:'.length);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx > 0) {
+                const oldName = rest.slice(0, colonIdx);
+                const newName = rest.slice(colonIdx + 1).trim();
+                if (newName && newName !== oldName) {
+                    const scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+                    scenes[newName] = scenes[oldName] || '';
+                    delete scenes[oldName];
+                    const persisted = persistSettingsDraft();
+                    if (persisted.ok === false) return persisted;
+                }
+            }
+            settingsState._pendingRename = null;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('scene-rename-char:')) {
+            const oldName = normalizedAction.slice('scene-rename-char:'.length);
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
+            const chars = settingsState.draft.bridge.sceneAssets.characters;
+            if (Object.prototype.hasOwnProperty.call(chars, oldName)) {
+                settingsState._pendingRename = { type: 'char', oldName };
+                return rerenderSettings();
+            }
+            return { ok: true };
+        }
+
+        if (normalizedAction.startsWith('scene-confirm-rename-char:')) {
+            const rest = normalizedAction.slice('scene-confirm-rename-char:'.length);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx > 0) {
+                const oldName = rest.slice(0, colonIdx);
+                const newName = rest.slice(colonIdx + 1).trim();
+                if (newName && newName !== oldName) {
+                    const chars = settingsState.draft.bridge.sceneAssets.characters || {};
+                    chars[newName] = chars[oldName] || {};
+                    delete chars[oldName];
+                    const persisted = persistSettingsDraft();
+                    if (persisted.ok === false) return persisted;
+                }
+            }
+            settingsState._pendingRename = null;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('scene-rename-mood:')) {
+            const rest = normalizedAction.slice('scene-rename-mood:'.length);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx > 0) {
+                const charName = rest.slice(0, colonIdx);
+                const oldMood = rest.slice(colonIdx + 1);
+                settingsState._pendingRename = { type: 'mood', charName, oldMood };
+                return rerenderSettings();
+            }
+            return { ok: true };
+        }
+
+        if (normalizedAction.startsWith('scene-confirm-rename-mood:')) {
+            const rest = normalizedAction.slice('scene-confirm-rename-mood:'.length);
+            const firstColon = rest.indexOf(':');
+            if (firstColon > 0) {
+                const charName = rest.slice(0, firstColon);
+                const afterChar = rest.slice(firstColon + 1);
+                const secondColon = afterChar.indexOf(':');
+                if (secondColon > 0) {
+                    const oldMood = afterChar.slice(0, secondColon);
+                    const newMood = afterChar.slice(secondColon + 1).trim();
+                    if (newMood && newMood !== oldMood) {
+                        const chars = settingsState.draft.bridge.sceneAssets.characters || {};
+                        if (chars[charName]) {
+                            chars[charName][newMood] = chars[charName][oldMood] || '';
+                            delete chars[charName][oldMood];
+                            const persisted = persistSettingsDraft();
+                            if (persisted.ok === false) return persisted;
+                        }
+                    }
+                }
+            }
+            settingsState._pendingRename = null;
+            return rerenderSettings();
         }
 
         return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
@@ -2507,7 +2640,7 @@ function renderSceneAssetList(scenes) {
     const entries = Object.entries(scenes || {});
     if (!entries.length) return '<div class="vn-scene-empty">暂无背景图配置</div>';
     return `<div class="vn-btn-mgr-list">${entries.map(([name, url]) => {
-        return `<div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label">${esc(name)}</span><input class="vn-scene-url-input" data-scene-bg="${esc(name)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-bg:${esc(name)}" title="删除">🗑</button></div>`;
+        return `<div class="vn-btn-mgr-row"><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-bg:${esc(name)}" title="重命名">✏️</button><span class="vn-btn-mgr-label">${esc(name)}</span><input class="vn-scene-url-input" data-scene-bg="${esc(name)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-bg:${esc(name)}" title="删除">🗑</button></div>`;
     }).join('')}</div>`;
 }
 
@@ -2517,9 +2650,9 @@ function renderCharacterAssetList(characters) {
     return charEntries.map(([charName, moods]) => {
         const moodEntries = Object.entries(moods || {});
         const moodRows = moodEntries.map(([mood, url]) => {
-            return `<div class="vn-btn-mgr-row vn-scene-mood-row"><span class="vn-btn-mgr-label">${esc(mood)}</span><input class="vn-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-mood:${esc(charName)}:${esc(mood)}" title="删除">🗑</button></div>`;
+            return `<div class="vn-btn-mgr-row vn-scene-mood-row"><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-mood:${esc(charName)}:${esc(mood)}" title="重命名">✏️</button><span class="vn-btn-mgr-label">${esc(mood)}</span><input class="vn-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-mood:${esc(charName)}:${esc(mood)}" title="删除">🗑</button></div>`;
         }).join('');
-        return `<div class="vn-scene-char-group"><div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-add-mood:${esc(charName)}" title="添加表情">+</button><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-char:${esc(charName)}" title="删除角色">🗑</button></div><div class="vn-btn-mgr-list">${moodRows || '<div class="vn-scene-empty">暂无表情</div>'}</div></div>`;
+        return `<div class="vn-scene-char-group"><div class="vn-btn-mgr-row"><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-char:${esc(charName)}" title="重命名">✏️</button><span class="vn-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-add-mood:${esc(charName)}" title="添加表情">+</button><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-char:${esc(charName)}" title="删除角色">🗑</button></div><div class="vn-btn-mgr-list">${moodRows || '<div class="vn-scene-empty">暂无表情</div>'}</div></div>`;
     }).join('');
 }
 
