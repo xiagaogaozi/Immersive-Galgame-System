@@ -8440,7 +8440,7 @@ function createReaderImageService(options = {}) {
                     scope = resolveContextScope(message, globalObject, { requireMessageScope });
                 }
             }
-            const placeholderState = imageSlots.length && message
+            const placeholderState = imageSlots.length && message && !hasExternalImageSlots(message)
                 ? ensureMessageImagePlaceholders(message, imageSlots)
                 : null;
             const roots = scope.roots;
@@ -9013,6 +9013,13 @@ async function refreshMessageElement(oldMessage, hostAdapter, messageId, globalO
     } catch (error) {
         return null;
     }
+}
+
+function hasExternalImageSlots(message) {
+    const element = message && message.element;
+    if (!element || typeof element.querySelector !== 'function') return false;
+    const mesText = element.querySelector && element.querySelector('.mes_text') || element;
+    return Boolean(mesText.querySelector && mesText.querySelector('.tsp-image-slot, [data-image-id].tsp-generated-image'));
 }
 
 function replaceImageAtIndex(images, index, image) {
