@@ -3,6 +3,7 @@ import {
     buildSegmentImageMap,
     parseImageSlots,
 } from './image-slots.js';
+import { extractSceneDirectives } from './scene-directives.js';
 import { parseSceneText } from './text-parser.js';
 
 export const DEFAULT_SOURCE_FILTER = Object.freeze({
@@ -209,7 +210,10 @@ export function buildFormattedTextPipeline(raw, sourceFilter, formatRule, option
     const visibleText = typeof options.visibleText === 'string' ? options.visibleText : '';
     const filtered = buildFilteredTextSource(raw, cfg, visibleText);
     const imageSource = buildBridgeImageSource(raw, cfg);
-    const formatted = applyVisualNovelBodyFormat(filtered.textSource, formatRule);
+    const directiveResult = options.sceneAssetsEnabled
+        ? extractSceneDirectives(filtered.textSource)
+        : { directives: [], strippedText: filtered.textSource };
+    const formatted = applyVisualNovelBodyFormat(directiveResult.strippedText, formatRule);
     const formattedText = String(formatted.formattedRaw || '').trim();
 
     return {
@@ -224,6 +228,7 @@ export function buildFormattedTextPipeline(raw, sourceFilter, formatRule, option
         formatSourceKind: formatted.formatSourceKind,
         virtualRegexChanged: formatted.virtualRegexChanged,
         virtualRegexError: formatted.virtualRegexError,
+        sceneDirectives: directiveResult.directives,
     };
 }
 
@@ -232,7 +237,8 @@ export function buildVisualNovelTextPayload(message, options = {}) {
     const sourceFilter = normalizeSourceFilter(options.sourceFilter);
     const virtualRegex = normalizeVirtualRegex(options.virtualRegex);
     const visibleText = resolveVisibleText(message, options.visibleText);
-    const strictPayload = buildFormattedTextPipeline(raw, sourceFilter, virtualRegex, { visibleText });
+    const sceneAssetsEnabled = Boolean(options.sceneAssets && options.sceneAssets.enabled);
+    const strictPayload = buildFormattedTextPipeline(raw, sourceFilter, virtualRegex, { visibleText, sceneAssetsEnabled });
     const cleanedRaw = normalizeWhitespace(cleanNarrativeSource(raw));
     const warnings = [];
     const errors = [];
@@ -279,7 +285,7 @@ export function buildVisualNovelTextPayload(message, options = {}) {
     const textSegments = buildNarrativeSegments(readerText);
     const imageSlots = parseImageSlots(raw, strictPayload.imageSource, sourceFilter);
     const segmentImageSlots = readerText
-        ? buildSegmentImageMap(raw, textSegments, imageSlots)
+        ? buildSegmentImageMap(raw, textSegments, imageSlots, { sceneAssetsMode: sceneAssetsEnabled })
         : [];
 
     if (usedFallback) {
@@ -301,6 +307,7 @@ export function buildVisualNovelTextPayload(message, options = {}) {
         imageSlots,
         textSegments,
         segmentImageSlots,
+        sceneDirectives: strictPayload.sceneDirectives || [],
         sourceKind,
         expectedTags: strictPayload.expectedTags,
         formatSourceKind,

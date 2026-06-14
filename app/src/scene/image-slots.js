@@ -58,10 +58,14 @@ export function extractImageBlocks(source) {
     return output;
 }
 
-export function buildSegmentImageMap(raw, segmentTexts = [], imageSlots = []) {
+export function buildSegmentImageMap(raw, segmentTexts = [], imageSlots = [], options = {}) {
     const segments = Array.isArray(segmentTexts) ? segmentTexts : [];
     const totalImageCount = Array.isArray(imageSlots) ? imageSlots.length : 0;
     if (!segments.length || totalImageCount <= 0) return [];
+
+    if (options.sceneAssetsMode) {
+        return buildSceneAssetsMapping(raw, segments, totalImageCount);
+    }
 
     const sentenceMappings = buildSentenceImageMappings(raw, totalImageCount);
     if (!sentenceMappings.length) {
@@ -156,6 +160,32 @@ function buildSentenceImageMappings(raw, totalImageCount) {
         ...sentence,
         imgIdx: clampImageIndex(sentence.imgIdx, totalImageCount),
     }));
+}
+
+function buildSceneAssetsMapping(raw, segments, totalImageCount) {
+    const sentenceMappings = buildSentenceImageMappings(raw, totalImageCount);
+    const result = new Array(segments.length).fill(null);
+    if (!sentenceMappings.length) {
+        if (totalImageCount > 0 && segments.length > 0) {
+            result[segments.length - 1] = 0;
+        }
+        return result;
+    }
+    for (let i = 0; i < sentenceMappings.length; i++) {
+        const mapping = sentenceMappings[i];
+        if (mapping.imgIdx == null) continue;
+        const segIdx = Math.min(
+            segments.length - 1,
+            sentenceMappings.length === segments.length
+                ? i
+                : Math.floor(i * segments.length / Math.max(sentenceMappings.length, 1)),
+        );
+        const targetIdx = Math.max(0, segIdx);
+        if (result[targetIdx] === null) {
+            result[targetIdx] = clampImageIndex(mapping.imgIdx, totalImageCount);
+        }
+    }
+    return result;
 }
 
 function spreadImageSlots(segmentCount, totalImageCount) {

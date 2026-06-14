@@ -99,11 +99,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /VN version: 0\.3\.23/);
+    assert.match(bundle, /VN version: 0\.4\.0/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Visual Novel');
-    assert.equal(manifest.version, '0.3.23');
+    assert.equal(manifest.version, '0.4.0');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -344,7 +344,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
     try {
         const settingsResult = vn.openSettings({ tab: 'basic' });
         assert.equal(settingsResult.ok, true);
-        assert.equal(settingsResult.snapshot.tabs.length, 4);
+        assert.equal(settingsResult.snapshot.tabs.length, 5);
         assert.equal(settingsResult.snapshot.tabs[0].label, '基础');
         const generated = await vn.generateImage({ prompt: 'moon' });
         assert.equal(generated.ok, false);

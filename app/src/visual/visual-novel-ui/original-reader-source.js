@@ -31,7 +31,8 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #vn-bg{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, #2a2a3a 0%, #0c0c11 80%);background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:brightness(.88);}
 #vn-bg-blur{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:blur(40px) brightness(.55) saturate(1.3);transform:scale(1.12);opacity:0;pointer-events:none;}
 #vn-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.6) 0%,rgba(0,0,0,.1) 50%,rgba(0,0,0,0) 80%);pointer-events:none;}
-#vn-click-layer{position:absolute;inset:0;cursor:pointer;z-index:1;}
+#vn-sprite{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:40%;height:85%;background-size:contain;background-repeat:no-repeat;background-position:center bottom;pointer-events:none;z-index:2;display:none;}
+#vn-click-layer{position:absolute;inset:0;cursor:pointer;z-index:3;}
 .vn-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.62);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(32px) saturate(180%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
 .vn-dialog.vn-hidden{opacity:0;transform:translateX(-50%) translateY(20px);pointer-events:none;}
 #vn-overlay.vn-floating #vn-click-layer{cursor:grab;touch-action:none;}
@@ -97,6 +98,7 @@ export const ORIGINAL_READER_REQUIRED_SELECTORS = Object.freeze([
     '#vn-overlay',
     '#vn-bg',
     '#vn-bg-blur',
+    '#vn-sprite',
     '#vn-click-layer',
     '.vn-dialog',
     '.vn-ctrl-bar',

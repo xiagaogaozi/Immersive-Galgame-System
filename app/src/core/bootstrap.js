@@ -18,6 +18,7 @@ import { createVisualNovelReaderHost } from '../visual/visual-novel-ui/reader-ho
 import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
+import { createPromptInjector } from '../host/prompt-injector.js';
 
 export function bootstrapVN(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
@@ -37,6 +38,7 @@ export function bootstrapVN(options = {}) {
         providers: options.imageProviders,
         fetch: options.fetch,
     });
+    const promptInjector = options.promptInjector || createPromptInjector(globalObject);
     const state = {
         status: 'booting',
         config: mergeInitialConfig(options.config, legacyVisualNovel),
@@ -47,7 +49,7 @@ export function bootstrapVN(options = {}) {
     };
 
     const app = {
-        version: '0.3.23',
+        version: '0.4.0',
         global: globalObject,
         events,
         hostAdapter,
@@ -131,6 +133,7 @@ export function bootstrapVN(options = {}) {
         app.magicWandEntry.attach();
     }
     state.status = 'ready';
+    syncSceneAssetsInjection();
     events.emit('vn:ready', publicApi);
 
     return publicApi;
@@ -285,6 +288,7 @@ export function bootstrapVN(options = {}) {
             ...cloneData(nextBridge),
         };
         events.emit('vn:legacy-settings-updated', cloneData(state.legacyVisualNovel));
+        syncSceneAssetsInjection();
         return {
             ok: true,
             legacy: cloneData(state.legacyVisualNovel),
@@ -292,10 +296,21 @@ export function bootstrapVN(options = {}) {
         };
     }
 
+    function syncSceneAssetsInjection() {
+        const unified = getUnifiedSettingsSnapshot();
+        const sceneAssets = unified.bridge && unified.bridge.sceneAssets;
+        if (sceneAssets && sceneAssets.enabled && sceneAssets.promptRule) {
+            promptInjector.inject(sceneAssets.promptRule);
+        } else {
+            promptInjector.clear();
+        }
+    }
+
     function destroy() {
         if (state.destroyed) return { ok: true, reason: 'already-destroyed' };
         state.destroyed = true;
         state.status = 'destroyed';
+        promptInjector.clear();
         if (app.visualNovelUi && typeof app.visualNovelUi.destroy === 'function') {
             app.visualNovelUi.destroy();
         }

@@ -82,10 +82,46 @@ const READER_TAB_TEMPLATE = `
 </div>
 `.trim();
 
+const SCENE_TAB_TEMPLATE = `
+<div class="vn-settings-grid">
+  <div class="vn-settings-section vn-settings-full">{{sceneToggle}}</div>
+  <div class="{{sceneGroupClass}}">
+    <div class="vn-source-filter vn-settings-full">
+      <div>
+        <div class="vn-source-filter-title">格式规则注入</div>
+        <div class="vn-source-filter-note">开启后将通过酒馆 API 向 AI 注入以下系统提示，让 AI 输出 @vn-scene: 标签。</div>
+      </div>
+      {{promptRuleField}}
+      <div class="vn-settings-row">
+        <button class="vn-settings-action" data-action="reset-prompt-rule" type="button">恢复默认提示词</button>
+      </div>
+    </div>
+    <div class="vn-source-filter vn-settings-full">
+      <div>
+        <div class="vn-source-filter-title">背景场景</div>
+        <div class="vn-source-filter-note">场景名 → 背景图 URL。名为「默认」的条目在无匹配时兜底。</div>
+      </div>
+      {{scenesEditor}}
+      <div class="vn-settings-row"><button class="vn-settings-action" data-action="scene-add-bg" type="button">+ 添加背景图</button></div>
+    </div>
+    <div class="vn-source-filter vn-settings-full">
+      <div>
+        <div class="vn-source-filter-title">角色立绘</div>
+        <div class="vn-source-filter-note">角色名 → 情绪 → 立绘 URL。情绪名为「默认」的条目在无匹配时兜底。</div>
+      </div>
+      {{charactersEditor}}
+      <div class="vn-settings-row"><button class="vn-settings-action" data-action="scene-add-char" type="button">+ 添加角色</button></div>
+    </div>
+    <div class="vn-settings-full"><em class="vn-settings-field">提示：在正文中使用 @vn-scene:场景|角色|情绪 来切换画面。省略的字段继承上一次的值。扫描图优先显示。</em></div>
+  </div>
+</div>
+`.trim();
+
 export const SETTINGS_TAB_DEFS = Object.freeze([
     ['basic', '基础'],
     ['regex', '正文替换'],
     ['image', '图像'],
+    ['scene', '场景'],
     ['reader', '阅读器'],
 ]);
 
@@ -97,6 +133,8 @@ export function getSettingsTabTemplate(tab) {
             return REGEX_TAB_TEMPLATE;
         case 'image':
             return IMAGE_TAB_TEMPLATE;
+        case 'scene':
+            return SCENE_TAB_TEMPLATE;
         case 'reader':
             return READER_TAB_TEMPLATE;
         default:

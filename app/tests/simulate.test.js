@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vn-version'), '0.3.23');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.4.0');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -229,7 +229,7 @@ test('gate:simulation:visual-novel-reader-falls-back-to-visible-text-when-raw-me
     vn.destroy();
 });
 
-test('gate:simulation:visual-novel-ui-open-settings-renders-four-tabs', () => {
+test('gate:simulation:visual-novel-ui-open-settings-renders-five-tabs', () => {
     const legacyStorage = readJson('fixtures/visual-novel/legacy-storage.json');
     const storage = createMemoryStorage(legacyStorage);
     const vn = bootstrapVN({
@@ -243,7 +243,7 @@ test('gate:simulation:visual-novel-ui-open-settings-renders-four-tabs', () => {
     const result = vn.openSettings({ tab: 'basic', mode: 'pc' });
 
     assert.equal(result.ok, true);
-    assert.deepEqual(result.snapshot.tabs.map((item) => item.label), ['基础', '正文替换', '图像', '阅读器']);
+    assert.deepEqual(result.snapshot.tabs.map((item) => item.label), ['基础', '正文替换', '图像', '场景', '阅读器']);
     assert.equal(result.snapshot.tabs[0].active, true);
     assert.ok(result.snapshot.selectors.includes('#vn-unified-settings'));
 
@@ -608,7 +608,7 @@ test('gate:simulation:visual-novel-ui-settings-follows-visual-viewport-in-web-an
         assert.ok(overlay, `${mode} should mount settings overlay`);
         assert.ok(overlay.querySelector('.vn-settings-shell'));
         assert.ok(overlay.querySelector('.vn-settings-head'));
-        assert.equal(overlay.querySelectorAll('.vn-settings-tab').length, 4);
+        assert.equal(overlay.querySelectorAll('.vn-settings-tab').length, 5);
         assert.ok(overlay.querySelector('.vn-settings-body'));
         assert.equal(overlay.style['--vn-settings-vleft'], '36px');
         assert.equal(overlay.style['--vn-settings-vtop'], '22px');

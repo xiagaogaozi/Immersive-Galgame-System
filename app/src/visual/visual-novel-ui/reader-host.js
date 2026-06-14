@@ -8,6 +8,7 @@ import {
     normalizeVirtualRegex,
 } from '../../scene/message-source.js';
 import { buildNarrativeSegments } from '../../scene/image-slots.js';
+import { resolveSceneStateAtIndex, lookupSceneAssetUrls } from '../../scene/scene-directives.js';
 import {
     getOriginalReaderHtml,
     ORIGINAL_READER_ICONS,
@@ -113,6 +114,16 @@ const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
             'test-image',
         ]),
     }),
+    scene: Object.freeze({
+        label: '场景',
+        requiredPaths: Object.freeze([
+            'bridge.sceneAssets.enabled',
+            'bridge.sceneAssets.promptRule',
+        ]),
+        requiredActions: Object.freeze([
+            'reset-prompt-rule',
+        ]),
+    }),
     reader: Object.freeze({
         label: '阅读器',
         requiredPaths: READER_REQUIRED_SETTINGS_PATHS,
@@ -133,6 +144,33 @@ const TOOLBAR_ACTIONS = Object.freeze([
 const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze(['hide']);
 const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
 const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
+
+const DEFAULT_SCENE_PROMPT_RULE = `[场景标注规范]
+每当场景发生变化（地点切换、角色出场/退场、角色情绪明显变化）时，在正文中插入以下标记（独占一行）：
+
+@vn-scene:场景名|角色名|情绪
+
+规则：
+1. @vn-scene: 是固定前缀，不可更改
+2. 三个字段用 | 分隔，全部在一行内
+3. 场景名：当前所在的地点/环境（如"教室"、"夜晚街道"、"咖啡厅"）
+4. 角色名：当前画面主要展示的角色（与 @bubble 中的角色名一致）
+5. 情绪：该角色当前的表情/状态
+6. 省略的字段表示沿用上一次的值（保留分隔符），如 @vn-scene:||紧张 表示只切情绪
+7. 此标记不会显示在正文中，仅用于画面切换
+8. 开头第一段正文之前必须有一个完整的 @vn-scene 标记
+
+示例：
+@vn-scene:教室|城崎诺亚|欣喜
+@bubble:城崎诺亚|欣喜|[咦？真的吗？]
+
+（场景不变，角色情绪变化）
+@vn-scene:||紧张
+@bubble:城崎诺亚|紧张|[*（我真的能做好吗？）*]
+
+（场景切换）
+@vn-scene:走廊|清野|兴奋
+@bubble:清野|兴奋|[刚刚你们在这边干什么呢！]`.trim();
 
 export function createVisualNovelReaderHost(options = {}) {
     const state = {
@@ -181,6 +219,7 @@ export function createVisualNovelReaderHost(options = {}) {
         );
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
+        readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
         const snapshot = buildReaderSnapshot(
             payload,
             nextMode,
@@ -606,6 +645,123 @@ export function createVisualNovelReaderHost(options = {}) {
             return rerenderSettings();
         }
 
+        if (normalizedAction === 'reset-prompt-rule') {
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.promptRule = DEFAULT_SCENE_PROMPT_RULE;
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction === 'scene-add-bg') {
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+            const existingKeys = Object.keys(settingsState.draft.bridge.sceneAssets.scenes);
+            const newName = '场景' + (existingKeys.length + 1);
+            settingsState.draft.bridge.sceneAssets.scenes[newName] = '';
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('scene-remove-bg:')) {
+            const name = normalizedAction.slice('scene-remove-bg:'.length);
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+            delete settingsState.draft.bridge.sceneAssets.scenes[name];
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction === 'scene-add-char') {
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
+            const existingKeys = Object.keys(settingsState.draft.bridge.sceneAssets.characters);
+            const newName = '角色' + (existingKeys.length + 1);
+            settingsState.draft.bridge.sceneAssets.characters[newName] = { '默认': '' };
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('scene-remove-char:')) {
+            const name = normalizedAction.slice('scene-remove-char:'.length);
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
+            delete settingsState.draft.bridge.sceneAssets.characters[name];
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('scene-add-mood:')) {
+            const charName = normalizedAction.slice('scene-add-mood:'.length);
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
+            const char = settingsState.draft.bridge.sceneAssets.characters[charName];
+            if (char && typeof char === 'object') {
+                const existingMoods = Object.keys(char);
+                const newMood = '情绪' + (existingMoods.length + 1);
+                char[newMood] = '';
+            }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('scene-remove-mood:')) {
+            const rest = normalizedAction.slice('scene-remove-mood:'.length);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx > 0) {
+                const charName = rest.slice(0, colonIdx);
+                const mood = rest.slice(colonIdx + 1);
+                settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+                settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
+                const char = settingsState.draft.bridge.sceneAssets.characters[charName];
+                if (char && typeof char === 'object') delete char[mood];
+            }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('scene-set-bg-url:')) {
+            const rest = normalizedAction.slice('scene-set-bg-url:'.length);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx > 0) {
+                const name = rest.slice(0, colonIdx);
+                const url = rest.slice(colonIdx + 1);
+                settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+                settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+                settingsState.draft.bridge.sceneAssets.scenes[name] = url;
+                persistSettingsDraft();
+            }
+            return { ok: true };
+        }
+
+        if (normalizedAction.startsWith('scene-set-mood-url:')) {
+            const rest = normalizedAction.slice('scene-set-mood-url:'.length);
+            const firstColon = rest.indexOf(':');
+            if (firstColon > 0) {
+                const charName = rest.slice(0, firstColon);
+                const afterChar = rest.slice(firstColon + 1);
+                const secondColon = afterChar.indexOf(':');
+                if (secondColon > 0) {
+                    const mood = afterChar.slice(0, secondColon);
+                    const url = afterChar.slice(secondColon + 1);
+                    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+                    settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
+                    if (!settingsState.draft.bridge.sceneAssets.characters[charName]) {
+                        settingsState.draft.bridge.sceneAssets.characters[charName] = {};
+                    }
+                    settingsState.draft.bridge.sceneAssets.characters[charName][mood] = url;
+                    persistSettingsDraft();
+                }
+            }
+            return { ok: true };
+        }
+
         return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
     }
 
@@ -685,6 +841,7 @@ export function createVisualNovelReaderHost(options = {}) {
         );
         state.activeReader.mode = nextMode;
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
+        readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, nextMode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
         return { ok: true };
@@ -890,6 +1047,20 @@ export function createVisualNovelReaderHost(options = {}) {
             stage.layers && stage.layers.background && stage.layers.background.resource && stage.layers.background.resource.url,
             '',
         );
+        const sceneAssets = readerSettings._sceneAssets || null;
+        const sceneDirectives = Array.isArray(payload.sceneDirectives) ? payload.sceneDirectives : [];
+        let finalBackgroundImage = backgroundImage;
+        let spriteImage = null;
+        if (sceneAssets && sceneAssets.enabled && sceneDirectives.length) {
+            const sceneState = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
+            const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
+            if (!backgroundImage && assetUrls.backgroundUrl) {
+                finalBackgroundImage = assetUrls.backgroundUrl;
+            }
+            if (!backgroundImage && assetUrls.spriteUrl) {
+                spriteImage = assetUrls.spriteUrl;
+            }
+        }
         const overlayClasses = ['vn-mode-' + mode];
         if (mode === 'pc' || mode === 'mobile') overlayClasses.push('vn-floating');
         if (mode === 'mobile') overlayClasses.push('vn-floating-mobile');
@@ -928,7 +1099,8 @@ export function createVisualNovelReaderHost(options = {}) {
                 segments: cloneData(segments),
                 currentIndex: normalizedIndex,
                 progress: buildProgressText(normalizedIndex, segments.length, displayImageState),
-                backgroundImage,
+                backgroundImage: finalBackgroundImage,
+                spriteImage,
                 images: cloneData(displayImageState.images),
                 imageSlots: cloneData(displayImageState.slots),
                 unboundImages: cloneData(displayImageState.unboundImages),
@@ -1064,6 +1236,20 @@ export function createVisualNovelReaderHost(options = {}) {
             });
         }
 
+        if (tab === 'scene') {
+            const sceneAssets = bridge.sceneAssets || {};
+            const disabled = !sceneAssets.enabled;
+            const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
+            const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
+            return renderTemplate(getSettingsTabTemplate('scene'), {
+                sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
+                sceneGroupClass: `vn-settings-section vn-settings-full${disabled ? ' vn-settings-api-group is-disabled' : ''}`,
+                promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
+                scenesEditor: scenesHtml,
+                charactersEditor: charsHtml,
+            });
+        }
+
         return renderTemplate(getSettingsTabTemplate('reader'), {
             readerModeField: field('readerMode', '应用到模式', selectInput('readerMode', draft.readerMode, [['pc', '电脑'], ['mobile', '手机'], ['web', '网页全屏'], ['fullscreen', '全屏']])),
             fontSizeField: field('readerSettings.fontSize', '字体大小', selectInput('readerSettings.fontSize', reader.fontSize, [12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30].map((n) => [n, `${n}px`]))),
@@ -1190,9 +1376,23 @@ export function createVisualNovelReaderHost(options = {}) {
             }
         });
         root.addEventListener('input', (event) => {
-            const path = event.target && event.target.getAttribute ? event.target.getAttribute('data-path') : '';
-            if (!path) return;
-            controller.setValue(path, event.target.value);
+            const target = event.target;
+            if (!target || !target.getAttribute) return;
+            const path = target.getAttribute('data-path');
+            if (path) {
+                controller.setValue(path, target.value);
+                return;
+            }
+            const sceneBg = target.getAttribute('data-scene-bg');
+            if (sceneBg) {
+                controller.invoke('scene-set-bg-url:' + sceneBg + ':' + target.value);
+                return;
+            }
+            const sceneChar = target.getAttribute('data-scene-char');
+            const sceneMood = target.getAttribute('data-scene-mood');
+            if (sceneChar && sceneMood) {
+                controller.invoke('scene-set-mood-url:' + sceneChar + ':' + sceneMood + ':' + target.value);
+            }
         });
         root.addEventListener('change', (event) => {
             const modelSync = event.target && event.target.getAttribute ? event.target.getAttribute('data-model-sync') : '';
@@ -1272,6 +1472,10 @@ export function createVisualNovelReaderHost(options = {}) {
         const bg = doc.createElement('div');
         bg.id = 'vn-bg';
         overlay.appendChild(bg);
+
+        const sprite = doc.createElement('div');
+        sprite.id = 'vn-sprite';
+        overlay.appendChild(sprite);
 
         const clickLayer = doc.createElement('div');
         clickLayer.id = 'vn-click-layer';
@@ -1477,6 +1681,14 @@ export function createVisualNovelReaderHost(options = {}) {
         } else if (bgBlur) {
             bgBlur.style.backgroundImage = '';
             bgBlur.style.opacity = '0';
+        }
+        const spriteEl = root.querySelector('#vn-sprite');
+        if (spriteEl && snapshot.content.spriteImage) {
+            spriteEl.style.backgroundImage = `url("${snapshot.content.spriteImage.replace(/"/g, '&quot;')}")`;
+            spriteEl.style.display = '';
+        } else if (spriteEl) {
+            spriteEl.style.backgroundImage = '';
+            spriteEl.style.display = 'none';
         }
         if (textEl) {
             textEl.textContent = snapshot.content.displayText;
@@ -2046,6 +2258,7 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.sourceFilter = normalizeSourceFilter(normalized.sourceFilter);
         normalized.virtualRegex = normalizeVirtualRegex(normalized.virtualRegex);
         normalized.imageApi = normalizeImageApi(normalized.imageApi);
+        normalized.sceneAssets = normalizeSceneAssets(normalized.sceneAssets);
         return normalized;
     }
 
@@ -2057,6 +2270,19 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.availableModels = Array.isArray(normalized.availableModels)
             ? normalized.availableModels.filter(Boolean)
             : [];
+        return normalized;
+    }
+
+    function normalizeSceneAssets(value) {
+        const normalized = cloneData(value || {});
+        normalized.enabled = normalizeBoolean(normalized.enabled, false);
+        normalized.promptRule = String(normalized.promptRule || DEFAULT_SCENE_PROMPT_RULE);
+        if (!normalized.scenes || typeof normalized.scenes !== 'object' || Array.isArray(normalized.scenes)) {
+            normalized.scenes = {};
+        }
+        if (!normalized.characters || typeof normalized.characters !== 'object' || Array.isArray(normalized.characters)) {
+            normalized.characters = {};
+        }
         return normalized;
     }
 
@@ -2273,6 +2499,26 @@ function modelPicker(path, value, models, action, placeholder, disabled) {
         return `<option value="${esc(model)}"${selected}>${esc(model)}</option>`;
     })).join('');
     return `<div class="vn-settings-model"><div class="vn-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vn-settings-action vn-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
+}
+
+function renderSceneAssetList(scenes) {
+    const entries = Object.entries(scenes || {});
+    if (!entries.length) return '<div class="vn-scene-empty">暂无背景图配置</div>';
+    return `<div class="vn-btn-mgr-list">${entries.map(([name, url]) => {
+        return `<div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label">${esc(name)}</span><input class="vn-scene-url-input" data-scene-bg="${esc(name)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-bg:${esc(name)}" title="删除">🗑</button></div>`;
+    }).join('')}</div>`;
+}
+
+function renderCharacterAssetList(characters) {
+    const charEntries = Object.entries(characters || {});
+    if (!charEntries.length) return '<div class="vn-scene-empty">暂无角色立绘配置</div>';
+    return charEntries.map(([charName, moods]) => {
+        const moodEntries = Object.entries(moods || {});
+        const moodRows = moodEntries.map(([mood, url]) => {
+            return `<div class="vn-btn-mgr-row vn-scene-mood-row"><span class="vn-btn-mgr-label">${esc(mood)}</span><input class="vn-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-mood:${esc(charName)}:${esc(mood)}" title="删除">🗑</button></div>`;
+        }).join('');
+        return `<div class="vn-scene-char-group"><div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-add-mood:${esc(charName)}" title="添加表情">+</button><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-char:${esc(charName)}" title="删除角色">🗑</button></div><div class="vn-btn-mgr-list">${moodRows || '<div class="vn-scene-empty">暂无表情</div>'}</div></div>`;
+    }).join('');
 }
 
 function renderPinnedButtons(pinnedValue, hiddenValue, orderValue) {

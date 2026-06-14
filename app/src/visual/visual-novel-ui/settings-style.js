@@ -78,6 +78,10 @@ const SETTINGS_STYLE_TEXT = `
 .vn-btn-mgr-icon:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
 .vn-btn-mgr-icon.is-on{color:rgba(93,190,255,.9)}
 .vn-btn-mgr-icon.is-on:hover{color:rgba(135,216,255,1);background:rgba(93,190,255,.12)}
+.vn-scene-url-input{flex:1;min-width:0;height:28px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.06);color:rgba(255,255,255,.85);border-radius:8px;padding:0 8px;font:inherit;font-size:11px;outline:none}
+.vn-scene-url-input:focus{border-color:rgba(92,170,255,.5);background:rgba(255,255,255,.10)}
+.vn-scene-char-group{margin-bottom:8px;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:4px;background:rgba(255,255,255,.02)}
+.vn-scene-empty{font-size:11px;color:rgba(255,255,255,.32);padding:8px;text-align:center}
 @media (max-width:640px){#vn-unified-settings{--vn-settings-width:min(760px,calc(var(--vn-settings-vw) - 24px));--vn-settings-height:min(760px,calc(var(--vn-settings-vh) - 24px));padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}.vn-settings-shell{width:var(--vn-settings-width);height:var(--vn-settings-height);border-radius:18px}.vn-settings-grid,.vn-settings-api-group,.vn-source-filter-grid{grid-template-columns:1fr}.vn-segmented{height:40px}.vn-segmented-btn{font-size:11px;padding:0 4px;gap:4px}}
 `.trim();
 
