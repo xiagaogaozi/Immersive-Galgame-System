@@ -3044,7 +3044,7 @@ function buildSentenceImageMappings(raw, totalImageCount) {
     cleaned = cleaned.replace(/<image\b[^>]*>[\s\S]*?<\/image>/gi, ' \x00IMG\x00 ');
     cleaned = cleaned.replace(/<imgthink[^>]*>[\s\S]*?<\/imgthink>/gi, '');
     cleaned = cleaned.replace(/image###[\s\S]*?###/gi, '');
-    cleaned = cleaned.replace(/<!--([\s\S]*?)-->/g, ' $1 ');
+    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '');
     cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, '');
     cleaned = cleaned.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     cleaned = cleaned.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '');
@@ -5636,6 +5636,9 @@ const INITIAL_IMAGE_POLL_INTERVAL_MS = 500;function createVisualNovelReaderHost
             writeToast('图片收集不可用。');
             return { ok: false, reason: 'collect-not-available' };
         }
+        const overlay = current.dom && current.dom.root || (options.global || globalThis).document && (options.global || globalThis).document.querySelector('#vn-overlay');
+        const bgContainer = overlay && overlay.querySelector('#vn-bg');
+        ensureImageLoadingSpinner(bgContainer);
         const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
         const result = await options.collectMessageImages({
             ...context,
@@ -5645,6 +5648,7 @@ const INITIAL_IMAGE_POLL_INTERVAL_MS = 500;function createVisualNovelReaderHost
             requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
                 && context.imageState.slots.length > 0,
         });
+        removeImageLoadingSpinner(bgContainer);
         if (!result || result.ok === false) {
             writeToast('未扫描到图片。');
             return result || { ok: false, reason: 'rescan-failed' };
@@ -7662,9 +7666,11 @@ function cloneData(value) {
     if (value == null) return value;
     if (Array.isArray(value)) return value.map(cloneData);
     if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));    }
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));
+    }
     return value;
 }
+
 
 __vnDefine(exports, "createVisualNovelReaderHost", () => createVisualNovelReaderHost);
 });

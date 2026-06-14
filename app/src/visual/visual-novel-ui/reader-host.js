@@ -713,6 +713,9 @@ export function createVisualNovelReaderHost(options = {}) {
             writeToast('图片收集不可用。');
             return { ok: false, reason: 'collect-not-available' };
         }
+        const overlay = current.dom && current.dom.root || (options.global || globalThis).document && (options.global || globalThis).document.querySelector('#vn-overlay');
+        const bgContainer = overlay && overlay.querySelector('#vn-bg');
+        ensureImageLoadingSpinner(bgContainer);
         const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
         const result = await options.collectMessageImages({
             ...context,
@@ -722,6 +725,7 @@ export function createVisualNovelReaderHost(options = {}) {
             requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
                 && context.imageState.slots.length > 0,
         });
+        removeImageLoadingSpinner(bgContainer);
         if (!result || result.ok === false) {
             writeToast('未扫描到图片。');
             return result || { ok: false, reason: 'rescan-failed' };
@@ -2739,6 +2743,8 @@ function cloneData(value) {
     if (value == null) return value;
     if (Array.isArray(value)) return value.map(cloneData);
     if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));    }
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));
+    }
     return value;
 }
+

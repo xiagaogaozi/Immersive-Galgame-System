@@ -125,7 +125,7 @@ function buildSentenceImageMappings(raw, totalImageCount) {
     cleaned = cleaned.replace(/<image\b[^>]*>[\s\S]*?<\/image>/gi, ' \x00IMG\x00 ');
     cleaned = cleaned.replace(/<imgthink[^>]*>[\s\S]*?<\/imgthink>/gi, '');
     cleaned = cleaned.replace(/image###[\s\S]*?###/gi, '');
-    cleaned = cleaned.replace(/<!--([\s\S]*?)-->/g, ' $1 ');
+    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '');
     cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, '');
     cleaned = cleaned.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     cleaned = cleaned.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '');
