@@ -718,6 +718,7 @@ export function createVisualNovelReaderHost(options = {}) {
             ...context,
             messageId: current.snapshot && current.snapshot.messageId,
             preferredImageIndex: context.imageIndex,
+            skipCache: true,
             requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
                 && context.imageState.slots.length > 0,
         });
@@ -2738,7 +2739,6 @@ function cloneData(value) {
     if (value == null) return value;
     if (Array.isArray(value)) return value.map(cloneData);
     if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));
-    }
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneData(item)]));    }
     return value;
 }

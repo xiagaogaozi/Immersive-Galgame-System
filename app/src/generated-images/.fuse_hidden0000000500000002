@@ -1117,6 +1117,4 @@ function matchRegenerateButtonCandidate(candidates, imageIndex, imageState) {
     if (currentSlot && currentSlot.buttonIndex != null) {
         const exact = buttonCandidates.find((candidate) => candidate.buttonIndex === currentSlot.buttonIndex);
         if (exact) return exact;
-    }
-    return buttonCandidates[normalizeIndex(imageIndex)] || buttonCandidates[0] || null;
-}
+   
