@@ -121,6 +121,7 @@ const TOOLBAR_ACTIONS = Object.freeze([
     ['prev', '上一段'],
     ['next', '下一段'],
     ['regen', '重新生成背景图'],
+    ['rescan', '刷新图位'],
     ['save', '保存背景图'],
     ['settings', '设置'],
     ['hide', '隐藏'],
@@ -128,8 +129,8 @@ const TOOLBAR_ACTIONS = Object.freeze([
     ['next-turn', '下一轮'],
 ]);
 const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze(['hide']);
-const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
-const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
+const INITIAL_IMAGE_POLL_ATTEMPTS = 20;
+const INITIAL_IMAGE_POLL_INTERVAL_MS = 500;
 
 export function createVisualNovelReaderHost(options = {}) {
     const state = {
@@ -585,6 +586,9 @@ export function createVisualNovelReaderHost(options = {}) {
         if (normalizedAction === 'regen') {
             return regenerateCurrentImage();
         }
+        if (normalizedAction === 'rescan') {
+            return rescanCurrentImages();
+        }
         if (normalizedAction === 'save') {
             return saveCurrentImage();
         }
@@ -700,6 +704,32 @@ export function createVisualNovelReaderHost(options = {}) {
             fallback: '当前未检测到新的背景图。',
         }));
         return result;
+    }
+
+    async function rescanCurrentImages() {
+        const current = state.activeReader;
+        if (!current) return { ok: false, reason: 'reader-not-open' };
+        if (typeof options.collectMessageImages !== 'function') {
+            writeToast('图片收集不可用。');
+            return { ok: false, reason: 'collect-not-available' };
+        }
+        const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
+        const result = await options.collectMessageImages({
+            ...context,
+            messageId: current.snapshot && current.snapshot.messageId,
+            preferredImageIndex: context.imageIndex,
+            requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
+                && context.imageState.slots.length > 0,
+        });
+        if (!result || result.ok === false) {
+            writeToast('未扫描到图片。');
+            return result || { ok: false, reason: 'rescan-failed' };
+        }
+        const nextBoundCount = countBoundImageSlots(result);
+        current.payload.imageState = cloneData(result);
+        rerenderActiveReader();
+        writeToast(`已刷新：绑定 ${nextBoundCount}/${result.expectedCount || result.count || 0} 张图。`);
+        return { ok: true, boundCount: nextBoundCount, imageState: result };
     }
 
     async function saveCurrentImage() {

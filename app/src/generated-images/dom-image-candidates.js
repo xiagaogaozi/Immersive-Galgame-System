@@ -300,6 +300,7 @@ function getImageElement(node) {
 
 function rawImageUrl(node) {
     if (!node) return '';
+    if (isUnloadedPlaceholderImage(node)) return '';
     if (node.tagName === 'IMG' || hasImageSource(node)) {
         return normalizeImageUrl(node.currentSrc || node.src || safeGetAttribute(node, 'data-src') || '', 'src');
     }
@@ -539,6 +540,16 @@ function isImageLikeNode(node) {
 
 function hasImageSource(node) {
     return Boolean(node && typeof node === 'object' && (node.currentSrc || node.src || safeGetAttribute(node, 'data-src')));
+}
+
+const PLACEHOLDER_GIF_PREFIX = 'data:image/gif;base64,R0lGODlhAQABAIAAA';
+
+function isUnloadedPlaceholderImage(node) {
+    if (!node || node.tagName !== 'IMG') return false;
+    if (safeGetAttribute(node, 'data-is-loaded') === 'false') return true;
+    const src = node.currentSrc || node.src || '';
+    if (src.startsWith(PLACEHOLDER_GIF_PREFIX)) return true;
+    return false;
 }
 
 function hasHref(node) {
