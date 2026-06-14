@@ -4363,7 +4363,6 @@ const PLACEHOLDER_GIF_PREFIX = 'data:image/gif;base64,R0lGODlhAQABAIAAA';
 
 function isUnloadedPlaceholderImage(node) {
     if (!node || node.tagName !== 'IMG') return false;
-    if (safeGetAttribute(node, 'data-is-loaded') === 'false') return true;
     const src = node.currentSrc || node.src || '';
     if (src.startsWith(PLACEHOLDER_GIF_PREFIX)) return true;
     return false;
@@ -4384,6 +4383,7 @@ function isLikelyHostDecorImage(sourceNode, imageNode) {
     if (/(^|\s)(avatar|mesAvatar|mes_avatar|ch_name|name|timestamp)(\s|$)/i.test(classText)) return true;
     return Boolean(safeClosest(source, '.avatar,.mesAvatar,.mes_avatar,.ch_name,.timestamp'));
 }
+
 
 __vnDefine(exports, "getAdapterSelectors", () => getAdapterSelectors);
 __vnDefine(exports, "resolveDomRoots", () => resolveDomRoots);
