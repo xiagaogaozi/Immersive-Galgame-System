@@ -761,19 +761,16 @@ function buildSlottedImageState({
     assignCandidatesToSlots(slots, cachedCandidates, {
         preferredIndex,
         fillOnlyEmpty: true,
-        allowSequentialFallback: cachedCandidates.length === slots.length,
     }, claimedUrls);
     assignCandidatesToSlots(slots, providerCandidates, {
         preferredIndex,
         fillOnlyEmpty: false,
-        allowSequentialFallback: providerCandidates.length === slots.length,
         allowPreferredFallback: preferredFallbackOptions.enabled,
         preferredFallbackUrlBlacklist: preferredFallbackOptions.excludeUrls,
     }, claimedUrls);
     assignCandidatesToSlots(slots, sceneCandidates, {
         preferredIndex,
         fillOnlyEmpty: true,
-        allowSequentialFallback: sceneCandidates.length === slots.length,
     }, claimedUrls);
 
     const unboundImages = uniqueImages([
@@ -832,8 +829,8 @@ function assignCandidatesToSlots(slots, candidates, options, claimedUrls) {
     applyExactSlotMatches(slots, remaining, options, claimedUrls);
     applyLocationHashMatches(slots, remaining, options, claimedUrls);
     applyImageIdMatches(slots, remaining, options, claimedUrls);
+    applyOrderedSlotFill(slots, remaining, options, claimedUrls);
     applyPreferredSlotFallback(slots, remaining, options, claimedUrls);
-    applySequentialSlotFallback(slots, remaining, options, claimedUrls);
 }
 
 function applyExactSlotMatches(slots, candidates, options, claimedUrls) {
@@ -872,13 +869,33 @@ function applyImageIdMatches(slots, candidates, options, claimedUrls) {
     }
 }
 
+function applyOrderedSlotFill(slots, candidates, options, claimedUrls) {
+    if (!candidates.length) return;
+    const ordered = candidates.filter((c) => c && c.order != null);
+    if (ordered.length < 2) return;
+    ordered.sort((a, b) => a.order - b.order);
+    const used = new Set();
+    for (const slot of slots) {
+        if (!ordered.length) break;
+        if (!canWriteSlot(slot, options)) continue;
+        const candidate = ordered.shift();
+        if (!candidate || !candidate.url) continue;
+        writeSlotImage(slot, candidate);
+        claimedUrls.add(candidate.url);
+        used.add(candidate);
+    }
+    for (let i = candidates.length - 1; i >= 0; i -= 1) {
+        if (used.has(candidates[i])) candidates.splice(i, 1);
+    }
+}
+
 function applyPreferredSlotFallback(slots, candidates, options, claimedUrls) {
     if (!candidates.length) return;
-    if (options && options.allowPreferredFallback === false) return;
-    if (options && options.allowSequentialFallback === true && candidates.length >= slots.length) return;
+    if (!options || options.allowPreferredFallback !== true) return;
     const preferredIndex = clampSlotIndex(options && options.preferredIndex, slots.length);
     const preferredSlot = slots[preferredIndex];
-    if (!preferredSlot || !canWriteSlot(preferredSlot, options)) return;
+    if (!preferredSlot) return;
+    if (!canWriteSlot(preferredSlot, options)) return;
     const blacklist = options && options.preferredFallbackUrlBlacklist instanceof Set
         ? options.preferredFallbackUrlBlacklist
         : new Set();
@@ -887,17 +904,6 @@ function applyPreferredSlotFallback(slots, candidates, options, claimedUrls) {
     const [candidate] = candidates.splice(candidateIndex, 1);
     writeSlotImage(preferredSlot, candidate);
     claimedUrls.add(candidate.url);
-}
-
-function applySequentialSlotFallback(slots, candidates, options, claimedUrls) {
-    if (!options || options.allowSequentialFallback !== true) return;
-    for (const slot of slots) {
-        if (!candidates.length) break;
-        if (!canWriteSlot(slot, options)) continue;
-        const candidate = candidates.shift();
-        writeSlotImage(slot, candidate);
-        claimedUrls.add(candidate.url);
-    }
 }
 
 function canWriteSlot(slot, options) {

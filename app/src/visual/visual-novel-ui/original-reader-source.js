@@ -57,6 +57,8 @@ const ORIGINAL_READER_STYLE_TEXT = `
 .vn-send-btn:disabled{opacity:.55;pointer-events:none;}
 @keyframes vn-spin{to{transform:rotate(360deg);}}
 .vn-spinner{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:vn-spin .8s linear infinite;}
+.vn-image-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:1;}
+.vn-image-spinner{width:32px;height:32px;border-width:3px;opacity:.7;}
 #vn-send-status{display:none;flex:1;align-items:center;gap:8px;padding:8px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;font-size:13px;color:rgba(255,255,255,.55);letter-spacing:.3px;}
 #vn-settings{display:none;position:absolute;right:0;bottom:calc(100% + 10px);min-width:232px;background:rgba(16,16,20,.92);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(40px) saturate(180%);border-radius:18px;padding:16px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.6);z-index:30;}
 #vn-toast{position:absolute;left:50%;top:24px;transform:translateX(-50%);min-width:200px;max-width:min(420px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;background:rgba(16,16,20,.88);border:1px solid rgba(255,255,255,.12);font-size:12px;line-height:1.45;opacity:0;pointer-events:none;}
@@ -121,7 +123,7 @@ export function getOriginalReaderHtml() {
     return ORIGINAL_READER_HTML;
 }
 
-export function getOriginalReaderSource(version = '0.3.19') {
+export function getOriginalReaderSource(version = '0.3.20') {
     return {
         version,
         styleText: ORIGINAL_READER_STYLE_TEXT,

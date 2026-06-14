@@ -19,11 +19,12 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.19`：修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
+- 当前项目版本 `v0.3.20`：修复多图位顺序回填逻辑，6 个 `<image>` 图块现在全部按正文顺序绑定显示；空图位显示转圈加载图。
+- `v0.3.19` 修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.19.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.20.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -128,6 +129,14 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.3.20 - 2026-06-14
+
+- 修复多图位顺序回填：正文中 6 个 `<image>` 图块现在全部按正文顺序绑定到对应图位，不再永远卡在"已绑定 1/6"。
+- 根因：旧逻辑要求 DOM 候选数恰好等于图位数才启动顺序回填，而 URL 去重会把多张相同加载中占位图塌缩成 1 张，导致门槛永远不满足。新增 `applyOrderedSlotFill`，按 DOM 出现顺序（`order`）填充空图位，无等量门槛；单张无标记图片仍保持 unbound 不乱填。
+- 修复首选位兜底抢占问题：`applyPreferredSlotFallback` 现在仅在 regen 流程（`allowPreferredFallback === true`）时生效，普通加载不再把随机候选反复覆盖 slot0。
+- 空图位加载提示：当有图位尚未绑定时，背景区显示转圈加载动画（`.vn-image-loading`），图片到位后自动消失。
+- 全部 90 项测试通过（unit 36 + gate-contract 17 + simulate 37）。
 
 ### v0.3.19 - 2026-06-13
 

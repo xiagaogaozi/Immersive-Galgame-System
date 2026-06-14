@@ -1,4 +1,4 @@
-import test from 'node:test';
+﻿import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -88,7 +88,7 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.equal(loaderJson.button.enabled, false);
     assert.deepEqual(loaderJson.button.buttons, []);
 
-    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', '酒馆助手脚本-Visual Novel（自动更新） v0.3.19.json'), 'utf8'));
+    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', '酒馆助手脚本-Visual Novel（自动更新） v0.3.20.json'), 'utf8'));
     assert.equal(releaseJson.name, loaderJson.name);
     assert.equal(releaseJson.content, loaderSource);
 });
@@ -99,11 +99,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /VN version: 0\.3\.19/);
+    assert.match(bundle, /VN version: 0\.3\.20/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Visual Novel');
-    assert.equal(manifest.version, '0.3.19');
+    assert.equal(manifest.version, '0.3.20');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -356,7 +356,7 @@ test('gate:visual-novel-compat:api-shape', async () => {
 
 test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
     const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
-    const source = getOriginalReaderSource('0.3.19');
+    const source = getOriginalReaderSource('0.3.20');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));

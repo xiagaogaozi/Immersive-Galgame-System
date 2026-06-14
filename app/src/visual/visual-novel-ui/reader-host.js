@@ -865,7 +865,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.19'),
+            source: getOriginalReaderSource(options.version || '0.3.20'),
         };
     }
 
@@ -890,7 +890,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.19'),
+                version: esc(options.version || '0.3.20'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1304,7 +1304,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vn-settings-badge';
-        badge.textContent = options.version || '0.3.19';
+        badge.textContent = options.version || '0.3.20';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1371,8 +1371,14 @@ export function createVisualNovelReaderHost(options = {}) {
 
         if (bg && snapshot.content.backgroundImage) {
             bg.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
+            removeImageLoadingSpinner(bg);
         } else if (bg) {
             bg.style.backgroundImage = '';
+            if (snapshot.content.imageExpectedCount > 0 && snapshot.content.imageBoundCount < snapshot.content.imageExpectedCount) {
+                ensureImageLoadingSpinner(bg);
+            } else {
+                removeImageLoadingSpinner(bg);
+            }
         }
         if (bgBlur && snapshot.content.backgroundImage) {
             bgBlur.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
@@ -1918,7 +1924,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.19' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.20' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -1929,7 +1935,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.19',
+            version: snapshot.version || options.version || '0.3.20',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2400,6 +2406,24 @@ function clearReaderToast(current) {
 
 function clampNumber(value, min, max) {
     return Math.max(min, Math.min(max, value));
+}
+
+function ensureImageLoadingSpinner(container) {
+    if (!container) return;
+    if (container.querySelector('.vn-image-loading')) return;
+    const wrapper = container.ownerDocument
+        ? container.ownerDocument.createElement('div')
+        : document.createElement('div');
+    wrapper.className = 'vn-image-loading';
+    wrapper.setAttribute('aria-label', '图片加载中');
+    wrapper.innerHTML = '<span class="vn-spinner vn-image-spinner"></span>';
+    container.appendChild(wrapper);
+}
+
+function removeImageLoadingSpinner(container) {
+    if (!container) return;
+    const existing = container.querySelector('.vn-image-loading');
+    if (existing) existing.remove();
 }
 
 function buildProgressText(currentIndex, totalSegments, imageState) {
