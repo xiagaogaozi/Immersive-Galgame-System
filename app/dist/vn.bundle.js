@@ -6060,6 +6060,7 @@ const DEFAULT_SCENE_PROMPT_RULE = `[场景标注规范]
             sourceFilter: payload.sourceFilter,
             virtualRegex: payload.virtualRegex,
             visibleText: payload.visibleText,
+            sceneAssets: readerSettings._sceneAssets,
         });
         const text = firstRenderableText(
             scene.text,
@@ -6093,7 +6094,8 @@ const DEFAULT_SCENE_PROMPT_RULE = `[场景标注规范]
             '',
         );
         const sceneAssets = readerSettings._sceneAssets || null;
-        const sceneDirectives = Array.isArray(payload.sceneDirectives) ? payload.sceneDirectives : [];
+        const sceneDirectives = Array.isArray(extracted.sceneDirectives) ? extracted.sceneDirectives
+            : Array.isArray(payload.sceneDirectives) ? payload.sceneDirectives : [];
         let finalBackgroundImage = backgroundImage;
         let spriteImage = null;
         if (sceneAssets && sceneAssets.enabled && sceneDirectives.length) {
