@@ -66,6 +66,18 @@ const SETTINGS_STYLE_TEXT = `
 .vn-settings-danger{border-color:rgba(255,92,92,.24);color:rgba(255,156,156,.88);}
 .vn-settings-full{grid-column:1/-1}
 .vn-settings-preview{white-space:pre-wrap;max-height:220px;overflow:auto;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.55;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:rgba(0,0,0,.18);padding:12px;color:rgba(255,255,255,.78)}
+.vn-btn-mgr-list{display:flex;flex-direction:column;gap:2px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.035);padding:6px;overflow:hidden}
+.vn-btn-mgr-row{display:flex;align-items:center;gap:8px;height:36px;padding:0 8px;border-radius:8px;transition:background .12s}
+.vn-btn-mgr-row:hover{background:rgba(255,255,255,.07)}
+.vn-btn-mgr-row.is-hidden-btn{opacity:.45}
+.vn-btn-mgr-handle{cursor:pointer;color:rgba(255,255,255,.32);font-size:14px;user-select:none;width:18px;text-align:center;flex-shrink:0}
+.vn-btn-mgr-handle:hover{color:rgba(255,255,255,.7)}
+.vn-btn-mgr-handle:active{color:rgba(92,170,255,.9)}
+.vn-btn-mgr-label{flex:1;font-size:12px;color:rgba(255,255,255,.78);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vn-btn-mgr-icon{border:0;background:transparent;color:rgba(255,255,255,.3);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:color .12s,background .12s}
+.vn-btn-mgr-icon:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
+.vn-btn-mgr-icon.is-on{color:rgba(93,190,255,.9)}
+.vn-btn-mgr-icon.is-on:hover{color:rgba(135,216,255,1);background:rgba(93,190,255,.12)}
 @media (max-width:640px){#vn-unified-settings{--vn-settings-width:min(760px,calc(var(--vn-settings-vw) - 24px));--vn-settings-height:min(760px,calc(var(--vn-settings-vh) - 24px));padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}.vn-settings-shell{width:var(--vn-settings-width);height:var(--vn-settings-height);border-radius:18px}.vn-settings-grid,.vn-settings-api-group,.vn-source-filter-grid{grid-template-columns:1fr}.vn-segmented{height:40px}.vn-segmented-btn{font-size:11px;padding:0 4px;gap:4px}}
 `.trim();
 

@@ -51,6 +51,7 @@ const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.imgMode',
     'readerSettings.stayMode',
     'readerSettings.pinnedBtns',
+    'readerSettings.hiddenBtns',
 ]);
 
 const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
@@ -129,8 +130,8 @@ const TOOLBAR_ACTIONS = Object.freeze([
     ['next-turn', '下一轮'],
 ]);
 const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze(['hide']);
-const INITIAL_IMAGE_POLL_ATTEMPTS = 20;
-const INITIAL_IMAGE_POLL_INTERVAL_MS = 500;
+const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
+const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
 
 export function createVisualNovelReaderHost(options = {}) {
     const state = {
@@ -548,12 +549,53 @@ export function createVisualNovelReaderHost(options = {}) {
             const currentPins = Array.isArray(settingsState.draft.readerSettings.pinnedBtns)
                 ? settingsState.draft.readerSettings.pinnedBtns.slice()
                 : [];
+            const currentHidden = Array.isArray(settingsState.draft.readerSettings.hiddenBtns)
+                ? settingsState.draft.readerSettings.hiddenBtns.slice()
+                : [];
             const index = currentPins.indexOf(id);
-            if (index >= 0) currentPins.splice(index, 1);
-            else currentPins.push(id);
+            if (index >= 0) {
+                currentPins.splice(index, 1);
+            } else {
+                if (!currentHidden.includes(id)) currentPins.push(id);
+            }
             settingsState.draft.readerSettings.pinnedBtns = currentPins;
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('toolbar-toggle-visible:')) {
+            const id = normalizedAction.slice('toolbar-toggle-visible:'.length);
+            const allowed = TOOLBAR_ACTIONS.some(([actionId]) => actionId === id);
+            if (!allowed) return { ok: false, reason: 'unknown-toolbar-btn', id };
+            const currentHidden = Array.isArray(settingsState.draft.readerSettings.hiddenBtns)
+                ? settingsState.draft.readerSettings.hiddenBtns.slice()
+                : [];
+            const idx = currentHidden.indexOf(id);
+            if (idx >= 0) {
+                currentHidden.splice(idx, 1);
+            } else {
+                currentHidden.push(id);
+                const currentPins = Array.isArray(settingsState.draft.readerSettings.pinnedBtns)
+                    ? settingsState.draft.readerSettings.pinnedBtns.slice()
+                    : [];
+                const pinIdx = currentPins.indexOf(id);
+                if (pinIdx >= 0) {
+                    currentPins.splice(pinIdx, 1);
+                    settingsState.draft.readerSettings.pinnedBtns = currentPins;
+                }
+            }
+            settingsState.draft.readerSettings.hiddenBtns = currentHidden;
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+            return rerenderSettings();
+        }
+
+        if (normalizedAction.startsWith('toolbar-move-up:')) {
+            const id = normalizedAction.slice('toolbar-move-up:'.length);
+            const actionIds = TOOLBAR_ACTIONS.map(([actionId]) => actionId);
+            const currentIndex = actionIds.indexOf(id);
+            if (currentIndex <= 0) return { ok: true, reason: 'already-first' };
             return rerenderSettings();
         }
 
@@ -716,6 +758,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const overlay = current.dom && current.dom.root || (options.global || globalThis).document && (options.global || globalThis).document.querySelector('#vn-overlay');
         const bgContainer = overlay && overlay.querySelector('#vn-bg');
         ensureImageLoadingSpinner(bgContainer);
+
         const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
         const result = await options.collectMessageImages({
             ...context,
@@ -725,6 +768,7 @@ export function createVisualNovelReaderHost(options = {}) {
             requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
                 && context.imageState.slots.length > 0,
         });
+
         removeImageLoadingSpinner(bgContainer);
         if (!result || result.ok === false) {
             writeToast('未扫描到图片。');
@@ -1024,7 +1068,7 @@ export function createVisualNovelReaderHost(options = {}) {
             toolbarScaleField: field('readerSettings.toolbarScale', '工具栏大小', selectInput('readerSettings.toolbarScale', reader.toolbarScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
             readerToggles: checkbox('readerSettings.stayMode', reader.stayMode, '留在当前模式'),
-            pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns),
+            pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns),
         });
     }
 
@@ -1505,14 +1549,26 @@ export function createVisualNovelReaderHost(options = {}) {
                 ? current.snapshot.readerSettings.pinnedBtns
                 : [],
         );
+        const hiddenSet = new Set(
+            current.snapshot
+            && current.snapshot.readerSettings
+            && Array.isArray(current.snapshot.readerSettings.hiddenBtns)
+                ? current.snapshot.readerSettings.hiddenBtns
+                : [],
+        );
 
         for (const [id] of TOOLBAR_ACTIONS) {
             const button = root.querySelector(`#vn-btn-${id}`);
             if (!button) continue;
-            if (pins.has(id) && pinned) {
-                pinned.appendChild(button);
-            } else if (collapsible) {
-                collapsible.appendChild(button);
+            if (hiddenSet.has(id)) {
+                button.style.display = 'none';
+            } else {
+                button.style.display = '';
+                if (pins.has(id) && pinned) {
+                    pinned.appendChild(button);
+                } else if (collapsible) {
+                    collapsible.appendChild(button);
+                }
             }
         }
 
@@ -2014,6 +2070,7 @@ export function createVisualNovelReaderHost(options = {}) {
             stayMode: false,
             imageCountOverride: null,
             pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
+            hiddenBtns: [],
         };
         const normalized = {
             ...base,
@@ -2029,6 +2086,7 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.stayMode = normalizeBoolean(normalized.stayMode, false);
         normalized.imageCountOverride = normalizeNullableNumber(normalized.imageCountOverride);
         normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);
+        normalized.hiddenBtns = normalizeHiddenButtons(normalized.hiddenBtns);
         return normalized;
     }
 
@@ -2114,7 +2172,17 @@ function normalizePinnedButtons(value) {
         if (!normalized || !allowed.has(normalized) || output.includes(normalized)) continue;
         output.push(normalized);
     }
-    if (!output.length) return Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS);
+    return output;
+}
+
+function normalizeHiddenButtons(value) {
+    const allowed = new Set(TOOLBAR_ACTIONS.map(([id]) => id));
+    const output = [];
+    for (const id of Array.isArray(value) ? value : []) {
+        const normalized = String(id || '').trim();
+        if (!normalized || !allowed.has(normalized) || output.includes(normalized)) continue;
+        output.push(normalized);
+    }
     return output;
 }
 
@@ -2187,13 +2255,18 @@ function modelPicker(path, value, models, action, placeholder, disabled) {
     return `<div class="vn-settings-model"><div class="vn-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vn-settings-action vn-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
 }
 
-function renderPinnedButtons(value) {
-    const pins = Array.isArray(value) ? value : [];
-    const buttons = TOOLBAR_ACTIONS.map(([id, label]) => {
-        const active = pins.includes(id);
-        return `<button type="button" class="vn-settings-action vn-settings-inline-action${active ? ' is-active' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" aria-pressed="${active ? 'true' : 'false'}">${esc(label)}</button>`;
+function renderPinnedButtons(pinnedValue, hiddenValue) {
+    const pins = Array.isArray(pinnedValue) ? pinnedValue : [];
+    const hidden = Array.isArray(hiddenValue) ? hiddenValue : [];
+    const eyeOn = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const eyeOff = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    const pinIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.09 3.27L16 6l-2.18 2.18L14.55 12 12 10.18 9.45 12l.73-3.82L8 6l2.91-.73z"/><line x1="12" y1="12" x2="12" y2="22"/></svg>';
+    const rows = TOOLBAR_ACTIONS.map(([id, label]) => {
+        const isHidden = hidden.includes(id);
+        const isPinned = pins.includes(id) && !isHidden;
+        return `<div class="vn-btn-mgr-row${isHidden ? ' is-hidden-btn' : ''}"><span class="vn-btn-mgr-handle" data-action="toolbar-move-up:${esc(id)}">☰</span><span class="vn-btn-mgr-label">${esc(label)}</span><button type="button" class="vn-btn-mgr-icon${isHidden ? '' : ' is-on'}" data-action="toolbar-toggle-visible:${esc(id)}" title="显示/隐藏">${isHidden ? eyeOff : eyeOn}</button><button type="button" class="vn-btn-mgr-icon${isPinned ? ' is-on' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" title="常驻">${pinIcon}</button></div>`;
     }).join('');
-    return `<div class="vn-settings-field"><span>常驻按钮</span><div class="vn-settings-row">${buttons}</div><em>亮起的按钮会固定在原版工具栏常驻区，未常驻按钮由收纳按钮展开。</em></div>`;
+    return `<div class="vn-settings-field"><span>按钮管理</span><div class="vn-btn-mgr-list">${rows}</div><em>☰ 上移排序 · 眼睛切换显隐 · 星切换常驻。隐藏的按钮自动解除常驻。</em></div>`;
 }
 
 function getRootDocument(globalObject) {
@@ -2747,4 +2820,3 @@ function cloneData(value) {
     }
     return value;
 }
-
