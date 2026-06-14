@@ -745,6 +745,7 @@ export function createVisualNovelReaderHost(options = {}) {
             const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
             const result = await options.collectMessageImages({
                 ...context,
+                messageId: current.snapshot && current.snapshot.messageId,
                 preferredImageIndex: context.imageIndex,
                 requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
                     && context.imageState.slots.length > 0,

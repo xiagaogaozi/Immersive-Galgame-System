@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.20`：修复多图位顺序回填逻辑，6 个 `<image>` 图块现在全部按正文顺序绑定显示；空图位显示转圈加载图。
+- 当前项目版本 `v0.3.20`：修复 chami 等外部 provider 图片始终显示"当前图位未生成"的问题；当消息 DOM 节点被酒馆重建后，轮询和初始收集现在会自动刷新 element 引用。
 - `v0.3.19` 修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
@@ -132,11 +132,10 @@ projects/Visual Novel/
 
 ### v0.3.20 - 2026-06-14
 
-- 修复多图位顺序回填：正文中 6 个 `<image>` 图块现在全部按正文顺序绑定到对应图位，不再永远卡在"已绑定 1/6"。
-- 根因：旧逻辑要求 DOM 候选数恰好等于图位数才启动顺序回填，而 URL 去重会把多张相同加载中占位图塌缩成 1 张，导致门槛永远不满足。新增 `applyOrderedSlotFill`，按 DOM 出现顺序（`order`）填充空图位，无等量门槛；单张无标记图片仍保持 unbound 不乱填。
-- 修复首选位兜底抢占问题：`applyPreferredSlotFallback` 现在仅在 regen 流程（`allowPreferredFallback === true`）时生效，普通加载不再把随机候选反复覆盖 slot0。
-- 空图位加载提示：当有图位尚未绑定时，背景区显示转圈加载动画（`.vn-image-loading`），图片到位后自动消失。
-- 全部 90 项测试通过（unit 36 + gate-contract 17 + simulate 37）。
+- 修复 chami 等外部 provider 图片始终显示"当前图位未生成"的问题：根因是轮询时 `message.element` 指向被酒馆重建后脱离 DOM 的旧节点，导致 provider 扫描范围为空、收集不到任何图片。
+- `reader-image-service.js` 新增 `isDetachedElement` 检测和 `refreshMessageElement` 自动刷新：当 `requireMessageScope` 为 true 且初始 scope 失败或 element 已脱离文档时，自动通过 `hostAdapter.getMessageById` 重新获取最新 DOM 引用后重试 scope 解析。
+- `reader-host.js` 轮询时显式传入 `messageId`，确保 service 层在 message 引用失效时仍可通过 id 重查 DOM。
+- 保留 v0.3.19 的"单张无标记图片不得绑定第一图位"设计（`applyOrderedSlotFill` 仍要求 >= 2 张有序候选才执行顺序填充）。
 
 ### v0.3.19 - 2026-06-13
 

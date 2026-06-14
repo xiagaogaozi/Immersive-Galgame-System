@@ -36,7 +36,7 @@ export function createReaderImageService(options = {}) {
                 return emptyImageState({ ok: false, reason: 'invalid-message-id' });
             }
 
-            const message = await resolveMessageContext(context, hostAdapter, messageId);
+            let message = await resolveMessageContext(context, hostAdapter, messageId);
             const unifiedSettings = context.unifiedSettings || {};
             const imageApi = resolveImageApi(unifiedSettings);
             const imageSlots = normalizeImageSlots(firstDefined(
@@ -44,9 +44,15 @@ export function createReaderImageService(options = {}) {
                 context.imageState && context.imageState.slots,
                 [],
             ));
-            const scope = resolveContextScope(message, globalObject, {
-                requireMessageScope: imageSlots.length > 0 || context.requiresMessageScope === true,
-            });
+            const requireMessageScope = imageSlots.length > 0 || context.requiresMessageScope === true;
+            let scope = resolveContextScope(message, globalObject, { requireMessageScope });
+            if (requireMessageScope && (!scope.ok || isDetachedElement(message && message.element, globalObject))) {
+                const refreshed = await refreshMessageElement(message, hostAdapter, messageId, globalObject);
+                if (refreshed) {
+                    message = refreshed;
+                    scope = resolveContextScope(message, globalObject, { requireMessageScope });
+                }
+            }
             const placeholderState = imageSlots.length && message
                 ? ensureMessageImagePlaceholders(message, imageSlots)
                 : null;
@@ -590,6 +596,36 @@ async function resolveMessageContext(context, hostAdapter, messageId) {
         return null;
     }
     return hostAdapter.getMessageById(messageId);
+}
+
+function isDetachedElement(element, globalObject) {
+    if (!element || typeof element.getRootNode !== 'function') return true;
+    try {
+        const root = element.getRootNode();
+        if (root && root.defaultView) return false;
+        const docs = [];
+        const gObj = globalObject || globalThis.window || globalThis;
+        if (gObj && gObj.document) docs.push(gObj.document);
+        try { if (gObj && gObj.top && gObj.top.document) docs.push(gObj.top.document); } catch (e) { /* cross-origin */ }
+        if (typeof document !== 'undefined') docs.push(document);
+        return !docs.some((doc) => doc && doc.contains && doc.contains(element));
+    } catch (error) {
+        return true;
+    }
+}
+
+async function refreshMessageElement(oldMessage, hostAdapter, messageId, globalObject) {
+    if (messageId == null || !hostAdapter || typeof hostAdapter.getMessageById !== 'function') {
+        return null;
+    }
+    try {
+        const fresh = await hostAdapter.getMessageById(messageId);
+        if (!fresh || !fresh.element) return null;
+        if (isDetachedElement(fresh.element, globalObject)) return null;
+        return fresh;
+    } catch (error) {
+        return null;
+    }
 }
 
 function replaceImageAtIndex(images, index, image) {
