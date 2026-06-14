@@ -52,6 +52,7 @@ const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.stayMode',
     'readerSettings.pinnedBtns',
     'readerSettings.hiddenBtns',
+    'readerSettings.btnOrder',
 ]);
 
 const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
@@ -593,9 +594,15 @@ export function createVisualNovelReaderHost(options = {}) {
 
         if (normalizedAction.startsWith('toolbar-move-up:')) {
             const id = normalizedAction.slice('toolbar-move-up:'.length);
-            const actionIds = TOOLBAR_ACTIONS.map(([actionId]) => actionId);
-            const currentIndex = actionIds.indexOf(id);
+            const order = Array.isArray(settingsState.draft.readerSettings.btnOrder)
+                ? settingsState.draft.readerSettings.btnOrder.slice()
+                : TOOLBAR_ACTIONS.map(([actionId]) => actionId);
+            const currentIndex = order.indexOf(id);
             if (currentIndex <= 0) return { ok: true, reason: 'already-first' };
+            [order[currentIndex - 1], order[currentIndex]] = [order[currentIndex], order[currentIndex - 1]];
+            settingsState.draft.readerSettings.btnOrder = order;
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
             return rerenderSettings();
         }
 
@@ -1068,7 +1075,7 @@ export function createVisualNovelReaderHost(options = {}) {
             toolbarScaleField: field('readerSettings.toolbarScale', '工具栏大小', selectInput('readerSettings.toolbarScale', reader.toolbarScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
             readerToggles: checkbox('readerSettings.stayMode', reader.stayMode, '留在当前模式'),
-            pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns),
+            pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns, reader.btnOrder),
         });
     }
 
@@ -1542,22 +1549,14 @@ export function createVisualNovelReaderHost(options = {}) {
         if (!root || !current) return;
         const collapsible = root.querySelector('#vn-bar-btns');
         const pinned = root.querySelector('#vn-bar-pinned');
-        const pins = new Set(
-            current.snapshot
-            && current.snapshot.readerSettings
-            && Array.isArray(current.snapshot.readerSettings.pinnedBtns)
-                ? current.snapshot.readerSettings.pinnedBtns
-                : [],
-        );
-        const hiddenSet = new Set(
-            current.snapshot
-            && current.snapshot.readerSettings
-            && Array.isArray(current.snapshot.readerSettings.hiddenBtns)
-                ? current.snapshot.readerSettings.hiddenBtns
-                : [],
-        );
+        const readerSettings = current.snapshot && current.snapshot.readerSettings || {};
+        const pins = new Set(Array.isArray(readerSettings.pinnedBtns) ? readerSettings.pinnedBtns : []);
+        const hiddenSet = new Set(Array.isArray(readerSettings.hiddenBtns) ? readerSettings.hiddenBtns : []);
+        const order = Array.isArray(readerSettings.btnOrder) && readerSettings.btnOrder.length
+            ? readerSettings.btnOrder
+            : TOOLBAR_ACTIONS.map(([id]) => id);
 
-        for (const [id] of TOOLBAR_ACTIONS) {
+        for (const id of order) {
             const button = root.querySelector(`#vn-btn-${id}`);
             if (!button) continue;
             if (hiddenSet.has(id)) {
@@ -2071,6 +2070,7 @@ export function createVisualNovelReaderHost(options = {}) {
             imageCountOverride: null,
             pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
             hiddenBtns: [],
+            btnOrder: TOOLBAR_ACTIONS.map(([id]) => id),
         };
         const normalized = {
             ...base,
@@ -2087,6 +2087,7 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.imageCountOverride = normalizeNullableNumber(normalized.imageCountOverride);
         normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);
         normalized.hiddenBtns = normalizeHiddenButtons(normalized.hiddenBtns);
+        normalized.btnOrder = normalizeBtnOrder(normalized.btnOrder);
         return normalized;
     }
 
@@ -2186,6 +2187,21 @@ function normalizeHiddenButtons(value) {
     return output;
 }
 
+function normalizeBtnOrder(value) {
+    const canonical = TOOLBAR_ACTIONS.map(([id]) => id);
+    const allowed = new Set(canonical);
+    const output = [];
+    for (const id of Array.isArray(value) ? value : []) {
+        const normalized = String(id || '').trim();
+        if (!normalized || !allowed.has(normalized) || output.includes(normalized)) continue;
+        output.push(normalized);
+    }
+    for (const id of canonical) {
+        if (!output.includes(id)) output.push(id);
+    }
+    return output;
+}
+
 function waitForReaderImagePoll(duration, globalObject) {
     return new Promise((resolve) => {
         const timeout = globalObject && typeof globalObject.setTimeout === 'function'
@@ -2255,13 +2271,17 @@ function modelPicker(path, value, models, action, placeholder, disabled) {
     return `<div class="vn-settings-model"><div class="vn-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vn-settings-action vn-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
 }
 
-function renderPinnedButtons(pinnedValue, hiddenValue) {
+function renderPinnedButtons(pinnedValue, hiddenValue, orderValue) {
     const pins = Array.isArray(pinnedValue) ? pinnedValue : [];
     const hidden = Array.isArray(hiddenValue) ? hiddenValue : [];
+    const canonical = TOOLBAR_ACTIONS.map(([id]) => id);
+    const order = Array.isArray(orderValue) && orderValue.length ? orderValue : canonical;
+    const labelMap = Object.fromEntries(TOOLBAR_ACTIONS);
     const eyeOn = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
     const eyeOff = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
     const pinIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.09 3.27L16 6l-2.18 2.18L14.55 12 12 10.18 9.45 12l.73-3.82L8 6l2.91-.73z"/><line x1="12" y1="12" x2="12" y2="22"/></svg>';
-    const rows = TOOLBAR_ACTIONS.map(([id, label]) => {
+    const rows = order.map((id) => {
+        const label = labelMap[id] || id;
         const isHidden = hidden.includes(id);
         const isPinned = pins.includes(id) && !isHidden;
         return `<div class="vn-btn-mgr-row${isHidden ? ' is-hidden-btn' : ''}"><span class="vn-btn-mgr-handle" data-action="toolbar-move-up:${esc(id)}">☰</span><span class="vn-btn-mgr-label">${esc(label)}</span><button type="button" class="vn-btn-mgr-icon${isHidden ? '' : ' is-on'}" data-action="toolbar-toggle-visible:${esc(id)}" title="显示/隐藏">${isHidden ? eyeOff : eyeOn}</button><button type="button" class="vn-btn-mgr-icon${isPinned ? ' is-on' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" title="常驻">${pinIcon}</button></div>`;
