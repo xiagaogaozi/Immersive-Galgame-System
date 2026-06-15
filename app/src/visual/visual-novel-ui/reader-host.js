@@ -1223,7 +1223,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.5.2'),
+            source: getOriginalReaderSource(options.version || '0.5.3'),
         };
     }
 
@@ -1248,7 +1248,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.5.2'),
+                version: esc(options.version || '0.5.3'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1694,7 +1694,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vn-settings-badge';
-        badge.textContent = options.version || '0.5.2';
+        badge.textContent = options.version || '0.5.3';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -2335,7 +2335,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.5.2' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.5.3' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -2346,7 +2346,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.5.2',
+            version: snapshot.version || options.version || '0.5.3',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2486,6 +2486,16 @@ export function createVisualNovelReaderHost(options = {}) {
         const clickLayer = overlay.querySelector('#vn-click-layer');
         if (clickLayer) clickLayer.style.pointerEvents = 'none';
 
+        const origSpriteStyle = {
+            position: spriteEl.style.position,
+            inset: spriteEl.style.inset,
+            width: spriteEl.style.width,
+            height: spriteEl.style.height,
+            transform: spriteEl.style.transform,
+            bottom: spriteEl.style.bottom,
+            left: spriteEl.style.left,
+        };
+        spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
         spriteEl.classList.add('vn-sprite-editing');
 
         const doc = overlay.ownerDocument;
@@ -2496,7 +2506,7 @@ export function createVisualNovelReaderHost(options = {}) {
             + '<button data-se="cancel" type="button">取消</button>'
             + '<button data-se="save" class="vn-se-save" type="button">保存</button>';
         overlay.appendChild(editBar);
-        current.spriteEditMode = { orig, editBar, clickLayer, mode };
+        current.spriteEditMode = { orig, editBar, clickLayer, mode, origSpriteStyle };
 
         function apply() {
             spriteEl.style.backgroundSize = `${scale}%`;
@@ -2568,6 +2578,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const spriteEl = overlay.querySelector('#vn-sprite');
         if (spriteEl) {
             spriteEl.classList.remove('vn-sprite-editing', 'is-dragging');
+            Object.assign(spriteEl.style, em.origSpriteStyle);
         }
         if (em.clickLayer) em.clickLayer.style.pointerEvents = '';
         if (em.editBar && em.editBar.parentNode) em.editBar.remove();
@@ -2585,10 +2596,15 @@ export function createVisualNovelReaderHost(options = {}) {
     function saveReaderSettingsPatch(patch) {
         const save = typeof options.saveUnifiedSettings === 'function' ? options.saveUnifiedSettings : null;
         if (!save || !state.activeReader) return;
-        const unified = resolveBridgeConfigSnapshot({ mode: state.activeReader.mode });
+        const mode = state.activeReader.mode;
+        const unified = resolveBridgeConfigSnapshot({ mode });
         const result = save({ bridge: unified.bridge, readerMode: unified.readerMode, readerSettings: { ...unified.readerSettings, ...patch } });
         if (!result || result.ok === false) return;
-        rerenderActiveReader();
+        const refreshed = resolveBridgeConfigSnapshot({ mode });
+        const readerSettings = normalizeReaderSettings(mode, refreshed.readerSettings);
+        readerSettings._sceneAssets = refreshed.bridge.sceneAssets || null;
+        state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, mode, readerSettings, state.activeReader.index);
+        updateMountedReader(state.activeReader.snapshot);
     }
 }
 
