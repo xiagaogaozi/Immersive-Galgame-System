@@ -1223,7 +1223,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.5.3'),
+            source: getOriginalReaderSource(options.version || '0.5.4'),
         };
     }
 
@@ -1248,7 +1248,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.5.3'),
+                version: esc(options.version || '0.5.4'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1694,7 +1694,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vn-settings-badge';
-        badge.textContent = options.version || '0.5.3';
+        badge.textContent = options.version || '0.5.4';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -1785,6 +1785,7 @@ export function createVisualNovelReaderHost(options = {}) {
         if (spriteEl && snapshot.content.spriteImage) {
             spriteEl.style.backgroundImage = `url("${snapshot.content.spriteImage.replace(/"/g, '&quot;')}")`;
             spriteEl.style.display = 'block';
+            spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
             if (!current.spriteEditMode) {
                 const layout = (snapshot.readerSettings.spriteLayouts || {})[snapshot.mode] || { posX: 50, posY: 100, scale: 100 };
                 spriteEl.style.backgroundSize = `${layout.scale}%`;
@@ -2335,7 +2336,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.5.3' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.5.4' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -2346,7 +2347,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.5.3',
+            version: snapshot.version || options.version || '0.5.4',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2543,8 +2544,8 @@ export function createVisualNovelReaderHost(options = {}) {
             pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
             if (pointers.size === 1 && dragStart) {
                 const rect = spriteEl.getBoundingClientRect ? spriteEl.getBoundingClientRect() : { width: 400, height: 600 };
-                posX = Math.max(0, Math.min(100, dragStart.posX - (event.clientX - dragStart.x) / rect.width * 100));
-                posY = Math.max(0, Math.min(100, dragStart.posY - (event.clientY - dragStart.y) / rect.height * 100));
+                posX = dragStart.posX - (event.clientX - dragStart.x) / rect.width * 100;
+                posY = dragStart.posY - (event.clientY - dragStart.y) / rect.height * 100;
                 apply();
             } else if (pointers.size === 2 && pinchStart) {
                 const pts = [...pointers.values()];
@@ -2578,7 +2579,6 @@ export function createVisualNovelReaderHost(options = {}) {
         const spriteEl = overlay.querySelector('#vn-sprite');
         if (spriteEl) {
             spriteEl.classList.remove('vn-sprite-editing', 'is-dragging');
-            Object.assign(spriteEl.style, em.origSpriteStyle);
         }
         if (em.clickLayer) em.clickLayer.style.pointerEvents = '';
         if (em.editBar && em.editBar.parentNode) em.editBar.remove();
@@ -2587,9 +2587,12 @@ export function createVisualNovelReaderHost(options = {}) {
             const layouts = { ...(unified.readerSettings.spriteLayouts || {}) };
             layouts[em.mode] = { posX: save.posX, posY: save.posY, scale: save.scale };
             saveReaderSettingsPatch({ spriteLayouts: layouts });
-        } else if (em.orig && spriteEl) {
-            spriteEl.style.backgroundSize = `${em.orig.scale}%`;
-            spriteEl.style.backgroundPosition = `${em.orig.posX}% ${em.orig.posY}%`;
+        } else {
+            if (spriteEl) Object.assign(spriteEl.style, em.origSpriteStyle);
+            if (em.orig && spriteEl) {
+                spriteEl.style.backgroundSize = `${em.orig.scale}%`;
+                spriteEl.style.backgroundPosition = `${em.orig.posX}% ${em.orig.posY}%`;
+            }
         }
     }
 
