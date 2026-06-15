@@ -246,6 +246,7 @@ export function buildVisualNovelTextPayload(message, options = {}) {
     let formattedText = strictPayload.formattedText;
     let sourceKind = strictPayload.sourceKind;
     let formatSourceKind = strictPayload.formatSourceKind;
+    let sceneDirectives = strictPayload.sceneDirectives || [];
     let usedFallback = false;
 
     if (looksLikeHostUiHtml(raw)) {
@@ -274,6 +275,14 @@ export function buildVisualNovelTextPayload(message, options = {}) {
     }
 
     formattedText = normalizeWhitespace(formattedText);
+    if (sceneAssetsEnabled && !sceneDirectives.length) {
+        sceneDirectives = extractSceneDirectives(firstNonEmpty(
+            formattedText,
+            visibleText,
+            cleanedRaw,
+            String(raw || '').trim(),
+        )).directives;
+    }
     const readerScene = parseSceneText(formattedText, {});
     const readerText = normalizeReaderSegmentText(firstNonEmpty(
         readerScene.text,
@@ -307,7 +316,7 @@ export function buildVisualNovelTextPayload(message, options = {}) {
         imageSlots,
         textSegments,
         segmentImageSlots,
-        sceneDirectives: strictPayload.sceneDirectives || [],
+        sceneDirectives,
         sourceKind,
         expectedTags: strictPayload.expectedTags,
         formatSourceKind,

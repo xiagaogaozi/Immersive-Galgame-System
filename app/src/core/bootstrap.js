@@ -20,6 +20,11 @@ import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
 
+const VN_VERSION = '0.4.7';
+const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
+const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
+const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
+
 export function bootstrapVN(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
     const events = options.events || createEventBus();
@@ -49,7 +54,7 @@ export function bootstrapVN(options = {}) {
     };
 
     const app = {
-        version: '0.4.6',
+        version: VN_VERSION,
         global: globalObject,
         events,
         hostAdapter,
@@ -69,6 +74,7 @@ export function bootstrapVN(options = {}) {
         magicWandEntry: null,
     };
     let publicApi = null;
+    let sceneAssetsInjectionTimer = null;
     app.visualNovelUi = options.visualNovelUi || createVisualNovelReaderHost({
         global: globalObject,
         version: app.version,
@@ -133,8 +139,7 @@ export function bootstrapVN(options = {}) {
         app.magicWandEntry.attach();
     }
     state.status = 'ready';
-    const injDelay = typeof globalObject.setTimeout === 'function' ? globalObject.setTimeout : setTimeout;
-    injDelay(syncSceneAssetsInjection, 3000);
+    scheduleSceneAssetsInjection(SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS, 1);
     events.emit('vn:ready', publicApi);
 
     return publicApi;
@@ -289,7 +294,7 @@ export function bootstrapVN(options = {}) {
             ...cloneData(nextBridge),
         };
         events.emit('vn:legacy-settings-updated', cloneData(state.legacyVisualNovel));
-        syncSceneAssetsInjection();
+        syncSceneAssetsInjectionWithRetry(1);
         return {
             ok: true,
             legacy: cloneData(state.legacyVisualNovel),
@@ -301,16 +306,51 @@ export function bootstrapVN(options = {}) {
         const unified = getUnifiedSettingsSnapshot();
         const sceneAssets = unified.bridge && unified.bridge.sceneAssets;
         if (sceneAssets && sceneAssets.enabled && sceneAssets.promptRule) {
-            promptInjector.inject(sceneAssets.promptRule);
-        } else {
-            promptInjector.clear();
+            return promptInjector.inject(sceneAssets.promptRule);
         }
+        promptInjector.clear();
+        return { ok: true, reason: 'scene-assets-disabled' };
+    }
+
+    function syncSceneAssetsInjectionWithRetry(attempt) {
+        const result = syncSceneAssetsInjection();
+        if (shouldRetrySceneAssetsInjection(result, attempt)) {
+            scheduleSceneAssetsInjection(SCENE_ASSETS_INJECTION_RETRY_MS, attempt + 1);
+        }
+        return result;
+    }
+
+    function scheduleSceneAssetsInjection(delayMs, attempt) {
+        clearSceneAssetsInjectionTimer();
+        const schedule = typeof globalObject.setTimeout === 'function'
+            ? globalObject.setTimeout.bind(globalObject)
+            : setTimeout;
+        sceneAssetsInjectionTimer = schedule(() => {
+            sceneAssetsInjectionTimer = null;
+            syncSceneAssetsInjectionWithRetry(attempt);
+        }, delayMs);
+    }
+
+    function clearSceneAssetsInjectionTimer() {
+        if (sceneAssetsInjectionTimer == null) return;
+        const cancel = typeof globalObject.clearTimeout === 'function'
+            ? globalObject.clearTimeout.bind(globalObject)
+            : typeof clearTimeout === 'function' ? clearTimeout : null;
+        if (cancel) cancel(sceneAssetsInjectionTimer);
+        sceneAssetsInjectionTimer = null;
+    }
+
+    function shouldRetrySceneAssetsInjection(result, attempt) {
+        if (!result || result.ok !== false) return false;
+        if (attempt >= SCENE_ASSETS_INJECTION_MAX_ATTEMPTS) return false;
+        return result.reason !== 'empty-content';
     }
 
     function destroy() {
         if (state.destroyed) return { ok: true, reason: 'already-destroyed' };
         state.destroyed = true;
         state.status = 'destroyed';
+        clearSceneAssetsInjectionTimer();
         promptInjector.clear();
         if (app.visualNovelUi && typeof app.visualNovelUi.destroy === 'function') {
             app.visualNovelUi.destroy();

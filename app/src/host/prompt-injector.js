@@ -1,8 +1,12 @@
 const INJECTION_ID = 'vn-scene-assets-format-rule';
+const EXTENSION_PROMPT_IN_PROMPT = 0;
+const EXTENSION_PROMPT_NONE = -1;
+const EXTENSION_PROMPT_SYSTEM = 0;
 
 export function createPromptInjector(globalObject) {
     const root = globalObject || globalThis.window || globalThis;
     let handle = null;
+    let active = false;
 
     function getTavernHelper() {
         try {
@@ -33,18 +37,43 @@ export function createPromptInjector(globalObject) {
         clear();
         if (!content) return { ok: false, reason: 'empty-content' };
 
+        const context = getContext();
+        if (context && typeof context.setExtensionPrompt === 'function') {
+            try {
+                context.setExtensionPrompt(
+                    INJECTION_ID,
+                    content,
+                    EXTENSION_PROMPT_IN_PROMPT,
+                    0,
+                    false,
+                    EXTENSION_PROMPT_SYSTEM,
+                );
+                const verification = verifyContextPrompt(context, content);
+                if (verification.ok) {
+                    active = true;
+                    return { ok: true, method: 'extension-prompt', verified: true };
+                }
+                return {
+                    ok: false,
+                    method: 'extension-prompt',
+                    reason: verification.reason,
+                };
+            } catch (error) { /* fall through */ }
+        }
+
         const helper = getTavernHelper();
         if (helper && typeof helper.injectPrompts === 'function') {
             try {
                 handle = helper.injectPrompts([{
                     id: INJECTION_ID,
-                    position: 'in_prompt',
+                    position: 'none',
                     depth: 0,
                     role: 'system',
                     content,
                     should_scan: false,
                 }]);
-                return { ok: true, method: 'tavern-helper' };
+                active = true;
+                return { ok: false, method: 'tavern-helper', reason: 'unverified-in-prompt-position' };
             } catch (error) { /* fall through */ }
         }
 
@@ -52,21 +81,14 @@ export function createPromptInjector(globalObject) {
             try {
                 handle = root.injectPrompts([{
                     id: INJECTION_ID,
-                    position: 'in_prompt',
+                    position: 'none',
                     depth: 0,
                     role: 'system',
                     content,
                     should_scan: false,
                 }]);
-                return { ok: true, method: 'global-inject' };
-            } catch (error) { /* fall through */ }
-        }
-
-        const context = getContext();
-        if (context && typeof context.setExtensionPrompt === 'function') {
-            try {
-                context.setExtensionPrompt(INJECTION_ID, content, 0, 0, false, 0);
-                return { ok: true, method: 'extension-prompt' };
+                active = true;
+                return { ok: false, method: 'global-inject', reason: 'unverified-in-prompt-position' };
             } catch (error) { /* fall through */ }
         }
 
@@ -77,18 +99,50 @@ export function createPromptInjector(globalObject) {
         if (handle && typeof handle.uninject === 'function') {
             try { handle.uninject(); } catch (error) { /* */ }
             handle = null;
-            return;
         }
         handle = null;
+        active = false;
         const context = getContext();
-        if (context && typeof context.setExtensionPrompt === 'function') {
-            try { context.setExtensionPrompt(INJECTION_ID, '', 0, 0, false, 0); } catch (error) { /* */ }
+        if (context && context.extensionPrompts && typeof context.extensionPrompts === 'object') {
+            try { delete context.extensionPrompts[INJECTION_ID]; } catch (error) { /* */ }
+        }
+        if (context && typeof context.setExtensionPrompt === 'function' && context.extensionPrompts && context.extensionPrompts[INJECTION_ID]) {
+            try {
+                context.setExtensionPrompt(
+                    INJECTION_ID,
+                    '',
+                    EXTENSION_PROMPT_NONE,
+                    0,
+                    false,
+                    EXTENSION_PROMPT_SYSTEM,
+                );
+            } catch (error) { /* */ }
         }
     }
 
     function isActive() {
-        return handle !== null;
+        const context = getContext();
+        return active || !!getPromptRecord(context);
     }
 
     return { inject, clear, isActive };
+}
+
+function verifyContextPrompt(context, content) {
+    const record = getPromptRecord(context);
+    if (!record) return { ok: false, reason: 'extension-prompt-not-registered' };
+    if (String(record.value || '') !== String(content || '')) {
+        return { ok: false, reason: 'extension-prompt-content-mismatch' };
+    }
+    if (Number(record.position) !== EXTENSION_PROMPT_IN_PROMPT) {
+        return { ok: false, reason: 'extension-prompt-position-mismatch' };
+    }
+    return { ok: true };
+}
+
+function getPromptRecord(context) {
+    if (!context || !context.extensionPrompts || typeof context.extensionPrompts !== 'object') return null;
+    const record = context.extensionPrompts[INJECTION_ID];
+    if (!record || !String(record.value || '').trim()) return null;
+    return record;
 }

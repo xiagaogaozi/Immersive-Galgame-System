@@ -19,12 +19,12 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.4.6`：场景素材模式（背景图 + 立绘 + AI 格式注入）。
+- 当前项目版本 `v0.4.7`：修复场景素材提示词注入位置、注入验证重试与单素材兜底匹配。
 - `v0.3.19` 修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.4.6.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.4.7.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -129,6 +129,14 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.4.7 - 2026-06-15
+
+- 修复场景注入提示词不生效：`prompt-injector.js` 现在优先走 SillyTavern `setExtensionPrompt`，明确写入 `IN_PROMPT = 0`，并在写入后校验 `extensionPrompts` 中的内容和 position。
+- `bootstrap.js` 为场景素材注入增加失败重试，避免启动时 SillyTavern context / TavernHelper 尚未完全就绪时静默失败。
+- 修复场景素材不显示的配置容错：背景和情绪资源优先精确匹配，其次 `默认`，最后在只有一个非空素材时作为兜底使用，兼容用户只配置 `场景1` 或单个情绪图的情况。
+- 新增回归测试覆盖 prompt 注入 position、清理注入 key、单素材兜底匹配，以及从 legacy storage 启动后渲染场景素材的模拟闭环。
+- skipped：本轮不生成新版酒馆导入 JSON、不做真实 provider/shujuku 写入；按项目规则以 Node 模拟测试和 dist build 作为验收。
 
 ### v0.4.6 - 2026-06-15
 

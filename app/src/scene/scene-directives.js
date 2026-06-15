@@ -40,24 +40,25 @@ export function resolveSceneStateAtIndex(directives, segmentIndex) {
 export function lookupSceneAssetUrls(sceneState, sceneAssets) {
     if (!sceneAssets || !sceneState) return { backgroundUrl: null, spriteUrl: null };
 
-    let backgroundUrl = null;
     const scenes = sceneAssets.scenes || {};
-    if (sceneState.scene && scenes[sceneState.scene]) {
-        backgroundUrl = scenes[sceneState.scene];
-    } else if (scenes['默认']) {
-        backgroundUrl = scenes['默认'];
-    }
+    const backgroundUrl = lookupAssetValue(scenes, sceneState.scene);
 
     let spriteUrl = null;
     const characters = sceneAssets.characters || {};
     if (sceneState.character && characters[sceneState.character]) {
         const charMoods = characters[sceneState.character];
-        if (sceneState.mood && charMoods[sceneState.mood]) {
-            spriteUrl = charMoods[sceneState.mood];
-        } else if (charMoods['默认']) {
-            spriteUrl = charMoods['默认'];
-        }
+        spriteUrl = lookupAssetValue(charMoods, sceneState.mood);
     }
 
     return { backgroundUrl, spriteUrl };
+}
+
+function lookupAssetValue(record, requestedKey) {
+    if (!record || typeof record !== 'object') return null;
+    if (requestedKey && record[requestedKey]) return record[requestedKey];
+    if (record['默认']) return record['默认'];
+
+    const filledEntries = Object.entries(record)
+        .filter(([, value]) => typeof value === 'string' && value.trim());
+    return filledEntries.length === 1 ? filledEntries[0][1] : null;
 }

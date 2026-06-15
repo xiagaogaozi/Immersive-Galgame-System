@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vn-version'), '0.4.6');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.4.7');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -248,6 +248,72 @@ test('gate:simulation:visual-novel-ui-open-settings-renders-five-tabs', () => {
     assert.ok(result.snapshot.selectors.includes('#vn-unified-settings'));
 
     vn.destroy();
+});
+
+test('gate:simulation:scene-assets-injects-prompt-and-renders-single-configured-assets', async () => {
+    const extensionPrompts = {};
+    const timers = [];
+    const storage = createMemoryStorage({
+        vn_visual_novel_bridge_config: JSON.stringify({
+            sceneAssets: {
+                enabled: true,
+                promptRule: '请严格输出 @vn-scene:角色|情绪|场景|[对白]',
+                scenes: {
+                    '场景1': 'https://example.com/classroom.png',
+                },
+                characters: {
+                    '小林海斗': {
+                        '随和': 'https://example.com/kaito.png',
+                    },
+                },
+            },
+        }),
+    });
+    const message = {
+        id: 38,
+        text: '@vn-scene:小林海斗|平静|B班教室|[できるもん！]',
+    };
+    const vn = bootstrapVN({
+        global: {
+            localStorage: storage,
+            SillyTavern: {
+                getContext() {
+                    return {
+                        extensionPrompts,
+                        setExtensionPrompt(key, value, position, depth, scan, role) {
+                            extensionPrompts[key] = { value, position, depth, scan, role };
+                        },
+                    };
+                },
+            },
+            setTimeout(callback, delay) {
+                timers.push({ callback, delay });
+                return timers.length;
+            },
+            clearTimeout() {},
+        },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    assert.equal(timers[0].delay, 3000);
+    timers[0].callback();
+
+    const injected = extensionPrompts['vn-scene-assets-format-rule'];
+    assert.equal(injected.position, 0);
+    assert.equal(injected.role, 0);
+    assert.match(injected.value, /@vn-scene/);
+
+    const opened = await vn.openLatestAvailable('pc');
+    assert.equal(opened.ok, true);
+    assert.equal(opened.reader.snapshot.content.backgroundImage, 'https://example.com/classroom.png');
+    assert.equal(opened.reader.snapshot.content.spriteImage, 'https://example.com/kaito.png');
+
+    vn.destroy();
+    assert.equal(Object.hasOwn(extensionPrompts, 'vn-scene-assets-format-rule'), false);
 });
 
 test('gate:simulation:visual-novel-ui-settings-save-updates-reader-state', () => {

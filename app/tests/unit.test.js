@@ -33,6 +33,8 @@ import {
     ensureMessageImagePlaceholders,
 } from '../src/host/tavern-helper-adapter.js';
 import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
+import { createPromptInjector } from '../src/host/prompt-injector.js';
+import { lookupSceneAssetUrls } from '../src/scene/scene-directives.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 
@@ -258,6 +260,78 @@ test('gate:scene:visual-novel-message-source:formats-default-bubble-body', () =>
 
     assert.equal(payload.formattedText, '[玉子]：欢迎来到图书馆。');
     assert.equal(payload.virtualRegexChanged, true);
+});
+
+test('gate:host:prompt-injector-registers-scene-rule-as-in-prompt-extension-prompt', () => {
+    const extensionPrompts = {};
+    const calls = [];
+    const globalObject = {
+        TavernHelper: {
+            injectPrompts() {
+                throw new Error('TavernHelper fallback should not be used when SillyTavern context exists');
+            },
+        },
+        SillyTavern: {
+            getContext() {
+                return {
+                    extensionPrompts,
+                    setExtensionPrompt(key, value, position, depth, scan, role) {
+                        calls.push({ key, value, position, depth, scan, role });
+                        extensionPrompts[key] = { value, position, depth, scan, role };
+                    },
+                };
+            },
+        },
+    };
+    const injector = createPromptInjector(globalObject);
+    const result = injector.inject('rule: @vn-scene');
+
+    assert.deepEqual(result, { ok: true, method: 'extension-prompt', verified: true });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].position, 0);
+    assert.equal(calls[0].role, 0);
+    assert.equal(extensionPrompts['vn-scene-assets-format-rule'].value, 'rule: @vn-scene');
+    assert.equal(extensionPrompts['vn-scene-assets-format-rule'].position, 0);
+    assert.equal(injector.isActive(), true);
+
+    injector.clear();
+    assert.equal(Object.hasOwn(extensionPrompts, 'vn-scene-assets-format-rule'), false);
+    assert.equal(injector.isActive(), false);
+});
+
+test('gate:scene:scene-assets-falls-back-to-single-configured-background-and-mood', () => {
+    const assets = lookupSceneAssetUrls({
+        scene: 'B班教室',
+        character: '小林海斗',
+        mood: '平静',
+    }, {
+        scenes: {
+            '场景1': 'https://example.com/classroom.png',
+        },
+        characters: {
+            '小林海斗': {
+                '随和': 'https://example.com/kaito.png',
+            },
+        },
+    });
+
+    assert.deepEqual(assets, {
+        backgroundUrl: 'https://example.com/classroom.png',
+        spriteUrl: 'https://example.com/kaito.png',
+    });
+});
+
+test('gate:scene:visual-novel-message-source:extracts-scene-directives-from-fallback-text', () => {
+    const payload = buildVisualNovelTextPayload({
+        text: '@vn-scene:小林海斗|平静|B班教室|[できるもん！]',
+    }, {
+        sceneAssets: { enabled: true },
+    });
+
+    assert.equal(payload.sceneDirectives.length, 1);
+    assert.equal(payload.sceneDirectives[0].character, '小林海斗');
+    assert.equal(payload.sceneDirectives[0].mood, '平静');
+    assert.equal(payload.sceneDirectives[0].scene, 'B班教室');
 });
 
 test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-readable-text', () => {
