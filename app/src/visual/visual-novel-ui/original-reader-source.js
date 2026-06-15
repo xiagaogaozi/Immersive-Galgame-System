@@ -10,6 +10,7 @@ export const ORIGINAL_READER_ICONS = Object.freeze({
     nextTurn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor" stroke="none"/><line x1="19" y1="5" x2="19" y2="19"/></svg>',
     toggleBar: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
     close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    spriteEdit: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 15 22 12 19 9"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
 });
 
 export const ORIGINAL_READER_TOOLBAR_BUTTONS = Object.freeze([
@@ -22,6 +23,7 @@ export const ORIGINAL_READER_TOOLBAR_BUTTONS = Object.freeze([
     { id: 'hide', title: '隐藏/显示对话框', html: ORIGINAL_READER_ICONS.hide },
     { id: 'prev-turn', title: '上一轮', html: ORIGINAL_READER_ICONS.prevTurn },
     { id: 'next-turn', title: '下一轮', html: ORIGINAL_READER_ICONS.nextTurn },
+    { id: 'sprite-edit', title: '调整立绘位置/大小', html: ORIGINAL_READER_ICONS.spriteEdit },
 ]);
 
 const ORIGINAL_READER_STYLE_TEXT = `
@@ -31,7 +33,14 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #vn-bg{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, #2a2a3a 0%, #0c0c11 80%);background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:brightness(.88);}
 #vn-bg-blur{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:blur(40px) brightness(.55) saturate(1.3);transform:scale(1.12);opacity:0;pointer-events:none;}
 #vn-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.6) 0%,rgba(0,0,0,.1) 50%,rgba(0,0,0,0) 80%);pointer-events:none;}
-#vn-sprite{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:40%;height:85%;background-size:contain;background-repeat:no-repeat;background-position:center bottom;pointer-events:none;z-index:2;display:none;}
+#vn-sprite{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:40%;height:85%;background-size:100%;background-repeat:no-repeat;background-position:50% 100%;pointer-events:none;z-index:2;display:none;}
+#vn-sprite.vn-sprite-editing{pointer-events:all;cursor:grab;outline:2px dashed rgba(255,255,255,.5);outline-offset:-2px;}
+#vn-sprite.vn-sprite-editing.is-dragging{cursor:grabbing;}
+#vn-sprite-edit-bar{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;z-index:10;background:rgba(16,16,20,.88);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(20px);border-radius:16px;padding:8px 14px;white-space:nowrap;}
+#vn-sprite-edit-bar .vn-se-hint{font-size:12px;color:rgba(255,255,255,.55);margin-right:4px;}
+#vn-sprite-edit-bar button{padding:5px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;font-family:inherit;}
+#vn-sprite-edit-bar button:hover{background:rgba(255,255,255,.22);}
+#vn-sprite-edit-bar .vn-se-save{background:rgba(92,170,255,.25);border-color:rgba(92,170,255,.5);}
 #vn-click-layer{position:absolute;inset:0;cursor:pointer;z-index:3;}
 .vn-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.62);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(32px) saturate(180%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
 .vn-dialog.vn-hidden{opacity:0;transform:translateX(-50%) translateY(20px);pointer-events:none;}

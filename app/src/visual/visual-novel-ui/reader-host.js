@@ -54,6 +54,9 @@ const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.pinnedBtns',
     'readerSettings.hiddenBtns',
     'readerSettings.btnOrder',
+    'readerSettings.spritePosX',
+    'readerSettings.spritePosY',
+    'readerSettings.spriteScale',
 ]);
 
 const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
@@ -140,6 +143,7 @@ const TOOLBAR_ACTIONS = Object.freeze([
     ['hide', '隐藏'],
     ['prev-turn', '上一轮'],
     ['next-turn', '下一轮'],
+    ['sprite-edit', '调整立绘'],
 ]);
 const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze(['hide']);
 const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
@@ -889,6 +893,11 @@ export function createVisualNovelReaderHost(options = {}) {
         }
         if (['prev-turn', 'next-turn'].includes(normalizedAction)) {
             return moveReaderTurn(normalizedAction === 'prev-turn' ? -1 : 1);
+        }
+        if (normalizedAction === 'sprite-edit') {
+            const overlay = state.activeReader.dom && state.activeReader.dom.overlay;
+            if (overlay) enterSpriteEditMode(overlay, state.activeReader);
+            return { ok: true };
         }
 
         return { ok: false, reason: 'unknown-reader-action', action: normalizedAction };
@@ -1777,6 +1786,11 @@ export function createVisualNovelReaderHost(options = {}) {
         if (spriteEl && snapshot.content.spriteImage) {
             spriteEl.style.backgroundImage = `url("${snapshot.content.spriteImage.replace(/"/g, '&quot;')}")`;
             spriteEl.style.display = 'block';
+            if (!current.spriteEditMode) {
+                const rs = snapshot.readerSettings;
+                spriteEl.style.backgroundSize = `${rs.spriteScale}%`;
+                spriteEl.style.backgroundPosition = `${rs.spritePosX}% ${rs.spritePosY}%`;
+            }
         } else if (spriteEl) {
             spriteEl.style.backgroundImage = '';
             spriteEl.style.display = 'none';
@@ -2392,6 +2406,9 @@ export function createVisualNovelReaderHost(options = {}) {
             pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
             hiddenBtns: [],
             btnOrder: TOOLBAR_ACTIONS.map(([id]) => id),
+            spritePosX: 50,
+            spritePosY: 100,
+            spriteScale: 100,
         };
         const normalized = {
             ...base,
@@ -2409,6 +2426,9 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);
         normalized.hiddenBtns = normalizeHiddenButtons(normalized.hiddenBtns);
         normalized.btnOrder = normalizeBtnOrder(normalized.btnOrder);
+        normalized.spritePosX = normalizeFiniteNumber(normalized.spritePosX, 50);
+        normalized.spritePosY = normalizeFiniteNumber(normalized.spritePosY, 100);
+        normalized.spriteScale = normalizeFiniteNumber(normalized.spriteScale, 100);
         return normalized;
     }
 
@@ -2456,6 +2476,115 @@ export function createVisualNovelReaderHost(options = {}) {
         if (!current) return;
         const bridge = resolveBridgeConfigSnapshot({ mode: current.mode }).bridge;
         applyToastToReader(current, bridge.showToasts !== false, message);
+    }
+
+    function enterSpriteEditMode(overlay, current) {
+        if (current.spriteEditMode) return;
+        const spriteEl = overlay.querySelector('#vn-sprite');
+        if (!spriteEl || spriteEl.style.display === 'none') { writeToast('当前无立绘可编辑'); return; }
+        closeSettings();
+        const rs = current.snapshot.readerSettings;
+        const orig = { posX: rs.spritePosX, posY: rs.spritePosY, scale: rs.spriteScale };
+        let posX = orig.posX, posY = orig.posY, scale = orig.scale;
+        const clickLayer = overlay.querySelector('#vn-click-layer');
+        if (clickLayer) clickLayer.style.pointerEvents = 'none';
+        spriteEl.classList.add('vn-sprite-editing');
+        const doc = overlay.ownerDocument;
+        const editBar = doc.createElement('div');
+        editBar.id = 'vn-sprite-edit-bar';
+        editBar.innerHTML = '<span class="vn-se-hint">拖动调整，滚轮/双指缩放</span>'
+            + '<button data-se="reset" type="button">还原</button>'
+            + '<button data-se="cancel" type="button">取消</button>'
+            + '<button data-se="save" class="vn-se-save" type="button">保存</button>';
+        overlay.appendChild(editBar);
+        current.spriteEditMode = { orig, editBar, clickLayer };
+
+        function apply() {
+            spriteEl.style.backgroundSize = `${scale}%`;
+            spriteEl.style.backgroundPosition = `${posX}% ${posY}%`;
+        }
+        apply();
+
+        editBar.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-se]');
+            if (!btn) return;
+            const act = btn.getAttribute('data-se');
+            if (act === 'reset') { posX = 50; posY = 100; scale = 100; apply(); }
+            else if (act === 'cancel') { exitSpriteEditMode(overlay, current, null); }
+            else if (act === 'save') { exitSpriteEditMode(overlay, current, { posX, posY, scale }); }
+        });
+
+        const pointers = new Map();
+        let dragStart = null, pinchStart = null;
+        spriteEl.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            try { spriteEl.setPointerCapture(event.pointerId); } catch (e) {}
+            if (pointers.size === 1) {
+                dragStart = { x: event.clientX, y: event.clientY, posX, posY };
+                spriteEl.classList.add('is-dragging');
+            } else if (pointers.size === 2) {
+                dragStart = null;
+                const pts = [...pointers.values()];
+                pinchStart = { dist: Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y), scale };
+            }
+        });
+        spriteEl.addEventListener('pointermove', (event) => {
+            if (!pointers.has(event.pointerId)) return;
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            if (pointers.size === 1 && dragStart) {
+                const rect = spriteEl.getBoundingClientRect ? spriteEl.getBoundingClientRect() : { width: 200, height: 400 };
+                posX = Math.max(0, Math.min(100, dragStart.posX - (event.clientX - dragStart.x) / rect.width * 100));
+                posY = Math.max(0, Math.min(100, dragStart.posY - (event.clientY - dragStart.y) / rect.height * 100));
+                apply();
+            } else if (pointers.size === 2 && pinchStart) {
+                const pts = [...pointers.values()];
+                const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+                scale = Math.max(50, Math.min(300, pinchStart.scale * (dist / pinchStart.dist)));
+                apply();
+            }
+        });
+        function endPointer(event) {
+            pointers.delete(event.pointerId);
+            if (pointers.size === 0) { dragStart = null; spriteEl.classList.remove('is-dragging'); }
+            else if (pointers.size === 1) {
+                pinchStart = null;
+                const [ptr] = pointers.values();
+                dragStart = { x: ptr.x, y: ptr.y, posX, posY };
+            }
+        }
+        spriteEl.addEventListener('pointerup', endPointer);
+        spriteEl.addEventListener('pointercancel', endPointer);
+        spriteEl.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            scale = Math.max(50, Math.min(300, scale * (event.deltaY < 0 ? 1.1 : 0.91)));
+            apply();
+        }, { passive: false });
+    }
+
+    function exitSpriteEditMode(overlay, current, save) {
+        const em = current.spriteEditMode;
+        if (!em) return;
+        current.spriteEditMode = null;
+        const spriteEl = overlay.querySelector('#vn-sprite');
+        if (spriteEl) spriteEl.classList.remove('vn-sprite-editing', 'is-dragging');
+        if (em.clickLayer) em.clickLayer.style.pointerEvents = '';
+        if (em.editBar && em.editBar.parentNode) em.editBar.remove();
+        if (save) {
+            saveReaderSettingsPatch({ spritePosX: save.posX, spritePosY: save.posY, spriteScale: save.scale });
+        } else if (em.orig && spriteEl) {
+            spriteEl.style.backgroundSize = `${em.orig.scale}%`;
+            spriteEl.style.backgroundPosition = `${em.orig.posX}% ${em.orig.posY}%`;
+        }
+    }
+
+    function saveReaderSettingsPatch(patch) {
+        const save = typeof options.saveUnifiedSettings === 'function' ? options.saveUnifiedSettings : null;
+        if (!save || !state.activeReader) return;
+        const unified = resolveBridgeConfigSnapshot({ mode: state.activeReader.mode });
+        const result = save({ bridge: unified.bridge, readerMode: unified.readerMode, readerSettings: { ...unified.readerSettings, ...patch } });
+        if (!result || result.ok === false) return;
+        rerenderActiveReader();
     }
 }
 
