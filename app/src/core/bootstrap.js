@@ -49,7 +49,7 @@ export function bootstrapVN(options = {}) {
     };
 
     const app = {
-        version: '0.4.4',
+        version: '0.4.6',
         global: globalObject,
         events,
         hostAdapter,
