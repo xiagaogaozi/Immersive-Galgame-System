@@ -54,9 +54,7 @@ const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.pinnedBtns',
     'readerSettings.hiddenBtns',
     'readerSettings.btnOrder',
-    'readerSettings.spritePosX',
-    'readerSettings.spritePosY',
-    'readerSettings.spriteScale',
+    'readerSettings.spriteLayouts',
 ]);
 
 const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
@@ -145,7 +143,7 @@ const TOOLBAR_ACTIONS = Object.freeze([
     ['next-turn', '下一轮'],
     ['sprite-edit', '调整立绘'],
 ]);
-const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze(['hide']);
+const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze([]);
 const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
 const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
 
@@ -1787,9 +1785,9 @@ export function createVisualNovelReaderHost(options = {}) {
             spriteEl.style.backgroundImage = `url("${snapshot.content.spriteImage.replace(/"/g, '&quot;')}")`;
             spriteEl.style.display = 'block';
             if (!current.spriteEditMode) {
-                const rs = snapshot.readerSettings;
-                spriteEl.style.backgroundSize = `${rs.spriteScale}%`;
-                spriteEl.style.backgroundPosition = `${rs.spritePosX}% ${rs.spritePosY}%`;
+                const layout = (snapshot.readerSettings.spriteLayouts || {})[snapshot.mode] || { posX: 50, posY: 100, scale: 100 };
+                spriteEl.style.backgroundSize = `${layout.scale}%`;
+                spriteEl.style.backgroundPosition = `${layout.posX}% ${layout.posY}%`;
             }
         } else if (spriteEl) {
             spriteEl.style.backgroundImage = '';
@@ -2393,7 +2391,10 @@ export function createVisualNovelReaderHost(options = {}) {
 
     function normalizeReaderSettings(mode, settings) {
         const inlineMode = mode === 'pc' || mode === 'mobile';
+        const currentVersion = options.version || '0.5.1';
+        const src = (settings && settings._v === currentVersion) ? cloneData(settings) : {};
         const base = {
+            _v: currentVersion,
             fontSize: inlineMode ? 15 : 18,
             dialogWidth: null,
             dialogHeight: null,
@@ -2406,14 +2407,9 @@ export function createVisualNovelReaderHost(options = {}) {
             pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
             hiddenBtns: [],
             btnOrder: TOOLBAR_ACTIONS.map(([id]) => id),
-            spritePosX: 50,
-            spritePosY: 100,
-            spriteScale: 100,
+            spriteLayouts: {},
         };
-        const normalized = {
-            ...base,
-            ...cloneData(settings || {}),
-        };
+        const normalized = { ...base, ...src };
         normalized.fontSize = normalizeFiniteNumber(normalized.fontSize, base.fontSize);
         normalized.dialogWidth = normalizeNullableNumber(normalized.dialogWidth);
         normalized.dialogHeight = normalizeNullableNumber(normalized.dialogHeight);
@@ -2426,9 +2422,7 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);
         normalized.hiddenBtns = normalizeHiddenButtons(normalized.hiddenBtns);
         normalized.btnOrder = normalizeBtnOrder(normalized.btnOrder);
-        normalized.spritePosX = normalizeFiniteNumber(normalized.spritePosX, 50);
-        normalized.spritePosY = normalizeFiniteNumber(normalized.spritePosY, 100);
-        normalized.spriteScale = normalizeFiniteNumber(normalized.spriteScale, 100);
+        normalized.spriteLayouts = normalizeSpriteLayouts(normalized.spriteLayouts);
         return normalized;
     }
 
@@ -2483,12 +2477,26 @@ export function createVisualNovelReaderHost(options = {}) {
         const spriteEl = overlay.querySelector('#vn-sprite');
         if (!spriteEl || spriteEl.style.display === 'none') { writeToast('当前无立绘可编辑'); return; }
         closeSettings();
+        const mode = current.snapshot.mode;
         const rs = current.snapshot.readerSettings;
-        const orig = { posX: rs.spritePosX, posY: rs.spritePosY, scale: rs.spriteScale };
+        const modeLayout = (rs.spriteLayouts || {})[mode] || { posX: 50, posY: 100, scale: 100 };
+        const orig = { ...modeLayout };
         let posX = orig.posX, posY = orig.posY, scale = orig.scale;
         const clickLayer = overlay.querySelector('#vn-click-layer');
         if (clickLayer) clickLayer.style.pointerEvents = 'none';
+
+        const origSpriteStyle = {
+            position: spriteEl.style.position,
+            inset: spriteEl.style.inset,
+            width: spriteEl.style.width,
+            height: spriteEl.style.height,
+            transform: spriteEl.style.transform,
+            bottom: spriteEl.style.bottom,
+            left: spriteEl.style.left,
+        };
+        spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
         spriteEl.classList.add('vn-sprite-editing');
+
         const doc = overlay.ownerDocument;
         const editBar = doc.createElement('div');
         editBar.id = 'vn-sprite-edit-bar';
@@ -2497,7 +2505,7 @@ export function createVisualNovelReaderHost(options = {}) {
             + '<button data-se="cancel" type="button">取消</button>'
             + '<button data-se="save" class="vn-se-save" type="button">保存</button>';
         overlay.appendChild(editBar);
-        current.spriteEditMode = { orig, editBar, clickLayer };
+        current.spriteEditMode = { orig, editBar, clickLayer, mode, origSpriteStyle };
 
         function apply() {
             spriteEl.style.backgroundSize = `${scale}%`;
@@ -2533,7 +2541,7 @@ export function createVisualNovelReaderHost(options = {}) {
             if (!pointers.has(event.pointerId)) return;
             pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
             if (pointers.size === 1 && dragStart) {
-                const rect = spriteEl.getBoundingClientRect ? spriteEl.getBoundingClientRect() : { width: 200, height: 400 };
+                const rect = spriteEl.getBoundingClientRect ? spriteEl.getBoundingClientRect() : { width: 400, height: 600 };
                 posX = Math.max(0, Math.min(100, dragStart.posX - (event.clientX - dragStart.x) / rect.width * 100));
                 posY = Math.max(0, Math.min(100, dragStart.posY - (event.clientY - dragStart.y) / rect.height * 100));
                 apply();
@@ -2567,11 +2575,17 @@ export function createVisualNovelReaderHost(options = {}) {
         if (!em) return;
         current.spriteEditMode = null;
         const spriteEl = overlay.querySelector('#vn-sprite');
-        if (spriteEl) spriteEl.classList.remove('vn-sprite-editing', 'is-dragging');
+        if (spriteEl) {
+            spriteEl.classList.remove('vn-sprite-editing', 'is-dragging');
+            Object.assign(spriteEl.style, em.origSpriteStyle);
+        }
         if (em.clickLayer) em.clickLayer.style.pointerEvents = '';
         if (em.editBar && em.editBar.parentNode) em.editBar.remove();
         if (save) {
-            saveReaderSettingsPatch({ spritePosX: save.posX, spritePosY: save.posY, spriteScale: save.scale });
+            const unified = resolveBridgeConfigSnapshot({ mode: em.mode });
+            const layouts = { ...(unified.readerSettings.spriteLayouts || {}) };
+            layouts[em.mode] = { posX: save.posX, posY: save.posY, scale: save.scale };
+            saveReaderSettingsPatch({ spriteLayouts: layouts });
         } else if (em.orig && spriteEl) {
             spriteEl.style.backgroundSize = `${em.orig.scale}%`;
             spriteEl.style.backgroundPosition = `${em.orig.posX}% ${em.orig.posY}%`;
@@ -2628,10 +2642,11 @@ function normalizePinnedButtons(value) {
 
 function normalizeHiddenButtons(value) {
     const allowed = new Set(TOOLBAR_ACTIONS.map(([id]) => id));
+    const protected_ = new Set(['settings']);
     const output = [];
     for (const id of Array.isArray(value) ? value : []) {
         const normalized = String(id || '').trim();
-        if (!normalized || !allowed.has(normalized) || output.includes(normalized)) continue;
+        if (!normalized || !allowed.has(normalized) || protected_.has(normalized) || output.includes(normalized)) continue;
         output.push(normalized);
     }
     return output;
@@ -2650,6 +2665,20 @@ function normalizeBtnOrder(value) {
         if (!output.includes(id)) output.push(id);
     }
     return output;
+}
+
+function normalizeSpriteLayouts(value) {
+    const def = { posX: 50, posY: 100, scale: 100 };
+    const out = {};
+    for (const m of ['pc', 'mobile', 'web', 'fullscreen']) {
+        const src = (value && typeof value[m] === 'object' && value[m]) ? value[m] : {};
+        out[m] = {
+            posX: normalizeFiniteNumber(src.posX, def.posX),
+            posY: normalizeFiniteNumber(src.posY, def.posY),
+            scale: normalizeFiniteNumber(src.scale, def.scale),
+        };
+    }
+    return out;
 }
 
 function waitForReaderImagePoll(duration, globalObject) {
@@ -2757,7 +2786,11 @@ function renderPinnedButtons(pinnedValue, hiddenValue, orderValue) {
         const label = labelMap[id] || id;
         const isHidden = hidden.includes(id);
         const isPinned = pins.includes(id) && !isHidden;
-        return `<div class="vn-btn-mgr-row${isHidden ? ' is-hidden-btn' : ''}"><span class="vn-btn-mgr-handle" data-action="toolbar-move-up:${esc(id)}">☰</span><span class="vn-btn-mgr-label">${esc(label)}</span><button type="button" class="vn-btn-mgr-icon${isHidden ? '' : ' is-on'}" data-action="toolbar-toggle-visible:${esc(id)}" title="显示/隐藏">${isHidden ? eyeOff : eyeOn}</button><button type="button" class="vn-btn-mgr-icon${isPinned ? ' is-on' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" title="常驻">${pinIcon}</button></div>`;
+        const canHide = id !== 'settings';
+        const eyeBtn = canHide
+            ? `<button type="button" class="vn-btn-mgr-icon${isHidden ? '' : ' is-on'}" data-action="toolbar-toggle-visible:${esc(id)}" title="显示/隐藏">${isHidden ? eyeOff : eyeOn}</button>`
+            : `<span class="vn-btn-mgr-icon" title="此按钮不可隐藏" style="opacity:.3;cursor:default">${eyeOn}</span>`;
+        return `<div class="vn-btn-mgr-row${isHidden ? ' is-hidden-btn' : ''}"><span class="vn-btn-mgr-handle" data-action="toolbar-move-up:${esc(id)}">☰</span><span class="vn-btn-mgr-label">${esc(label)}</span>${eyeBtn}<button type="button" class="vn-btn-mgr-icon${isPinned ? ' is-on' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" title="常驻">${pinIcon}</button></div>`;
     }).join('');
     return `<div class="vn-settings-field"><span>按钮管理</span><div class="vn-btn-mgr-list">${rows}</div><em>☰ 上移排序 · 眼睛切换显隐 · 星切换常驻。隐藏的按钮自动解除常驻。</em></div>`;
 }

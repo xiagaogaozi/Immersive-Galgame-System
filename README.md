@@ -19,12 +19,12 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.5.0`：立绘直接编辑模式——单指/鼠标拖动调整焦点，滚轮/双指捏合缩放，支持还原/取消/保存；`background-size` 改为 `100%` 修复竖向立绘过小问题。
+- 当前项目版本 `v0.5.1`：立绘编辑框占满阅读器、各模式立绘位置独立存储、设置按钮禁止隐藏、版本升级自动重置阅读器配置、取消默认常驻隐藏对话框按钮。
 - `v0.3.19` 修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.5.0.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.5.1.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -129,6 +129,14 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.5.1 - 2026-06-15
+
+- 立绘编辑框占满阅读器：进入编辑模式时 `#vn-sprite` 临时扩展为全屏，拖动区域更大、虚线框覆盖整个阅读区。
+- 各模式立绘位置独立：新增 `spriteLayouts` 字段按 `pc / mobile / web / fullscreen` 分别存储焦点与缩放，切换模式互不影响。
+- 设置按钮禁止隐藏：`normalizeHiddenButtons` 强制过滤 `settings`，按钮管理 UI 中设置行的眼睛按钮置灰不可点。
+- 版本升级自动重置阅读器配置：`readerSettings` 新增 `_v` 版本戳，加载时若存储版本不匹配当前版本则丢弃旧配置回到默认值，防止旧配置（含隐藏按钮）污染新版本。
+- 取消默认常驻隐藏对话框按钮：`DEFAULT_PINNED_TOOLBAR_BUTTONS` 改为空数组。
 
 ### v0.5.0 - 2026-06-15
 

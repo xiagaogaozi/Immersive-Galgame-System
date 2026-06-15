@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vn-version'), '0.5.0');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.5.1');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -388,7 +388,7 @@ test('gate:simulation:visual-novel-ui-toolbar-actions-open-settings-toggle-and-c
     const opened = await vn.openLatestAvailable('pc');
     const controller = opened.reader.controller;
     assert.equal(opened.reader.snapshot.content.progress, '1 / 2');
-    assert.deepEqual(opened.reader.snapshot.readerSettings.pinnedBtns, ['hide']);
+    assert.deepEqual(opened.reader.snapshot.readerSettings.pinnedBtns, []);
     assert.equal(vn.getState().visualNovelUi.activeReader.toolbarCollapsed, true);
 
     const settingsResult = await controller.invokeAction('settings');
