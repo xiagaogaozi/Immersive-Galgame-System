@@ -11109,7 +11109,7 @@ function createPromptInjector(globalObject) {
             try {
                 handle = helper.injectPrompts([{
                     id: INJECTION_ID,
-                    position: 'in_chat',
+                    position: 'in_prompt',
                     depth: 0,
                     role: 'system',
                     content,
@@ -11123,7 +11123,7 @@ function createPromptInjector(globalObject) {
             try {
                 handle = root.injectPrompts([{
                     id: INJECTION_ID,
-                    position: 'in_chat',
+                    position: 'in_prompt',
                     depth: 0,
                     role: 'system',
                     content,
