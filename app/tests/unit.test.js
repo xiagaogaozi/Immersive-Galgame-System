@@ -344,7 +344,7 @@ test('gate:visual-novel-ui:scene-assets-keeps-sprite-with-existing-background', 
     const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
-            version: '0.4.8',
+            version: '0.4.9',
             bridge: {
                 openMode: 'pc',
                 sceneAssets: {
@@ -385,6 +385,7 @@ test('gate:visual-novel-ui:scene-assets-keeps-sprite-with-existing-background', 
     assert.equal(opened.snapshot.content.backgroundImage, 'https://example.com/generated-background.png');
     assert.equal(opened.snapshot.content.spriteImage, 'https://example.com/kaito.png');
     assert.match(opened.snapshot.html, /id="vn-sprite"/);
+    assert.equal(opened.snapshot.styles['#vn-sprite'].display, 'block');
 
     host.destroy();
 });

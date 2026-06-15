@@ -99,11 +99,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /VN version: 0\.4\.8/);
+    assert.match(bundle, /VN version: 0\.4\.9/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Visual Novel');
-    assert.equal(manifest.version, '0.4.8');
+    assert.equal(manifest.version, '0.4.9');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {

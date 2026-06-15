@@ -19,12 +19,12 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.4.8`：修复场景素材立绘不显示，按当前阅读器段落继承角色状态并补齐立绘层。
+- 当前项目版本 `v0.4.9`：修复场景素材立绘层已绑定图片但仍被 `display:none` 隐藏的问题。
 - `v0.3.19` 修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.4.8.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.4.9.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -129,6 +129,12 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.4.9 - 2026-06-15
+
+- 修复立绘层实际不可见：当 `snapshot.content.spriteImage` 存在时，阅读器宿主现在明确把 `#vn-sprite` 的 `display` 设为 `block`，不再回落到原版 CSS 的 `display:none`。
+- 新增回归验证：场景素材背景和立绘同时存在时，不只断言 `spriteImage` 字段，还断言阅读器 HTML 中 `#vn-sprite` 已切换为可见显示状态。
+- 验证边界：本轮继续使用 fake TavernHelper / fake DOM / fixtures 与 Playwright 运行态证据定位，不写入真实 shujuku，不调用真实图像 provider。
 
 ### v0.4.8 - 2026-06-15
 

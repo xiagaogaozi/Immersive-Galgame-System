@@ -1178,6 +1178,9 @@ export function createVisualNovelReaderHost(options = {}) {
                     width: ORIGINAL_READER_STYLE_CONTRACT.toolbarButtonSize,
                     height: ORIGINAL_READER_STYLE_CONTRACT.toolbarButtonSize,
                 },
+                '#vn-sprite': {
+                    display: spriteImage ? 'block' : 'none',
+                },
             },
             content: {
                 speaker: scene.speaker || '',
@@ -1773,7 +1776,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const spriteEl = root.querySelector('#vn-sprite');
         if (spriteEl && snapshot.content.spriteImage) {
             spriteEl.style.backgroundImage = `url("${snapshot.content.spriteImage.replace(/"/g, '&quot;')}")`;
-            spriteEl.style.display = '';
+            spriteEl.style.display = 'block';
         } else if (spriteEl) {
             spriteEl.style.backgroundImage = '';
             spriteEl.style.display = 'none';
