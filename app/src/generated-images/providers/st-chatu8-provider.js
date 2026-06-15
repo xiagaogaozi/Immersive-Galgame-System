@@ -26,13 +26,13 @@ export const stChatu8Provider = Object.freeze({
         return collectDomImageCandidates(resolveDomRoots(messageContext), {
             adapterKeys: ['chatu8'],
             scopePolicy: messageContext.scopePolicy,
-        }).map((candidate) => ({
+        }).map((candidate, index) => ({
             url: candidate.url,
             providerId: 'builtin.st-chatu8',
             source: 'provider-dom',
             imageId: candidate.imageId,
             locationHash: candidate.locationHash,
-            slotIndex: candidate.slotIndex,
+            slotIndex: candidate.slotIndex ?? index,
             buttonIndex: candidate.buttonIndex,
             order: candidate.order,
         }));

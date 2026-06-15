@@ -873,8 +873,9 @@ function assignCandidatesToSlots(slots, candidates, options, claimedUrls) {
     applyExactSlotMatches(slots, remaining, options, claimedUrls);
     applyLocationHashMatches(slots, remaining, options, claimedUrls);
     applyImageIdMatches(slots, remaining, options, claimedUrls);
-    applyOrderedSlotFill(slots, remaining, options, claimedUrls);
-    applyPreferredSlotFallback(slots, remaining, options, claimedUrls);
+    if (options && options.allowPreferredFallback === true) {
+        applyPreferredSlotFallback(slots, remaining, options, claimedUrls);
+    }
 }
 
 function applyExactSlotMatches(slots, candidates, options, claimedUrls) {

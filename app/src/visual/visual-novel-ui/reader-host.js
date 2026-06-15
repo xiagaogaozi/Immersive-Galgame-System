@@ -1151,7 +1151,16 @@ export function createVisualNovelReaderHost(options = {}) {
             : Array.isArray(payload.sceneDirectives) ? payload.sceneDirectives : [];
         let finalBackgroundImage = backgroundImage;
         let spriteImage = null;
-        if (sceneAssets && sceneAssets.enabled && sceneDirectives.length) {
+        const segmentSlotIndex = resolveSegmentImageIndex(payload, normalizedIndex);
+        const slotBoundUrl = segmentSlotIndex != null
+            && Array.isArray(displayImageState.slots)
+            && displayImageState.slots[segmentSlotIndex]
+            ? String(displayImageState.slots[segmentSlotIndex].url || '').trim()
+            : '';
+        if (slotBoundUrl) {
+            finalBackgroundImage = slotBoundUrl;
+            spriteImage = null;
+        } else if (sceneAssets && sceneAssets.enabled && sceneDirectives.length) {
             const sceneState = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
             const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
             finalBackgroundImage = backgroundImage || assetUrls.backgroundUrl || '';

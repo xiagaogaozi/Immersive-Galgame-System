@@ -26,16 +26,21 @@ export const domGenericProvider = Object.freeze({
     },
 
     extractImages(messageContext) {
-        return collectDomImageCandidates(resolveDomRoots(messageContext), {
+        const candidates = collectDomImageCandidates(resolveDomRoots(messageContext), {
             adapterKeys: ['generic'],
             scopePolicy: messageContext.scopePolicy,
-        }).map((candidate) => ({
+        });
+        const slots = messageContext.imageState && Array.isArray(messageContext.imageState.slots)
+            ? messageContext.imageState.slots
+            : Array.isArray(messageContext.imageSlots) ? messageContext.imageSlots : [];
+        const assignSlotIndex = slots.length > 0 && candidates.length === slots.length;
+        return candidates.map((candidate, index) => ({
             url: candidate.url,
             providerId: 'builtin.dom-generic',
             source: 'provider-dom',
             imageId: candidate.imageId,
             locationHash: candidate.locationHash,
-            slotIndex: candidate.slotIndex,
+            slotIndex: candidate.slotIndex ?? (assignSlotIndex ? index : null),
             buttonIndex: candidate.buttonIndex,
             order: candidate.order,
         }));
