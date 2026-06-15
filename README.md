@@ -19,12 +19,12 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.3.22`：过滤 chami 未加载占位图、新增"刷新图位"工具栏按钮、增大轮询窗口、改进重绘按钮图标。
+- 当前项目版本 `v0.4.6`：场景素材模式（背景图 + 立绘 + AI 格式注入）。
 - `v0.3.19` 修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.3.22.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-Visual Novel（自动更新） v0.4.6.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Visual Novel 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -129,6 +129,50 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.4.6 - 2026-06-15
+
+- 修复提示词注入不生效：`syncSceneAssetsInjection` 延迟 3 秒执行，等待 TavernHelper 初始化完成后再调用注入 API。
+- 修复 `prompt-injector.js` 查找路径：增加 `globalThis` 和 `window` 查找 TavernHelper/SillyTavern，不再只依赖传入的 `globalObject`。
+- 注入 position 改为 `in_prompt`（系统提示区域），避免被过长的聊天上下文截断。
+- 版本号同步 bootstrap.js / package.json / tests。
+
+### v0.4.3 - 2026-06-15
+
+- 修复场景素材不显示：DEFAULT_VIRTUAL_REGEX 改为贪婪匹配 `[台词]` 方括号内容，兼容 `@vn-scene` 四段和 `@bubble` 三段。
+- `resolveSceneStateAtIndex` 不再用 lineIndex 裁剪，整楼层累积所有 directives 得到最终场景状态。
+- 场景素材显示逻辑（仅 `sceneAssets.enabled` 时生效）：有扫描图的段显示扫描图不叠立绘，无扫描图的段显示素材背景+立绘。未启用时完全不影响正常图片轮询。
+
+### v0.4.1 - 2026-06-15
+
+- `@vn-scene` 格式改为四段式：`@vn-scene:角色名|情绪|场景名|[台词]`。
+- `scene-directives.js` 改为只读提取（不删除行，交给 regex 处理显示）。
+- DEFAULT_VIRTUAL_REGEX 改为同时匹配 `@vn-scene`（四段）和 `@bubble`（三段）。
+- DEFAULT_SCENE_PROMPT_RULE 重写为 v7.1 风格硬措辞（18 条规则 + 完整示例）。
+- 设置面板背景名/角色名/情绪名旁加 SVG 铅笔重命名按钮（prompt 弹窗）+ SVG 垃圾桶删除按钮。
+
+### v0.4.0 - 2026-06-15
+
+- 新增「场景素材」模式：通过 `@vn-scene:` 标签驱动背景图和立绘切换。
+- 新增 `scene-directives.js`：提取/解析 @vn-scene 标签，查表返回背景/立绘 URL。
+- 新增 `prompt-injector.js`：向 AI 注入场景标注格式规范（TavernHelper.injectPrompts → setExtensionPrompt 降级）。
+- `message-source.js`：在 virtualRegex 前提取 sceneDirectives，附带到 payload。
+- `image-slots.js`：sceneAssetsMode 下每张扫描图只绑前一段正文。
+- `reader-host.js`：#vn-sprite 层 + 背景/立绘 fallback + 场景 tab UI + action handlers（增删改条目）。
+- `original-reader-source.js`：#vn-sprite CSS（居中底部 40%×85%）。
+- `settings-tabs.js`：新增 scene tab 模板。
+- `bootstrap.js`：promptInjector 生命周期（启动/保存/销毁）。
+
+### v0.3.23 - 2026-06-15
+
+- 新增 rescan 操作加载转圈动画（collect 前显示 spinner，完成后移除）。
+- rescan 使用 skipCache 跳过过期 blob URL 缓存。
+- 新增 hiddenBtns 设置，支持隐藏工具栏按钮。
+- 替换常驻按钮简单切换为完整按钮管理器 UI（☰ 排序 / 眼睛显隐 / 星常驻）。
+- 新增 btnOrder 设置字段，toolbar-move-up 实际交换排序。
+- 隐藏的按钮自动解除常驻，applyToolbarState 尊重 hiddenBtns 和 btnOrder。
+- 移除 normalizePinnedButtons 的空值强制回退。
+- 设置面板按钮管理操作后保持滚动位置。
 
 ### v0.3.22 - 2026-06-14
 
