@@ -144,6 +144,7 @@ const TOOLBAR_ACTIONS = Object.freeze([
     ['sprite-edit', '调整立绘'],
 ]);
 const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze([]);
+const READER_SETTINGS_SCHEMA_VERSION = '0.5.1';
 const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
 const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
 
@@ -1222,7 +1223,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 shiftEnterSends: false,
             },
             html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.5.1'),
+            source: getOriginalReaderSource(options.version || '0.5.2'),
         };
     }
 
@@ -1247,7 +1248,7 @@ export function createVisualNovelReaderHost(options = {}) {
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.5.1'),
+                version: esc(options.version || '0.5.2'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -1693,7 +1694,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         const badge = doc.createElement('div');
         badge.className = 'vn-settings-badge';
-        badge.textContent = options.version || '0.5.1';
+        badge.textContent = options.version || '0.5.2';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -2334,7 +2335,7 @@ export function createVisualNovelReaderHost(options = {}) {
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.5.1' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.5.2' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -2345,7 +2346,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.5.1',
+            version: snapshot.version || options.version || '0.5.2',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -2391,7 +2392,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
     function normalizeReaderSettings(mode, settings) {
         const inlineMode = mode === 'pc' || mode === 'mobile';
-        const currentVersion = options.version || '0.5.1';
+        const currentVersion = READER_SETTINGS_SCHEMA_VERSION;
         const src = (settings && settings._v === currentVersion) ? cloneData(settings) : {};
         const base = {
             _v: currentVersion,
