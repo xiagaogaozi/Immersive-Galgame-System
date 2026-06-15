@@ -6328,7 +6328,7 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
                 shiftEnterSends: false,
             },
             html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
-            source: getOriginalReaderSource(options.version || '0.3.20'),
+            source: getOriginalReaderSource(options.version || '0.5.1'),
         };
     }
 
@@ -6353,7 +6353,7 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
             html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
-                version: esc(options.version || '0.3.20'),
+                version: esc(options.version || '0.5.1'),
                 tabs: tabsHtml,
                 body,
             })}</div>`,
@@ -6799,7 +6799,7 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
 
         const badge = doc.createElement('div');
         badge.className = 'vn-settings-badge';
-        badge.textContent = options.version || '0.3.20';
+        badge.textContent = options.version || '0.5.1';
         head.appendChild(badge);
 
         const close = doc.createElement('button');
@@ -7440,7 +7440,7 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
     function resolveBridgeConfigSnapshot(optionsForSnapshot = {}) {
         const getter = typeof options.getUnifiedSettings === 'function'
             ? options.getUnifiedSettings
-            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.3.20' });
+            : () => ({ bridge: {}, readerSettings: {}, readerMode: 'pc', version: options.version || '0.5.1' });
         const snapshot = getter(optionsForSnapshot) || {};
         return normalizeUnifiedSettings(snapshot, optionsForSnapshot.mode);
     }
@@ -7451,7 +7451,7 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
         const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
 
         return {
-            version: snapshot.version || options.version || '0.3.20',
+            version: snapshot.version || options.version || '0.5.1',
             bridge,
             imageApi: bridge.imageApi,
             readerMode,
@@ -8589,7 +8589,7 @@ function getOriginalReaderStyleText() {
 function getOriginalReaderHtml() {
     return ORIGINAL_READER_HTML;
 }
-function getOriginalReaderSource(version = '0.3.20') {
+function getOriginalReaderSource(version = '0.5.1') {
     return {
         version,
         styleText: ORIGINAL_READER_STYLE_TEXT,
