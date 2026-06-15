@@ -187,7 +187,8 @@ function bootstrapVN(options = {}) {
         app.magicWandEntry.attach();
     }
     state.status = 'ready';
-    syncSceneAssetsInjection();
+    const injDelay = typeof globalObject.setTimeout === 'function' ? globalObject.setTimeout : setTimeout;
+    injDelay(syncSceneAssetsInjection, 3000);
     events.emit('vn:ready', publicApi);
 
     return publicApi;
