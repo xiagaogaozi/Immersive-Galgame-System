@@ -2485,16 +2485,6 @@ export function createVisualNovelReaderHost(options = {}) {
         const clickLayer = overlay.querySelector('#vn-click-layer');
         if (clickLayer) clickLayer.style.pointerEvents = 'none';
 
-        const origSpriteStyle = {
-            position: spriteEl.style.position,
-            inset: spriteEl.style.inset,
-            width: spriteEl.style.width,
-            height: spriteEl.style.height,
-            transform: spriteEl.style.transform,
-            bottom: spriteEl.style.bottom,
-            left: spriteEl.style.left,
-        };
-        spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
         spriteEl.classList.add('vn-sprite-editing');
 
         const doc = overlay.ownerDocument;
@@ -2505,7 +2495,7 @@ export function createVisualNovelReaderHost(options = {}) {
             + '<button data-se="cancel" type="button">取消</button>'
             + '<button data-se="save" class="vn-se-save" type="button">保存</button>';
         overlay.appendChild(editBar);
-        current.spriteEditMode = { orig, editBar, clickLayer, mode, origSpriteStyle };
+        current.spriteEditMode = { orig, editBar, clickLayer, mode };
 
         function apply() {
             spriteEl.style.backgroundSize = `${scale}%`;
@@ -2577,7 +2567,6 @@ export function createVisualNovelReaderHost(options = {}) {
         const spriteEl = overlay.querySelector('#vn-sprite');
         if (spriteEl) {
             spriteEl.classList.remove('vn-sprite-editing', 'is-dragging');
-            Object.assign(spriteEl.style, em.origSpriteStyle);
         }
         if (em.clickLayer) em.clickLayer.style.pointerEvents = '';
         if (em.editBar && em.editBar.parentNode) em.editBar.remove();
