@@ -7,6 +7,8 @@ export function createPromptInjector(globalObject) {
     function getTavernHelper() {
         try {
             if (root.TavernHelper) return root.TavernHelper;
+            if (globalThis.TavernHelper) return globalThis.TavernHelper;
+            if (typeof window !== 'undefined' && window.TavernHelper) return window.TavernHelper;
             if (root.top && root.top.TavernHelper) return root.top.TavernHelper;
         } catch (error) { /* cross-origin */ }
         return null;
@@ -17,7 +19,12 @@ export function createPromptInjector(globalObject) {
             if (root.SillyTavern && typeof root.SillyTavern.getContext === 'function') {
                 return root.SillyTavern.getContext();
             }
-            if (typeof root.getContext === 'function') return root.getContext();
+            if (globalThis.SillyTavern && typeof globalThis.SillyTavern.getContext === 'function') {
+                return globalThis.SillyTavern.getContext();
+            }
+            if (typeof window !== 'undefined' && window.SillyTavern && typeof window.SillyTavern.getContext === 'function') {
+                return window.SillyTavern.getContext();
+            }
         } catch (error) { /* */ }
         return null;
     }
