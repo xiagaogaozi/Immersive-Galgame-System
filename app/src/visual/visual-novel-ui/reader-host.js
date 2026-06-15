@@ -1146,13 +1146,8 @@ export function createVisualNovelReaderHost(options = {}) {
         if (sceneAssets && sceneAssets.enabled && sceneDirectives.length) {
             const sceneState = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
             const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
-            if (backgroundImage) {
-                finalBackgroundImage = backgroundImage;
-                spriteImage = null;
-            } else {
-                finalBackgroundImage = assetUrls.backgroundUrl || '';
-                spriteImage = assetUrls.spriteUrl || null;
-            }
+            finalBackgroundImage = backgroundImage || assetUrls.backgroundUrl || '';
+            spriteImage = assetUrls.spriteUrl || null;
         }
         const overlayClasses = ['vn-mode-' + mode];
         if (mode === 'pc' || mode === 'mobile') overlayClasses.push('vn-floating');

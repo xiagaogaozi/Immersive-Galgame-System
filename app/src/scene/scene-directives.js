@@ -5,6 +5,7 @@ export function extractSceneDirectives(text) {
     const directives = [];
     const lines = source.split('\n');
     let lineCount = 0;
+    let segmentCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
         const trimmed = lines[i].trim();
@@ -16,8 +17,10 @@ export function extractSceneDirectives(text) {
                 mood: (match[2] || '').trim() || null,
                 scene: (match[3] || '').trim() || null,
                 dialogue: (match[4] || '').trim(),
+                segmentIndex: segmentCount,
             });
         }
+        if (trimmed) segmentCount++;
         lineCount++;
     }
 
@@ -27,8 +30,13 @@ export function extractSceneDirectives(text) {
 export function resolveSceneStateAtIndex(directives, segmentIndex) {
     const state = { scene: '', character: '', mood: '' };
     if (!Array.isArray(directives) || !directives.length) return state;
+    const targetIndex = normalizeSegmentIndex(segmentIndex);
 
     for (const directive of directives) {
+        const directiveIndex = normalizeSegmentIndex(directive && directive.segmentIndex);
+        if (directiveIndex != null && targetIndex != null && directiveIndex > targetIndex) {
+            break;
+        }
         if (directive.scene) state.scene = directive.scene;
         if (directive.character) state.character = directive.character;
         if (directive.mood) state.mood = directive.mood;
@@ -61,4 +69,11 @@ function lookupAssetValue(record, requestedKey) {
     const filledEntries = Object.entries(record)
         .filter(([, value]) => typeof value === 'string' && value.trim());
     return filledEntries.length === 1 ? filledEntries[0][1] : null;
+}
+
+function normalizeSegmentIndex(value) {
+    if (value == null || value === '') return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) return null;
+    return Math.floor(numeric);
 }

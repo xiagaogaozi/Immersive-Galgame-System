@@ -70,6 +70,7 @@ const ORIGINAL_READER_STYLE_TEXT = `
 const ORIGINAL_READER_HTML = `
 <div id="vn-bg-blur"></div>
 <div id="vn-bg"></div>
+<div id="vn-sprite"></div>
 <div id="vn-click-layer"></div>
 <div class="vn-dialog" id="vn-dialog">
   <div class="vn-ctrl-bar" id="vn-ctrl-bar">

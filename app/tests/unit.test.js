@@ -34,7 +34,11 @@ import {
 } from '../src/host/tavern-helper-adapter.js';
 import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
 import { createPromptInjector } from '../src/host/prompt-injector.js';
-import { lookupSceneAssetUrls } from '../src/scene/scene-directives.js';
+import {
+    extractSceneDirectives,
+    lookupSceneAssetUrls,
+    resolveSceneStateAtIndex,
+} from '../src/scene/scene-directives.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 
@@ -319,6 +323,70 @@ test('gate:scene:scene-assets-falls-back-to-single-configured-background-and-moo
         backgroundUrl: 'https://example.com/classroom.png',
         spriteUrl: 'https://example.com/kaito.png',
     });
+});
+
+test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {
+    const { directives } = extractSceneDirectives([
+        'Opening narration.',
+        '@vn-scene:Alice|calm|Room|[Hello.]',
+        'Alice keeps working.',
+        '@vn-scene:Bob|annoyed||[Move faster.]',
+        'Bob leaves later.',
+    ].join('\n'));
+
+    assert.deepEqual(directives.map((directive) => directive.segmentIndex), [1, 3]);
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 0), { scene: '', character: '', mood: '' });
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 2), { scene: 'Room', character: 'Alice', mood: 'calm' });
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 3), { scene: 'Room', character: 'Bob', mood: 'annoyed' });
+});
+
+test('gate:visual-novel-ui:scene-assets-keeps-sprite-with-existing-background', () => {
+    const host = createVisualNovelReaderHost({
+        global: {},
+        getUnifiedSettings: () => ({
+            version: '0.4.8',
+            bridge: {
+                openMode: 'pc',
+                sceneAssets: {
+                    enabled: true,
+                    scenes: {
+                        Room: 'https://example.com/room.png',
+                    },
+                    characters: {
+                        Kaito: {
+                            calm: 'https://example.com/kaito.png',
+                        },
+                    },
+                },
+            },
+            readerMode: 'pc',
+            readerSettings: {},
+        }),
+        saveUnifiedSettings: () => ({ ok: true, legacy: {}, unified: {} }),
+    });
+
+    const opened = host.openReader({
+        message: {
+            text: '@vn-scene:Kaito|calm|Room|[Ready.]\nKaito keeps working.',
+        },
+        render: {
+            stage: {
+                layers: {
+                    background: {
+                        resource: {
+                            url: 'https://example.com/generated-background.png',
+                        },
+                    },
+                },
+            },
+        },
+    }, { mode: 'pc' });
+
+    assert.equal(opened.snapshot.content.backgroundImage, 'https://example.com/generated-background.png');
+    assert.equal(opened.snapshot.content.spriteImage, 'https://example.com/kaito.png');
+    assert.match(opened.snapshot.html, /id="vn-sprite"/);
+
+    host.destroy();
 });
 
 test('gate:scene:visual-novel-message-source:extracts-scene-directives-from-fallback-text', () => {
