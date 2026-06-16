@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.7.8`：拆分 `reader-host.js` 巨型模块（3619 → 1486 行），行为零改变。
+- 当前项目版本 `v0.7.9`：立绘缩放放宽至 -500%~500%、全屏模式仅在关闭或切换模式时退出。
 - `v0.7.7` 修复全屏模式点击退出 + 立绘位置按角色独立存储。
 - `v0.6.1` 修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
 - `v0.6.0` 图片绑定精确化（移除激进兜底、chatu8 按 DOM 顺序绑定 slot）、混合模式生图与场景素材分区。
@@ -133,6 +133,12 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.7.9 - 2026-06-16
+
+- 立绘缩放范围从 50%~300% 放宽至 -500%~500%（滚轮和双指缩放两处 clamp 同步修改），支持大尺寸立绘缩小及镜像翻转。
+- 修复全屏模式点击即退出：根因是每次翻页 `hydrateReaderMount` 重建 `#vn-overlay`，导致 runtime cleanup 调用 `exitFullscreen()` 进而触发自动关闭。现移除 runtime cleanup 的自动退出和 `fullscreenchange` 的自动关闭逻辑，浏览器全屏状态不再联动阅读器。
+- 退出浏览器全屏的时机改为：仅「点击关闭按钮」（`closeReader`）或「切换到非全屏模式」时调用 `exitDocumentFullscreen`。
 
 ### v0.7.8 - 2026-06-16
 

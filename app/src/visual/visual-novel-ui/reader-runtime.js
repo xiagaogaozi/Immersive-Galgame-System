@@ -5,6 +5,10 @@ export function applyReaderModeRuntime(root, snapshot, current, ctx = {}) {
     if (current.runtime && current.runtime.mode === snapshot.mode && current.runtime.root === root) {
         return;
     }
+    const prevMode = current.runtime && current.runtime.mode;
+    if (prevMode === 'fullscreen' && snapshot.mode !== 'fullscreen') {
+        exitDocumentFullscreen(current.runtime.doc);
+    }
     clearReaderModeRuntime(current);
     const win = getOwnerWindow(root);
     const doc = root && root.ownerDocument;
@@ -309,7 +313,7 @@ function applyFullscreenReaderRuntime(root, current, runtime, ctx = {}) {
     });
     const target = doc.documentElement || doc.body;
     const request = target && (target.requestFullscreen || target.webkitRequestFullscreen);
-    if (typeof request === 'function') {
+    if (typeof request === 'function' && !doc.fullscreenElement && !doc.webkitFullscreenElement) {
         try {
             const result = request.call(target);
             if (result && typeof result.catch === 'function') result.catch(() => {});
@@ -317,25 +321,19 @@ function applyFullscreenReaderRuntime(root, current, runtime, ctx = {}) {
             // Ignore fullscreen failures in simulation.
         }
     }
-    const onFullscreenChange = () => {
-        if (typeof ctx.isActiveReader === 'function' && !ctx.isActiveReader(current)) return;
-        if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
-            if (typeof ctx.requestClose === 'function') ctx.requestClose();
+}
+
+export function exitDocumentFullscreen(doc) {
+    if (!doc) return;
+    const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+    if ((doc.fullscreenElement || doc.webkitFullscreenElement) && typeof exit === 'function') {
+        try {
+            const result = exit.call(doc);
+            if (result && typeof result.catch === 'function') result.catch(() => {});
+        } catch (error) {
+            // Ignore exit failures.
         }
-    };
-    addEventListenerWithCleanup(doc, 'fullscreenchange', onFullscreenChange, runtime);
-    addEventListenerWithCleanup(doc, 'webkitfullscreenchange', onFullscreenChange, runtime);
-    addRuntimeCleanup(runtime, () => {
-        const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
-        if ((doc.fullscreenElement || doc.webkitFullscreenElement) && typeof exit === 'function') {
-            try {
-                const result = exit.call(doc);
-                if (result && typeof result.catch === 'function') result.catch(() => {});
-            } catch (error) {
-                // Ignore exit failures.
-            }
-        }
-    });
+    }
 }
 
 function getInlineViewportMetrics(win, doc) {

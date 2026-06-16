@@ -80,7 +80,7 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
         } else if (pointers.size === 2 && pinchStart) {
             const pts = [...pointers.values()];
             const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-            scale = Math.max(50, Math.min(300, pinchStart.scale * (dist / pinchStart.dist)));
+            scale = Math.max(-500, Math.min(500, pinchStart.scale * (dist / pinchStart.dist)));
             apply();
         }
     });
@@ -97,7 +97,7 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
     spriteEl.addEventListener('pointercancel', endPointer);
     spriteEl.addEventListener('wheel', (event) => {
         event.preventDefault();
-        scale = Math.max(50, Math.min(300, scale * (event.deltaY < 0 ? 1.1 : 0.91)));
+        scale = Math.max(-500, Math.min(500, scale * (event.deltaY < 0 ? 1.1 : 0.91)));
         apply();
     }, { passive: false });
 }

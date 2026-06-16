@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vn-version'), '0.7.8');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.7.9');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -602,13 +602,19 @@ test('gate:simulation:visual-novel-ui-web-mode-locks-scroll-and-restores-on-clos
     vn.destroy();
 });
 
-test('gate:simulation:visual-novel-ui-fullscreen-mode-requests-browser-fullscreen-and-closes-on-exit', async () => {
+test('gate:simulation:visual-novel-ui-fullscreen-mode-requests-browser-fullscreen-and-exits-only-on-close', async () => {
     const document = createFakeDocument({ innerWidth: 1280, innerHeight: 720 });
     const globalObject = document.defaultView;
     let requested = 0;
+    let exited = 0;
     document.documentElement.requestFullscreen = () => {
         requested += 1;
         document.fullscreenElement = document.documentElement;
+        return Promise.resolve();
+    };
+    document.exitFullscreen = () => {
+        exited += 1;
+        document.fullscreenElement = null;
         return Promise.resolve();
     };
     const latestMessage = {
@@ -624,13 +630,22 @@ test('gate:simulation:visual-novel-ui-fullscreen-mode-requests-browser-fullscree
         },
     });
 
-    await vn.openLatestAvailable('fullscreen');
+    const opened = await vn.openLatestAvailable('fullscreen');
     assert.equal(requested, 1);
     assert.equal(document.fullscreenElement, document.documentElement);
 
+    await opened.reader.controller.invokeAction('next');
+    assert.ok(vn.getState().visualNovelUi.activeReader, 'advancing a segment must not close the reader');
+    assert.equal(requested, 1, 'rerender must not re-request fullscreen');
+
     document.fullscreenElement = null;
     document.dispatchEvent({ type: 'fullscreenchange' });
+    assert.ok(vn.getState().visualNovelUi.activeReader, 'exiting browser fullscreen must not close the reader');
+    document.fullscreenElement = document.documentElement;
+
+    await opened.reader.controller.invokeAction('close');
     assert.equal(vn.getState().visualNovelUi.activeReader, null);
+    assert.equal(exited, 1, 'closing the reader must exit browser fullscreen');
 
     vn.destroy();
 });

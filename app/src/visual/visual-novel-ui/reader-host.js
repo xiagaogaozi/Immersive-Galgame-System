@@ -93,7 +93,7 @@ import {
     normalizeSpriteLayouts,
     setPath,
 } from './settings-normalize.js';
-import { clearReaderModeRuntime } from './reader-runtime.js';
+import { clearReaderModeRuntime, exitDocumentFullscreen } from './reader-runtime.js';
 import { enterSpriteEditMode } from './sprite-edit.js';
 import { handleSettingsAction as runSettingsAction } from './settings-actions.js';
 import {
@@ -252,6 +252,7 @@ export function createVisualNovelReaderHost(options = {}) {
         closeSettings();
         clearReaderToast(current);
         clearReaderModeRuntime(current);
+        exitDocumentFullscreen(getRootDocument(options.global));
         current.imagePollToken += 1;
         if (current.dom && typeof current.dom.dispose === 'function') {
             current.dom.dispose();
