@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.7.7`：修复全屏模式点击退出 + 立绘位置按角色独立存储。
+- 当前项目版本 `v0.7.8`：拆分 `reader-host.js` 巨型模块（3619 → 1486 行），行为零改变。
+- `v0.7.7` 修复全屏模式点击退出 + 立绘位置按角色独立存储。
 - `v0.6.1` 修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
 - `v0.6.0` 图片绑定精确化（移除激进兜底、chatu8 按 DOM 顺序绑定 slot）、混合模式生图与场景素材分区。
 - `v0.5.4` 修复立绘保存后缩回、移除拖拽限制。
@@ -132,6 +133,12 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.7.8 - 2026-06-16
+
+- 重构：拆分 `app/src/visual/visual-novel-ui/reader-host.js` 巨型模块，从 3619 行降到 1486 行，行为零改变。
+- 新增 10 个子模块：`reader-host-constants.js`（常量 + 提示词模板）、`reader-value-utils.js`（纯值工具）、`settings-fields.js`（表单控件 HTML）、`reader-image-state.js`（图片状态归一化）、`reader-dom-utils.js`（DOM 工具）、`settings-normalize.js`（归一化/主题）、`settings-actions.js`（场景素材增删改查）、`sprite-edit.js`（立绘编辑）、`reader-runtime.js`（模式运行时）、`reader-dom-render.js`（快照渲染）。
+- 有状态子模块改为「传入上下文」形式，不再依赖闭包；删除死代码 `escapeRegExp`。全部 58 单测 + 38 模拟测试保持通过。
 
 ### v0.7.7 - 2026-06-16
 
