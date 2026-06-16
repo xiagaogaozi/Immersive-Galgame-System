@@ -14,6 +14,8 @@
 
 - `vn-loader.js`
 - `vn-loader.json`
+- `vn-loader-debug.js`（调试版，由 `build:loader` 自动从正式版派生）
+- `vn-loader-debug.json`（导入酒馆后设置 `VN_DEBUG=true`，输出 `[DEBUG-*]` 控制台日志；仅供开发测试，不随正式版发布）
 
 生成命令：
 

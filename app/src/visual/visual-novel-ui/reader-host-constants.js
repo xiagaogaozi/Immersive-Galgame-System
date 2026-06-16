@@ -86,7 +86,6 @@ export const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
         requiredPaths: Object.freeze([
             'bridge.openMode',
             'bridge.showToasts',
-            'bridge.debug',
         ]),
     }),
     regex: Object.freeze({

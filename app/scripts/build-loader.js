@@ -51,3 +51,48 @@ if (releaseParsed.content !== content || releaseParsed.name !== loaderJson.name)
 
 console.log(`loader:build ok ${path.relative(projectRoot, jsonPath)}`);
 console.log(`loader:release ok ${path.relative(projectRoot, releaseJsonPath)}`);
+
+// Debug loader: derived from the production source so it never drifts.
+// Difference: sets root.VN_DEBUG = true before injecting the bundle, enabling
+// vnDebug() [DEBUG-*] logging. Not part of the public release.
+const debugMarker = 'const root = resolveRootWindow();';
+if (!content.includes(debugMarker)) {
+    throw new Error('Loader source missing expected root marker for debug build.');
+}
+const debugContent = content
+    .replace(debugMarker, `${debugMarker}\n    try { root.VN_DEBUG = true; } catch (vnDebugError) { /* ignore */ }`)
+    .replace("INSTANCE_KEY = '__VN_AUTO_UPDATE_LOADER__'", "INSTANCE_KEY = '__VN_AUTO_UPDATE_LOADER_DEBUG__'");
+
+const debugJsPath = path.join(loaderRoot, 'vn-loader-debug.js');
+const debugJsonPath = path.join(loaderRoot, 'vn-loader-debug.json');
+fs.writeFileSync(debugJsPath, debugContent, 'utf8');
+
+const debugLoaderJson = {
+    type: 'script',
+    enabled: false,
+    name: 'Visual Novel（调试版）',
+    id: 'f1c4a3d2-9b6e-4a71-8c2d-7e5b0a9d3f64',
+    content: debugContent,
+    info: [
+        'Visual Novel 调试版 loader（仅供开发测试）。',
+        '与正式版加载同一个远程 bundle，但会设置 VN_DEBUG=true，输出 [DEBUG-*] 控制台日志。',
+        '不要随正式版一起发布给普通用户。',
+    ].join('\n'),
+    button: {
+        enabled: false,
+        buttons: [],
+    },
+    data: {},
+    export_with: {
+        data: true,
+        button: true,
+    },
+};
+fs.writeFileSync(debugJsonPath, `${JSON.stringify(debugLoaderJson, null, 2)}\n`, 'utf8');
+
+const debugParsed = JSON.parse(fs.readFileSync(debugJsonPath, 'utf8'));
+if (debugParsed.content !== debugContent || !debugContent.includes('root.VN_DEBUG = true')) {
+    throw new Error('Debug loader JSON content does not match debug loader source.');
+}
+
+console.log(`loader:debug ok ${path.relative(projectRoot, debugJsonPath)}`);

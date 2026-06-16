@@ -10,7 +10,7 @@ import {
     readElementWidth,
     removeImageLoadingSpinner,
 } from './reader-dom-utils.js';
-import { computeLineHeight, normalizeOpacity } from './reader-value-utils.js';
+import { computeLineHeight, normalizeOpacity, vnDebug } from './reader-value-utils.js';
 import {
     renderDialogueHtml,
     resolveActiveTheme,
@@ -341,6 +341,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             const layout = resolveSpriteLayout(snapshot.readerSettings.spriteLayouts, snapshot.mode, snapshot.content.speaker);
             spriteEl.style.backgroundSize = `${layout.scale}%`;
             spriteEl.style.backgroundPosition = `${layout.posX}% ${layout.posY}%`;
+            vnDebug('[DEBUG-sprite] apply-layout', { mode: snapshot.mode, speaker: snapshot.content.speaker, index: snapshot.content.currentIndex, layoutKey: snapshot.content.speaker ? `${snapshot.mode}::${snapshot.content.speaker}` : snapshot.mode, layout: { ...layout } });
         }
     } else if (spriteEl) {
         spriteEl.style.backgroundImage = '';

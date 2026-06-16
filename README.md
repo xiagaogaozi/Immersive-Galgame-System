@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.8.0`：修复切轮全屏抖动、立绘拖动反向、全屏隐藏后无法恢复、状态行开关、上一轮落点。
+- 当前项目版本 `v0.8.1`：新增调试版 loader（VN_DEBUG 开关 + [DEBUG-sprite] 探针），移除无效的「调试日志」开关。
 - `v0.7.7` 修复全屏模式点击退出 + 立绘位置按角色独立存储。
 - `v0.6.1` 修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
 - `v0.6.0` 图片绑定精确化（移除激进兜底、chatu8 按 DOM 顺序绑定 slot）、混合模式生图与场景素材分区。
@@ -133,6 +133,14 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.8.1 - 2026-06-17
+
+- 新增调试版 loader（`vn-loader-debug.js` / `.json`）：由 `build:loader` 自动从正式版派生，导入酒馆后设置 `window.VN_DEBUG=true`，输出 `[DEBUG-*]` 控制台日志；正式版完全不受影响。
+- 新增 `vnDebug()` 工具（`reader-value-utils.js`）：仅当 `VN_DEBUG` 为真时输出，正式版零开销。
+- 在立绘编辑（`sprite-edit.js`）和立绘布局应用（`reader-dom-render.js`）加入 `[DEBUG-sprite]` 探针，用于诊断切换模式 layout 滞后与拖动手感问题。
+- 移除基础设置页中无效的「调试日志」开关（`bridge.debug` 自始未接任何逻辑，是遗留死开关）。
+- 修复 `gate-contract` 中硬编码的过期发布文件名，改为按当前版本动态解析。
 
 ### v0.8.0 - 2026-06-16
 

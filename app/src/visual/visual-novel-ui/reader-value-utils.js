@@ -1,5 +1,26 @@
 import { looksLikeHostUiHtml } from '../../scene/message-source.js';
 
+export function vnDebugEnabled() {
+    try {
+        const root = (typeof window !== 'undefined' && window.parent && window.parent.VN_DEBUG !== undefined)
+            ? window.parent
+            : (typeof window !== 'undefined' ? window : globalThis);
+        return Boolean(root && root.VN_DEBUG);
+    } catch (error) {
+        return Boolean(typeof globalThis !== 'undefined' && globalThis.VN_DEBUG);
+    }
+}
+
+export function vnDebug(tag, payload) {
+    if (!vnDebugEnabled()) return;
+    try {
+        if (payload === undefined) console.log(tag);
+        else console.log(tag, payload);
+    } catch (error) {
+        // Console may be unavailable in simulation.
+    }
+}
+
 export function esc(value) {
     return String(value === undefined || value === null ? '' : value)
         .replace(/&/g, '&amp;')

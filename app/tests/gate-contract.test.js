@@ -88,7 +88,8 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.equal(loaderJson.button.enabled, false);
     assert.deepEqual(loaderJson.button.buttons, []);
 
-    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', '酒馆助手脚本-Visual Novel（自动更新） v0.3.20.json'), 'utf8'));
+    const pkgVersion = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')).version;
+    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', `酒馆助手脚本-Visual Novel（自动更新） v${pkgVersion}.json`), 'utf8'));
     assert.equal(releaseJson.name, loaderJson.name);
     assert.equal(releaseJson.content, loaderSource);
 });
@@ -99,11 +100,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /VN version: 0\.8\.0/);
+    assert.match(bundle, /VN version: 0\.8\.1/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Visual Novel');
-    assert.equal(manifest.version, '0.8.0');
+    assert.equal(manifest.version, '0.8.1');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {

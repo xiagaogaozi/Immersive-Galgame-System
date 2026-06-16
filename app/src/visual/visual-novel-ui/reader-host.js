@@ -929,8 +929,7 @@ export function createVisualNovelReaderHost(options = {}) {
                         '切换模式',
                     ),
                 )}</div>`,
-                settingsToggles: checkbox('bridge.showToasts', bridge.showToasts, '显示提示 toast')
-                    + checkbox('bridge.debug', bridge.debug, '调试日志'),
+                settingsToggles: checkbox('bridge.showToasts', bridge.showToasts, '显示提示 toast'),
             });
         }
 

@@ -1,4 +1,5 @@
 import { resolveSpriteLayout } from './settings-normalize.js';
+import { vnDebug } from './reader-value-utils.js';
 
 export function enterSpriteEditMode(overlay, current, ctx = {}) {
     if (current.spriteEditMode) return;
@@ -14,6 +15,7 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
     const modeLayout = resolveSpriteLayout(rs.spriteLayouts, mode, character);
     const orig = { ...modeLayout };
     let posX = orig.posX, posY = orig.posY, scale = orig.scale;
+    vnDebug('[DEBUG-sprite] enter-edit', { mode, character, layoutKey: character ? `${mode}::${character}` : mode, resolved: { ...orig }, allLayouts: rs.spriteLayouts });
     const clickLayer = overlay.querySelector('#vn-click-layer');
     if (clickLayer) clickLayer.style.pointerEvents = 'none';
 
@@ -76,6 +78,7 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
             const rect = spriteEl.getBoundingClientRect ? spriteEl.getBoundingClientRect() : { width: 400, height: 600 };
             posX = dragStart.posX + (event.clientX - dragStart.x) / rect.width * 100;
             posY = dragStart.posY + (event.clientY - dragStart.y) / rect.height * 100;
+            vnDebug('[DEBUG-sprite] drag', { dx: event.clientX - dragStart.x, dy: event.clientY - dragStart.y, rectW: Math.round(rect.width), rectH: Math.round(rect.height), posX: Math.round(posX), posY: Math.round(posY) });
             apply();
         } else if (pointers.size === 2 && pinchStart) {
             const pts = [...pointers.values()];
