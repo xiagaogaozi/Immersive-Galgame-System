@@ -1896,7 +1896,7 @@ export function createVisualNovelReaderHost(options = {}) {
             spriteEl.style.display = 'block';
             spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
             if (!current.spriteEditMode) {
-                const layout = (snapshot.readerSettings.spriteLayouts || {})[snapshot.mode] || { posX: 50, posY: 100, scale: 100 };
+                const layout = resolveSpriteLayout(snapshot.readerSettings.spriteLayouts, snapshot.mode, snapshot.content.speaker);
                 spriteEl.style.backgroundSize = `${layout.scale}%`;
                 spriteEl.style.backgroundPosition = `${layout.posX}% ${layout.posY}%`;
             }
@@ -2430,6 +2430,11 @@ export function createVisualNovelReaderHost(options = {}) {
     function applyFullscreenReaderRuntime(root, current, runtime) {
         const doc = runtime.doc;
         if (!doc) return;
+        const clickLayer = root.querySelector('#vn-click-layer');
+        if (clickLayer) clickLayer.style.pointerEvents = 'none';
+        addRuntimeCleanup(runtime, () => {
+            if (clickLayer) clickLayer.style.pointerEvents = '';
+        });
         const target = doc.documentElement || doc.body;
         const request = target && (target.requestFullscreen || target.webkitRequestFullscreen);
         if (typeof request === 'function') {
@@ -2668,7 +2673,8 @@ export function createVisualNovelReaderHost(options = {}) {
         closeSettings();
         const mode = current.snapshot.mode;
         const rs = current.snapshot.readerSettings;
-        const modeLayout = (rs.spriteLayouts || {})[mode] || { posX: 50, posY: 100, scale: 100 };
+        const character = current.snapshot.content.speaker || '';
+        const modeLayout = resolveSpriteLayout(rs.spriteLayouts, mode, character);
         const orig = { ...modeLayout };
         let posX = orig.posX, posY = orig.posY, scale = orig.scale;
         const clickLayer = overlay.querySelector('#vn-click-layer');
@@ -2694,7 +2700,7 @@ export function createVisualNovelReaderHost(options = {}) {
             + '<button data-se="cancel" type="button">取消</button>'
             + '<button data-se="save" class="vn-se-save" type="button">保存</button>';
         overlay.appendChild(editBar);
-        current.spriteEditMode = { orig, editBar, clickLayer, mode, origSpriteStyle };
+        current.spriteEditMode = { orig, editBar, clickLayer, mode, character, origSpriteStyle };
 
         function apply() {
             spriteEl.style.backgroundSize = `${scale}%`;
@@ -2772,7 +2778,8 @@ export function createVisualNovelReaderHost(options = {}) {
         if (save) {
             const unified = resolveBridgeConfigSnapshot({ mode: em.mode });
             const layouts = { ...(unified.readerSettings.spriteLayouts || {}) };
-            layouts[em.mode] = { posX: save.posX, posY: save.posY, scale: save.scale };
+            const layoutKey = em.character ? `${em.mode}::${em.character}` : em.mode;
+            layouts[layoutKey] = { posX: save.posX, posY: save.posY, scale: save.scale };
             saveReaderSettingsPatch({ spriteLayouts: layouts });
         } else {
             if (spriteEl) Object.assign(spriteEl.style, em.origSpriteStyle);
@@ -2865,16 +2872,28 @@ function normalizeBtnOrder(value) {
 
 function normalizeSpriteLayouts(value) {
     const def = { posX: 50, posY: 100, scale: 100 };
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
     const out = {};
-    for (const m of ['pc', 'mobile', 'web', 'fullscreen']) {
-        const src = (value && typeof value[m] === 'object' && value[m]) ? value[m] : {};
-        out[m] = {
+    for (const key of Object.keys(value)) {
+        const src = (typeof value[key] === 'object' && value[key]) ? value[key] : {};
+        out[key] = {
             posX: normalizeFiniteNumber(src.posX, def.posX),
             posY: normalizeFiniteNumber(src.posY, def.posY),
             scale: normalizeFiniteNumber(src.scale, def.scale),
         };
     }
     return out;
+}
+
+function resolveSpriteLayout(layouts, mode, character) {
+    const def = { posX: 50, posY: 100, scale: 100 };
+    if (!layouts) return def;
+    if (character) {
+        const charKey = `${mode}::${character}`;
+        if (layouts[charKey]) return layouts[charKey];
+    }
+    if (layouts[mode]) return layouts[mode];
+    return def;
 }
 
 function waitForReaderImagePoll(duration, globalObject) {
