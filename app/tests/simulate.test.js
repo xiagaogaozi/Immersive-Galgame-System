@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vn-version'), '0.7.9');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.8.0');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -791,7 +791,7 @@ test('gate:simulation:visual-novel-ui-turn-navigation-switches-message-and_keeps
     assert.equal(prevTurnResult.ok, true);
     assert.equal(prevTurnResult.moved, true);
     assert.equal(prevTurnResult.reader.snapshot.messageId, 8);
-    assert.equal(prevTurnResult.reader.snapshot.content.progress, '2 / 2');
+    assert.equal(prevTurnResult.reader.snapshot.content.progress, '1 / 2');
     assert.deepEqual(jumped, [9, 8]);
     assert.equal(state.visualNovelUi.activeReader.snapshot.messageId, 8);
 

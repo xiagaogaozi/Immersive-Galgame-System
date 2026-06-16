@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.7.9`：立绘缩放放宽至 -500%~500%、全屏模式仅在关闭或切换模式时退出。
+- 当前项目版本 `v0.8.0`：修复切轮全屏抖动、立绘拖动反向、全屏隐藏后无法恢复、状态行开关、上一轮落点。
 - `v0.7.7` 修复全屏模式点击退出 + 立绘位置按角色独立存储。
 - `v0.6.1` 修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
 - `v0.6.0` 图片绑定精确化（移除激进兜底、chatu8 按 DOM 顺序绑定 slot）、混合模式生图与场景素材分区。
@@ -133,6 +133,14 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.8.0 - 2026-06-16
+
+- 修复全屏模式下点上/下一轮在全屏↔网页全屏来回切换：`closeReader` 新增 `keepFullscreen` 参数，`openReader` 内部切层时不退出全屏，仅用户点关闭按钮才退出。
+- 修复编辑立绘位置时拖动方向相反（四个模式）：`sprite-edit.js` 拖动公式从 `-` 改为 `+`，立绘跟随光标移动。
+- 修复全屏模式隐藏对话框后点击无法恢复：移除全屏 runtime 对 `#vn-click-layer` 的 `pointer-events:none`（该 workaround 在 v0.7.9 根治退出问题后已多余）。
+- 修复显示状态行开关无效：`.vn-status-line` 显示时用 `display:block` 覆盖 CSS 默认 `display:none`。
+- 修复点击上一轮落在上一轮最后一页：`moveReaderTurn` 的 `startAtEnd` 改为恒 `false`，上/下一轮都从第一页开始。
 
 ### v0.7.9 - 2026-06-16
 

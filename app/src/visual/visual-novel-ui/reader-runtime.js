@@ -306,11 +306,6 @@ function applyWebReaderRuntime(root, runtime) {
 function applyFullscreenReaderRuntime(root, current, runtime, ctx = {}) {
     const doc = runtime.doc;
     if (!doc) return;
-    const clickLayer = root.querySelector('#vn-click-layer');
-    if (clickLayer) clickLayer.style.pointerEvents = 'none';
-    addRuntimeCleanup(runtime, () => {
-        if (clickLayer) clickLayer.style.pointerEvents = '';
-    });
     const target = doc.documentElement || doc.body;
     const request = target && (target.requestFullscreen || target.webkitRequestFullscreen);
     if (typeof request === 'function' && !doc.fullscreenElement && !doc.webkitFullscreenElement) {

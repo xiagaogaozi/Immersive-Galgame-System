@@ -74,8 +74,8 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
         if (pointers.size === 1 && dragStart) {
             const rect = spriteEl.getBoundingClientRect ? spriteEl.getBoundingClientRect() : { width: 400, height: 600 };
-            posX = dragStart.posX - (event.clientX - dragStart.x) / rect.width * 100;
-            posY = dragStart.posY - (event.clientY - dragStart.y) / rect.height * 100;
+            posX = dragStart.posX + (event.clientX - dragStart.x) / rect.width * 100;
+            posY = dragStart.posY + (event.clientY - dragStart.y) / rect.height * 100;
             apply();
         } else if (pointers.size === 2 && pinchStart) {
             const pts = [...pointers.values()];

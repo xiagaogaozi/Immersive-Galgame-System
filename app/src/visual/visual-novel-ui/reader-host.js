@@ -138,7 +138,7 @@ export function createVisualNovelReaderHost(options = {}) {
     return host;
 
     function openReader(payload = {}, openOptions = {}) {
-        closeReader();
+        closeReader({ keepFullscreen: true });
         const nextMode = normalizeReaderMode(
             firstDefined(
                 openOptions.mode,
@@ -246,13 +246,15 @@ export function createVisualNovelReaderHost(options = {}) {
         };
     }
 
-    function closeReader() {
+    function closeReader(closeOptions = {}) {
         const current = state.activeReader;
         if (!current) return { ok: true, reason: 'reader-not-open' };
         closeSettings();
         clearReaderToast(current);
         clearReaderModeRuntime(current);
-        exitDocumentFullscreen(getRootDocument(options.global));
+        if (closeOptions.keepFullscreen !== true) {
+            exitDocumentFullscreen(getRootDocument(options.global));
+        }
         current.imagePollToken += 1;
         if (current.dom && typeof current.dom.dispose === 'function') {
             current.dom.dispose();
@@ -592,7 +594,7 @@ export function createVisualNovelReaderHost(options = {}) {
             return { ok: false, reason: 'missing-open-viewer-handler', messageId: target.id };
         }
         const result = await options.openViewerFromMessage(target.id, current.mode, {
-            startAtEnd: delta < 0,
+            startAtEnd: false,
             message: target,
         });
         if (result && result.ok !== false) {

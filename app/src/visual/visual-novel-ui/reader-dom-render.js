@@ -403,7 +403,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     if (statusLine) {
         if (snapshot.readerSettings.showStatusLine) {
             statusLine.textContent = snapshot.content.progress;
-            statusLine.style.display = '';
+            statusLine.style.display = 'block';
         } else {
             statusLine.style.display = 'none';
         }
