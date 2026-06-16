@@ -40,6 +40,42 @@ const DEFAULT_IMAGE_API = Object.freeze({
     modelsFetchedAt: '',
 });
 
+const VN_THEME_PRESETS = Object.freeze({
+    genshin: Object.freeze({
+        nameAlign: 'center',
+        dividerSymbol: '───◇───',
+        nameFont: 'inherit',
+        textFont: 'inherit',
+        thoughtFont: 'inherit',
+        nameColor: '#ffeeb8',
+        textColor: '#f4f4f6',
+        thoughtColor: 'rgba(200,200,220,.72)',
+        dividerColor: 'rgba(255,238,184,.4)',
+    }),
+    honkai: Object.freeze({
+        nameAlign: 'center',
+        dividerSymbol: '──✦──',
+        nameFont: 'inherit',
+        textFont: 'inherit',
+        thoughtFont: 'inherit',
+        nameColor: '#c8e0ff',
+        textColor: '#e8ecf4',
+        thoughtColor: 'rgba(160,190,255,.68)',
+        dividerColor: 'rgba(200,224,255,.35)',
+    }),
+    minimal: Object.freeze({
+        nameAlign: 'left',
+        dividerSymbol: 'none',
+        nameFont: 'inherit',
+        textFont: 'inherit',
+        thoughtFont: 'inherit',
+        nameColor: 'rgba(255,255,255,.7)',
+        textColor: '#f4f4f6',
+        thoughtColor: 'rgba(255,255,255,.5)',
+        dividerColor: 'transparent',
+    }),
+});
+
 const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerMode',
     'readerSettings.fontSize',
@@ -51,6 +87,7 @@ const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.toolbarScale',
     'readerSettings.imgMode',
     'readerSettings.stayMode',
+    'readerSettings.showStatusLine',
     'readerSettings.pinnedBtns',
     'readerSettings.hiddenBtns',
     'readerSettings.btnOrder',
@@ -120,6 +157,7 @@ const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
         requiredPaths: Object.freeze([
             'bridge.sceneAssets.enabled',
             'bridge.sceneAssets.promptRule',
+            'bridge.vnTheme.preset',
         ]),
         requiredActions: Object.freeze([
             'reset-prompt-rule',
@@ -259,6 +297,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
+        readerSettings._vnTheme = unified.bridge.vnTheme || null;
         const snapshot = buildReaderSnapshot(
             payload,
             nextMode,
@@ -528,6 +567,9 @@ export function createVisualNovelReaderHost(options = {}) {
         }
 
         setPath(draft, path, normalizeSettingsValue(path, value));
+        if (path.startsWith('bridge.vnTheme.') && path !== 'bridge.vnTheme.preset') {
+            setPath(draft, 'bridge.vnTheme.preset', 'custom');
+        }
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
         return rerenderSettings();
@@ -940,6 +982,7 @@ export function createVisualNovelReaderHost(options = {}) {
         state.activeReader.mode = nextMode;
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
+        readerSettings._vnTheme = unified.bridge.vnTheme || null;
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, nextMode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
         return { ok: true };
@@ -1135,7 +1178,8 @@ export function createVisualNovelReaderHost(options = {}) {
         );
         const displayImageState = applyImageCountOverride(imageState, readerSettings.imageCountOverride);
         const currentText = segments[normalizedIndex] || text;
-        const displayText = scene.speaker && currentText
+        const sceneAssetsEnabled = readerSettings._sceneAssets && readerSettings._sceneAssets.enabled;
+        const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
             ? `${scene.speaker}: ${currentText}`
             : currentText;
         const backgroundImage = firstNonEmptyString(
@@ -1358,12 +1402,22 @@ export function createVisualNovelReaderHost(options = {}) {
             const disabled = !sceneAssets.enabled;
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
+            const vnTheme = bridge.vnTheme || {};
+            const themeCustom = vnTheme.preset === 'custom';
             return renderTemplate(getSettingsTabTemplate('scene'), {
                 sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
                 sceneGroupClass: `vn-settings-section vn-settings-full${disabled ? ' vn-settings-api-group is-disabled' : ''}`,
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
+                themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'minimal', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
+                nameAlignField: field('bridge.vnTheme.nameAlign', '角色名对齐', selectInput('bridge.vnTheme.nameAlign', vnTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
+                dividerField: field('bridge.vnTheme.dividerSymbol', '分隔线样式', selectInput('bridge.vnTheme.dividerSymbol', vnTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
+                nameColorField: field('bridge.vnTheme.nameColor', '角色名颜色', textInput('bridge.vnTheme.nameColor', vnTheme.nameColor || '#ffeeb8', '#ffeeb8', 'text', disabled || !themeCustom)),
+                textColorField: field('bridge.vnTheme.textColor', '台词颜色', textInput('bridge.vnTheme.textColor', vnTheme.textColor || '#f4f4f6', '#f4f4f6', 'text', disabled || !themeCustom)),
+                thoughtColorField: field('bridge.vnTheme.thoughtColor', '心里话颜色', textInput('bridge.vnTheme.thoughtColor', vnTheme.thoughtColor || 'rgba(200,200,220,.72)', 'rgba(200,200,220,.72)', 'text', disabled || !themeCustom)),
+                dividerColorField: field('bridge.vnTheme.dividerColor', '分隔线颜色', textInput('bridge.vnTheme.dividerColor', vnTheme.dividerColor || 'rgba(255,238,184,.4)', 'rgba(255,238,184,.4)', 'text', disabled || !themeCustom)),
+                themeAdvancedClass: themeCustom ? '' : 'vn-settings-api-group is-disabled',
             });
         }
 
@@ -1377,7 +1431,8 @@ export function createVisualNovelReaderHost(options = {}) {
             inputScaleField: field('readerSettings.inputScale', '输入框高度', selectInput('readerSettings.inputScale', reader.inputScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             toolbarScaleField: field('readerSettings.toolbarScale', '工具栏大小', selectInput('readerSettings.toolbarScale', reader.toolbarScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
-            readerToggles: checkbox('readerSettings.stayMode', reader.stayMode, '留在当前模式'),
+            readerToggles: checkbox('readerSettings.stayMode', reader.stayMode, '留在当前模式')
+                + checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行'),
             pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns, reader.btnOrder),
         });
     }
@@ -1632,6 +1687,21 @@ export function createVisualNovelReaderHost(options = {}) {
         progress.className = 'vn-progress';
         dialog.appendChild(progress);
 
+        const statusLine = doc.createElement('div');
+        statusLine.id = 'vn-status-line';
+        statusLine.className = 'vn-status-line';
+        dialog.appendChild(statusLine);
+
+        const speakerEl = doc.createElement('div');
+        speakerEl.id = 'vn-speaker';
+        speakerEl.className = 'vn-speaker';
+        dialog.appendChild(speakerEl);
+
+        const dividerEl = doc.createElement('div');
+        dividerEl.id = 'vn-divider';
+        dividerEl.className = 'vn-divider';
+        dialog.appendChild(dividerEl);
+
         const text = doc.createElement('div');
         text.id = 'vn-text';
         text.className = 'vn-text';
@@ -1814,12 +1884,66 @@ export function createVisualNovelReaderHost(options = {}) {
             spriteEl.style.display = 'none';
         }
         if (textEl) {
-            textEl.textContent = snapshot.content.displayText;
+            const theme = resolveActiveTheme(snapshot);
+            const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
+            textEl.innerHTML = renderDialogueHtml(snapshot.content.displayText, theme, sceneAssetsEnabled);
             textEl.style.fontSize = `${snapshot.readerSettings.fontSize}px`;
             textEl.style.lineHeight = computeLineHeight(snapshot.readerSettings.fontSize);
+            if (sceneAssetsEnabled && theme.textFont && theme.textFont !== 'inherit') {
+                textEl.style.fontFamily = theme.textFont;
+            } else {
+                textEl.style.fontFamily = '';
+            }
+            if (sceneAssetsEnabled && theme.textColor) {
+                textEl.style.color = theme.textColor;
+            } else {
+                textEl.style.color = '';
+            }
         }
-        if (progress) {
-            progress.textContent = snapshot.content.progress;
+        const speakerEl = root.querySelector('#vn-speaker');
+        if (speakerEl) {
+            const theme = resolveActiveTheme(snapshot);
+            const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
+            if (sceneAssetsEnabled && snapshot.content.speaker) {
+                speakerEl.textContent = snapshot.content.speaker;
+                speakerEl.style.display = '';
+                speakerEl.style.textAlign = theme.nameAlign;
+                speakerEl.style.fontFamily = theme.nameFont && theme.nameFont !== 'inherit' ? theme.nameFont : '';
+                speakerEl.style.color = theme.nameColor || '';
+            } else {
+                speakerEl.style.display = 'none';
+            }
+        }
+        const dividerEl = root.querySelector('#vn-divider');
+        if (dividerEl) {
+            const theme = resolveActiveTheme(snapshot);
+            const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
+            if (sceneAssetsEnabled && snapshot.content.speaker && theme.dividerSymbol !== 'none') {
+                if (theme.dividerSymbol === 'gradient') {
+                    dividerEl.textContent = '';
+                    dividerEl.style.display = '';
+                    dividerEl.style.height = '1px';
+                    dividerEl.style.background = `linear-gradient(90deg, transparent, ${theme.dividerColor || 'rgba(255,255,255,.15)'}, transparent)`;
+                    dividerEl.style.color = '';
+                } else {
+                    dividerEl.textContent = theme.dividerSymbol;
+                    dividerEl.style.display = '';
+                    dividerEl.style.height = '';
+                    dividerEl.style.background = '';
+                    dividerEl.style.color = theme.dividerColor || '';
+                }
+            } else {
+                dividerEl.style.display = 'none';
+            }
+        }
+        const statusLine = root.querySelector('#vn-status-line');
+        if (statusLine) {
+            if (snapshot.readerSettings.showStatusLine) {
+                statusLine.textContent = snapshot.content.progress;
+                statusLine.style.display = '';
+            } else {
+                statusLine.style.display = 'none';
+            }
         }
         if (input) {
             input.placeholder = snapshot.input.placeholder;
@@ -2382,6 +2506,7 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.virtualRegex = normalizeVirtualRegex(normalized.virtualRegex);
         normalized.imageApi = normalizeImageApi(normalized.imageApi);
         normalized.sceneAssets = normalizeSceneAssets(normalized.sceneAssets);
+        normalized.vnTheme = normalizeVnTheme(normalized.vnTheme);
         return normalized;
     }
 
@@ -2409,6 +2534,23 @@ export function createVisualNovelReaderHost(options = {}) {
         return normalized;
     }
 
+    function normalizeVnTheme(value) {
+        const normalized = cloneData(value || {});
+        const validPresets = ['genshin', 'honkai', 'minimal', 'custom'];
+        if (!validPresets.includes(normalized.preset)) normalized.preset = 'minimal';
+        const fallback = VN_THEME_PRESETS[normalized.preset] || VN_THEME_PRESETS.minimal;
+        normalized.nameAlign = normalized.nameAlign === 'center' ? 'center' : 'left';
+        normalized.dividerSymbol = normalized.dividerSymbol || fallback.dividerSymbol;
+        normalized.nameFont = normalized.nameFont || fallback.nameFont;
+        normalized.textFont = normalized.textFont || fallback.textFont;
+        normalized.thoughtFont = normalized.thoughtFont || fallback.thoughtFont;
+        normalized.nameColor = normalized.nameColor || fallback.nameColor;
+        normalized.textColor = normalized.textColor || fallback.textColor;
+        normalized.thoughtColor = normalized.thoughtColor || fallback.thoughtColor;
+        normalized.dividerColor = normalized.dividerColor || fallback.dividerColor;
+        return normalized;
+    }
+
     function normalizeReaderSettings(mode, settings) {
         const inlineMode = mode === 'pc' || mode === 'mobile';
         const currentVersion = READER_SETTINGS_SCHEMA_VERSION;
@@ -2423,6 +2565,7 @@ export function createVisualNovelReaderHost(options = {}) {
             inputScale: inlineMode ? 60 : 100,
             imgMode: 'adaptive',
             stayMode: false,
+            showStatusLine: false,
             imageCountOverride: null,
             pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
             hiddenBtns: [],
@@ -2438,6 +2581,7 @@ export function createVisualNovelReaderHost(options = {}) {
         normalized.inputScale = normalizeFiniteNumber(normalized.inputScale, base.inputScale);
         normalized.imgMode = normalized.imgMode === 'contain' ? 'contain' : 'adaptive';
         normalized.stayMode = normalizeBoolean(normalized.stayMode, false);
+        normalized.showStatusLine = normalizeBoolean(normalized.showStatusLine, false);
         normalized.imageCountOverride = normalizeNullableNumber(normalized.imageCountOverride);
         normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);
         normalized.hiddenBtns = normalizeHiddenButtons(normalized.hiddenBtns);
@@ -3359,6 +3503,38 @@ function esc(value) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+function resolveActiveTheme(snapshot) {
+    const vnTheme = snapshot.readerSettings._vnTheme || {};
+    const presetName = vnTheme.preset || 'minimal';
+    const preset = VN_THEME_PRESETS[presetName] || VN_THEME_PRESETS.minimal;
+    if (presetName === 'custom') {
+        return {
+            nameAlign: vnTheme.nameAlign || preset.nameAlign,
+            dividerSymbol: vnTheme.dividerSymbol || preset.dividerSymbol,
+            nameFont: vnTheme.nameFont || preset.nameFont,
+            textFont: vnTheme.textFont || preset.textFont,
+            thoughtFont: vnTheme.thoughtFont || preset.thoughtFont,
+            nameColor: vnTheme.nameColor || preset.nameColor,
+            textColor: vnTheme.textColor || preset.textColor,
+            thoughtColor: vnTheme.thoughtColor || preset.thoughtColor,
+            dividerColor: vnTheme.dividerColor || preset.dividerColor,
+        };
+    }
+    return { ...preset };
+}
+
+function renderDialogueHtml(text, theme, sceneAssetsEnabled) {
+    const escaped = esc(text);
+    if (!sceneAssetsEnabled) return escaped;
+    return escaped.replace(/\*([^*]+)\*/g, (_, inner) => {
+        const styles = [];
+        if (theme.thoughtFont && theme.thoughtFont !== 'inherit') styles.push(`font-family:${theme.thoughtFont}`);
+        if (theme.thoughtColor) styles.push(`color:${theme.thoughtColor}`);
+        const styleAttr = styles.length ? ` style="${styles.join(';')}"` : '';
+        return `<span class="vn-thought"${styleAttr}>${inner}</span>`;
+    });
 }
 
 function escapeRegExp(value) {

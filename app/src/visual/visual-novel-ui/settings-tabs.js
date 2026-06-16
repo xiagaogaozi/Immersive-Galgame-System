@@ -113,6 +113,21 @@ const SCENE_TAB_TEMPLATE = `
       <div class="vn-settings-row"><button class="vn-settings-action" data-action="scene-add-char" type="button">+ 添加角色</button></div>
     </div>
     <div class="vn-settings-full"><em class="vn-settings-field">提示：在正文中使用 @vn-scene:场景|角色|情绪 来切换画面。省略的字段继承上一次的值。扫描图优先显示。</em></div>
+    <div class="vn-source-filter vn-settings-full">
+      <div>
+        <div class="vn-source-filter-title">对话主题</div>
+        <div class="vn-source-filter-note">影响角色名、分隔线和心声样式。选择预设或自定义各项。</div>
+      </div>
+      {{themePresetField}}
+      {{nameAlignField}}
+      <div class="{{themeAdvancedClass}}">
+        {{dividerField}}
+        {{nameColorField}}
+        {{textColorField}}
+        {{thoughtColorField}}
+        {{dividerColorField}}
+      </div>
+    </div>
   </div>
 </div>
 `.trim();
