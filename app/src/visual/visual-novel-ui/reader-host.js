@@ -1416,7 +1416,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
-                themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'minimal', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
+                themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
                 nameAlignField: field('bridge.vnTheme.nameAlign', '角色名对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
                 dividerField: field('bridge.vnTheme.dividerSymbol', '分隔线样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
                 nameFontField: field('bridge.vnTheme.nameFont', '角色名字体', selectInput('bridge.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
@@ -2546,9 +2546,9 @@ export function createVisualNovelReaderHost(options = {}) {
     function normalizeVnTheme(value) {
         const normalized = cloneData(value || {});
         const validPresets = ['genshin', 'honkai', 'minimal', 'custom'];
-        if (!validPresets.includes(normalized.preset)) normalized.preset = 'minimal';
-        const fallback = VN_THEME_PRESETS[normalized.preset] || VN_THEME_PRESETS.minimal;
-        normalized.nameAlign = normalized.nameAlign === 'center' ? 'center' : 'left';
+        if (!validPresets.includes(normalized.preset)) normalized.preset = 'genshin';
+        const fallback = VN_THEME_PRESETS[normalized.preset] || VN_THEME_PRESETS.genshin;
+        normalized.nameAlign = normalized.nameAlign === 'left' ? 'left' : (normalized.nameAlign === 'center' ? 'center' : fallback.nameAlign);
         normalized.dividerSymbol = normalized.dividerSymbol || fallback.dividerSymbol;
         normalized.nameFont = normalized.nameFont || fallback.nameFont;
         normalized.textFont = normalized.textFont || fallback.textFont;
@@ -3533,8 +3533,8 @@ function esc(value) {
 
 function resolveActiveTheme(snapshot) {
     const vnTheme = snapshot.readerSettings._vnTheme || {};
-    const presetName = vnTheme.preset || 'minimal';
-    const preset = VN_THEME_PRESETS[presetName] || VN_THEME_PRESETS.minimal;
+    const presetName = vnTheme.preset || 'genshin';
+    const preset = VN_THEME_PRESETS[presetName] || VN_THEME_PRESETS.genshin;
     if (presetName === 'custom') {
         return {
             nameAlign: vnTheme.nameAlign || preset.nameAlign,
