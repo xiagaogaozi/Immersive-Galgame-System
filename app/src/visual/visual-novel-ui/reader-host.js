@@ -567,7 +567,18 @@ export function createVisualNovelReaderHost(options = {}) {
         }
 
         setPath(draft, path, normalizeSettingsValue(path, value));
-        if (path.startsWith('bridge.vnTheme.') && path !== 'bridge.vnTheme.preset') {
+        if (path === 'bridge.vnTheme.preset' && value === 'custom') {
+            const prevName = draft.bridge.vnTheme._prevPreset || 'genshin';
+            const source = VN_THEME_PRESETS[prevName] || VN_THEME_PRESETS.genshin;
+            const fields = ['nameAlign', 'dividerSymbol', 'nameFont', 'textFont', 'thoughtFont', 'nameColor', 'textColor', 'thoughtColor', 'dividerColor'];
+            for (const f of fields) {
+                setPath(draft, `bridge.vnTheme.${f}`, source[f]);
+            }
+        }
+        if (path === 'bridge.vnTheme.preset' && value !== 'custom') {
+            setPath(draft, 'bridge.vnTheme._prevPreset', value);
+        }
+        if (path.startsWith('bridge.vnTheme.') && path !== 'bridge.vnTheme.preset' && path !== 'bridge.vnTheme._prevPreset') {
             setPath(draft, 'bridge.vnTheme.preset', 'custom');
         }
         const persisted = persistSettingsDraft();
@@ -1954,6 +1965,10 @@ export function createVisualNovelReaderHost(options = {}) {
             } else {
                 statusLine.style.display = 'none';
             }
+        }
+        if (dialog) {
+            const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
+            dialog.style.paddingTop = (sceneAssetsEnabled && snapshot.content.speaker) ? '10px' : '';
         }
         if (input) {
             input.placeholder = snapshot.input.placeholder;

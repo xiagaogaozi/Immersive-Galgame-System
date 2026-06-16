@@ -54,7 +54,7 @@ const ORIGINAL_READER_STYLE_TEXT = `
 .vn-icon-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.96);}
 #vn-bar-btns{display:none;gap:6px;align-items:center;}
 #vn-bar-pinned{display:flex;gap:6px;align-items:center;}
-.vn-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:10px;letter-spacing:1px;}
+.vn-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:0;letter-spacing:1px;}
 .vn-status-line{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-bottom:6px;display:none;}
 .vn-speaker{font-size:14px;font-weight:600;letter-spacing:1px;margin-top:1px;margin-bottom:1px;display:none;}
 .vn-divider{font-size:11px;letter-spacing:4px;text-align:center;margin-bottom:2px;opacity:.6;display:none;}
