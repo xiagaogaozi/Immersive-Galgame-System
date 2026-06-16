@@ -24,7 +24,7 @@ flowchart LR
     Core --> Storage["storage"]
     ShujukuData["data/shujuku"] --> ShujukuPanel["shujuku-panel"]
     ShujukuPanel --> Core
-    Api["api: window.IGS"] --> Core
+    Api["api: window.VN"] --> Core
 ```
 
 ## 层级边界
@@ -42,7 +42,7 @@ flowchart LR
 | 数据库联动 | `app/src/data/shujuku/` | shujuku API 包装、表格数据模型 | 表格 UI 布局 |
 | 数据库界面 | `app/src/shujuku-panel/` | 表格编辑、筛选、刷新按钮 | 直接绕过 data 层写表 |
 | 扩展导入 | `app/src/registry/` | Mod / Preset / Pack 索引和能力分组 | 具体业务实现 |
-| 公开 API | `app/src/api/` | `window.IGS` 能力出口 | 内部状态绕过权限直接暴露 |
+| 公开 API | `app/src/api/` | `window.VN` 能力出口 | 内部状态绕过权限直接暴露 |
 
 ## AI 定位路径
 

@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-Immersive Galgame System 是一个 SillyTavern（酒馆）的酒馆助手脚本，提供视觉小说阅读器、AI 图片生成集成、场景素材模式和统一设置面板。
+Visual Novel 是一个 SillyTavern（酒馆）的酒馆助手脚本，提供视觉小说阅读器、AI 图片生成集成、场景素材模式和统一设置面板。
 
 ## 关键路径
 
@@ -29,8 +29,8 @@ npm run build   # 构建 bundle
 
 1. `app/package.json` — `"version": "X.Y.Z"`
 2. `app/src/core/bootstrap.js` — `version: 'X.Y.Z'`
-3. `app/tests/gate-contract.test.js` — `assert.match(bundle, /IGS version: X\.Y\.Z/)` 和 `assert.equal(manifest.version, 'X.Y.Z')`
-4. `app/tests/simulate.test.js` — `assert.equal(entry.getAttribute('data-igs-version'), 'X.Y.Z')`
+3. `app/tests/gate-contract.test.js` — `assert.match(bundle, /VN version: X\.Y\.Z/)` 和 `assert.equal(manifest.version, 'X.Y.Z')`
+4. `app/tests/simulate.test.js` — `assert.equal(entry.getAttribute('data-vn-version'), 'X.Y.Z')`
 5. `README.md` — 当前状态行和更新日志
 
 ## 提交与推送规则
@@ -55,7 +55,7 @@ npm run build   # 构建 bundle
 
 ## 场景素材模式相关文件
 
-- `app/src/scene/scene-directives.js` — @igs-scene 标签解析
+- `app/src/scene/scene-directives.js` — @vn-scene 标签解析
 - `app/src/host/prompt-injector.js` — AI 提示词注入
-- `app/src/visual/igs-ui/reader-host.js` — 设置面板 + 阅读器渲染
+- `app/src/visual/visual-novel-ui/reader-host.js` — 设置面板 + 阅读器渲染
 - `app/src/scene/message-source.js` — 正文管线集成

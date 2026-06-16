@@ -1,0 +1,111 @@
+import { esc } from './reader-value-utils.js';
+import { TOOLBAR_ACTIONS } from './reader-host-constants.js';
+
+export function renderTemplate(template, values) {
+    return String(template || '').replace(/\{\{(\w+)\}\}/g, (_, key) => {
+        return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : '';
+    });
+}
+
+export function field(path, label, inputHtml, note) {
+    return `<label class="vn-settings-field"><span>${esc(label)}</span>${inputHtml}${note ? `<em>${esc(note)}</em>` : ''}</label>`;
+}
+
+export function disabledAttr(disabled) {
+    return disabled ? ' disabled aria-disabled="true"' : '';
+}
+
+export function textInput(path, value, placeholder, type = 'text', disabled = false) {
+    return `<input data-path="${esc(path)}" type="${esc(type)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}>`;
+}
+
+export function colorInput(path, value, disabled = false) {
+    return `<input data-path="${esc(path)}" type="color" value="${esc(value || '#ffffff')}"${disabledAttr(disabled)}>`;
+}
+
+export function textareaInput(path, value, placeholder = '') {
+    return `<textarea data-path="${esc(path)}" placeholder="${esc(placeholder)}">${esc(value || '')}</textarea>`;
+}
+
+export function secretInput(path, value, placeholder, disabled) {
+    return `<div class="vn-settings-secret">${textInput(path, value, placeholder, 'password', disabled)}<button type="button" class="vn-settings-secret-toggle" data-action="toggle-secret" aria-label="显示或隐藏密钥" aria-pressed="false"${disabledAttr(disabled)}>显示</button></div>`;
+}
+
+export function numberInput(path, value, min, max, disabled) {
+    return `<input data-path="${esc(path)}" type="number" min="${esc(min)}" max="${esc(max)}" value="${esc(value)}"${disabledAttr(disabled)}>`;
+}
+
+export function checkbox(path, value, label) {
+    return `<button type="button" class="vn-switch${value ? ' is-on' : ''}" data-switch="${esc(path)}" aria-pressed="${value ? 'true' : 'false'}"><i></i><span>${esc(label)}</span></button>`;
+}
+
+export function selectInput(path, value, items, disabled = false) {
+    const options = items.map(([itemValue, itemLabel]) => {
+        const selected = String(itemValue) === String(value) ? ' selected' : '';
+        return `<option value="${esc(itemValue)}"${selected}>${esc(itemLabel)}</option>`;
+    }).join('');
+    return `<select data-path="${esc(path)}"${disabled ? ' disabled' : ''}>${options}</select>`;
+}
+
+export function segmentedInput(path, value, items, label) {
+    const activeIndex = Math.max(0, items.findIndex((item) => String(item[0]) === String(value)));
+    return `<div class="vn-segmented" role="radiogroup" aria-label="${esc(label || '')}" data-count="${esc(items.length)}" data-active-index="${esc(activeIndex)}" style="--vn-segment-count:${esc(items.length)};--vn-active-index:${esc(activeIndex)};"><span class="vn-segmented-indicator" aria-hidden="true"></span>${items.map((item) => {
+        const selected = String(item[0]) === String(value);
+        const icon = item[2] ? `<span class="vn-segmented-btn-icon" aria-hidden="true">${item[2]}</span>` : '';
+        return `<button type="button" class="vn-segmented-btn${item[2] ? ' has-icon' : ''}${selected ? ' is-active' : ''}" data-segment-path="${esc(path)}" data-segment-value="${esc(item[0])}" role="radio" aria-checked="${selected ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}">${icon}<span class="vn-segmented-btn-label">${esc(item[1])}</span></button>`;
+    }).join('')}</div>`;
+}
+
+export function modelPicker(path, value, models, action, placeholder, disabled) {
+    const items = Array.isArray(models) ? models.filter(Boolean) : [];
+    const options = ['<option value="">从已拉取模型中选择</option>'].concat(items.map((model) => {
+        const selected = model === value ? ' selected' : '';
+        return `<option value="${esc(model)}"${selected}>${esc(model)}</option>`;
+    })).join('');
+    return `<div class="vn-settings-model"><div class="vn-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vn-settings-action vn-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
+}
+
+export function renderSceneAssetList(scenes) {
+    const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    const entries = Object.entries(scenes || {});
+    if (!entries.length) return '<div class="vn-scene-empty">暂无背景图配置</div>';
+    return `<div class="vn-btn-mgr-list">${entries.map(([name, url]) => {
+        return `<div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label">${esc(name)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-bg:${esc(name)}" title="重命名">${pencil}</button><input class="vn-scene-url-input" data-scene-bg="${esc(name)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-bg:${esc(name)}" title="删除"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`;
+    }).join('')}</div>`;
+}
+
+export function renderCharacterAssetList(characters) {
+    const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    const trash = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+    const charEntries = Object.entries(characters || {});
+    if (!charEntries.length) return '<div class="vn-scene-empty">暂无角色立绘配置</div>';
+    return charEntries.map(([charName, moods]) => {
+        const moodEntries = Object.entries(moods || {});
+        const moodRows = moodEntries.map(([mood, url]) => {
+            return `<div class="vn-btn-mgr-row vn-scene-mood-row"><span class="vn-btn-mgr-label">${esc(mood)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-mood:${esc(charName)}:${esc(mood)}" title="重命名">${pencil}</button><input class="vn-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-mood:${esc(charName)}:${esc(mood)}" title="删除">${trash}</button></div>`;
+        }).join('');
+        return `<div class="vn-scene-char-group"><div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-char:${esc(charName)}" title="重命名">${pencil}</button><button type="button" class="vn-btn-mgr-icon" data-action="scene-add-mood:${esc(charName)}" title="添加表情">+</button><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-char:${esc(charName)}" title="删除角色">${trash}</button></div><div class="vn-btn-mgr-list">${moodRows || '<div class="vn-scene-empty">暂无表情</div>'}</div></div>`;
+    }).join('');
+}
+
+export function renderPinnedButtons(pinnedValue, hiddenValue, orderValue) {
+    const pins = Array.isArray(pinnedValue) ? pinnedValue : [];
+    const hidden = Array.isArray(hiddenValue) ? hiddenValue : [];
+    const canonical = TOOLBAR_ACTIONS.map(([id]) => id);
+    const order = Array.isArray(orderValue) && orderValue.length ? orderValue : canonical;
+    const labelMap = Object.fromEntries(TOOLBAR_ACTIONS);
+    const eyeOn = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const eyeOff = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    const pinIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.09 3.27L16 6l-2.18 2.18L14.55 12 12 10.18 9.45 12l.73-3.82L8 6l2.91-.73z"/><line x1="12" y1="12" x2="12" y2="22"/></svg>';
+    const rows = order.map((id) => {
+        const label = labelMap[id] || id;
+        const isHidden = hidden.includes(id);
+        const isPinned = pins.includes(id) && !isHidden;
+        const canHide = id !== 'settings';
+        const eyeBtn = canHide
+            ? `<button type="button" class="vn-btn-mgr-icon${isHidden ? '' : ' is-on'}" data-action="toolbar-toggle-visible:${esc(id)}" title="显示/隐藏">${isHidden ? eyeOff : eyeOn}</button>`
+            : `<span class="vn-btn-mgr-icon" title="此按钮不可隐藏" style="opacity:.3;cursor:default">${eyeOn}</span>`;
+        return `<div class="vn-btn-mgr-row${isHidden ? ' is-hidden-btn' : ''}"><span class="vn-btn-mgr-handle" data-action="toolbar-move-up:${esc(id)}">☰</span><span class="vn-btn-mgr-label">${esc(label)}</span>${eyeBtn}<button type="button" class="vn-btn-mgr-icon${isPinned ? ' is-on' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" title="常驻">${pinIcon}</button></div>`;
+    }).join('');
+    return `<div class="vn-settings-field"><span>按钮管理</span><div class="vn-btn-mgr-list">${rows}</div><em>☰ 上移排序 · 眼睛切换显隐 · 星切换常驻。隐藏的按钮自动解除常驻。</em></div>`;
+}

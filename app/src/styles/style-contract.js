@@ -1,21 +1,21 @@
 export const REQUIRED_VISUAL_SLOTS = Object.freeze([
-    '.igs-stage',
-    '.igs-background-layer',
-    '.igs-generated-layer',
-    '.igs-character-layer',
-    '.igs-dialogue-layer',
-    '.igs-hud-layer',
-    '.igs-toolbar',
-    '.igs-choice-layer',
-    '.igs-system-layer',
+    '.vn-stage',
+    '.vn-background-layer',
+    '.vn-generated-layer',
+    '.vn-character-layer',
+    '.vn-dialogue-layer',
+    '.vn-hud-layer',
+    '.vn-toolbar',
+    '.vn-choice-layer',
+    '.vn-system-layer',
 ]);
 
 export const REQUIRED_READER_BRIDGE = Object.freeze([
-    'data-igs-toolbar-layout',
-    'data-igs-toolbar-placement',
-    'data-igs-dialogue-style',
-    'data-igs-nameplate-visible',
-    'data-igs-avatar-visible',
+    'data-vn-toolbar-layout',
+    'data-vn-toolbar-placement',
+    'data-vn-dialogue-style',
+    'data-vn-nameplate-visible',
+    'data-vn-avatar-visible',
 ]);
 
 export function checkStyleContract(target = {}) {

@@ -5,16 +5,16 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { pathToFileURL } from 'node:url';
 
-import { bootstrapIGS } from '../src/index.js';
+import { bootstrapVN } from '../src/index.js';
 import { dispatchImportBundle } from '../src/registry/import-dispatcher.js';
 import { checkStyleContract } from '../src/styles/style-contract.js';
-import { readLegacyImmersiveGalgameSystemSettings } from '../src/storage/legacy-igs.js';
+import { readLegacyVisualNovelSettings } from '../src/storage/legacy-visual-novel.js';
 import { createReaderState } from '../src/visual/reader-state.js';
 import { createStageModel } from '../src/visual/stage-model.js';
-import { getOriginalReaderSource } from '../src/visual/igs-ui/original-reader-source.js';
-import { getSettingsShellTemplate } from '../src/visual/igs-ui/settings-shell.js';
-import { getSettingsStyleText } from '../src/visual/igs-ui/settings-style.js';
-import { getSettingsTabTemplate, SETTINGS_TAB_DEFS } from '../src/visual/igs-ui/settings-tabs.js';
+import { getOriginalReaderSource } from '../src/visual/visual-novel-ui/original-reader-source.js';
+import { getSettingsShellTemplate } from '../src/visual/visual-novel-ui/settings-shell.js';
+import { getSettingsStyleText } from '../src/visual/visual-novel-ui/settings-style.js';
+import { getSettingsTabTemplate, SETTINGS_TAB_DEFS } from '../src/visual/visual-novel-ui/settings-tabs.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 const projectRoot = path.resolve(appRoot, '..');
@@ -69,14 +69,14 @@ test('gate:visual-slots-contract:stage-model', () => {
 });
 
 test('gate:loader-json:matches loader source and references public bundle', () => {
-    const loaderSource = fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.js'), 'utf8');
-    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const loaderSource = fs.readFileSync(path.join(projectRoot, 'loader', 'vn-loader.js'), 'utf8');
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'vn-loader.json'), 'utf8'));
 
     assert.equal(loaderJson.type, 'script');
-    assert.equal(loaderJson.name, '沉浸式galgame系统（自动更新）');
+    assert.equal(loaderJson.name, 'Visual Novel（自动更新）');
     assert.equal(loaderJson.content, loaderSource);
-    assert.match(loaderJson.content, /igs\.bundle\.js/);
-    assert.match(loaderJson.content, /igs\.bundle\.css/);
+    assert.match(loaderJson.content, /vn\.bundle\.js/);
+    assert.match(loaderJson.content, /vn\.bundle\.css/);
     assert.match(loaderJson.content, /DEFAULT_REF = 'main'/);
     assert.doesNotMatch(loaderJson.content, /DEFAULT_REF = 'v\d+\.\d+\.\d+'/);
     assert.match(loaderJson.content, /MAIN_BRANCH_URL/);
@@ -89,38 +89,38 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.deepEqual(loaderJson.button.buttons, []);
 
     const pkgVersion = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')).version;
-    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', `酒馆助手脚本-沉浸式galgame系统（自动更新） v${pkgVersion}.json`), 'utf8'));
+    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', `酒馆助手脚本-Visual Novel（自动更新） v${pkgVersion}.json`), 'utf8'));
     assert.equal(releaseJson.name, loaderJson.name);
     assert.equal(releaseJson.content, loaderSource);
 });
 
 test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
-    const bundle = fs.readFileSync(path.join(appRoot, 'dist', 'igs.bundle.js'), 'utf8');
+    const bundle = fs.readFileSync(path.join(appRoot, 'dist', 'vn.bundle.js'), 'utf8');
     const manifest = readJson('dist/manifest.json');
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0\.8\.1/);
+    assert.match(bundle, /VN version: 0\.8\.1/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
-    assert.equal(manifest.name, '沉浸式galgame系统');
+    assert.equal(manifest.name, 'Visual Novel');
     assert.equal(manifest.version, '0.8.1');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
-    const bundleUrl = `${pathToFileURL(path.join(appRoot, 'dist', 'igs.bundle.js')).href}?gate=${Date.now()}`;
-    globalThis.IGS_AUTO_BOOTSTRAP = false;
+    const bundleUrl = `${pathToFileURL(path.join(appRoot, 'dist', 'vn.bundle.js')).href}?gate=${Date.now()}`;
+    globalThis.VN_AUTO_BOOTSTRAP = false;
     try {
         const bundle = await import(bundleUrl);
-        assert.equal(typeof bundle.bootstrapIGS, 'function');
-        assert.equal(typeof bundle.createImmersiveGalgameSystemReaderHost, 'function');
+        assert.equal(typeof bundle.bootstrapVN, 'function');
+        assert.equal(typeof bundle.createVisualNovelReaderHost, 'function');
     } finally {
-        delete globalThis.IGS_AUTO_BOOTSTRAP;
+        delete globalThis.VN_AUTO_BOOTSTRAP;
     }
 });
 
 test('gate:loader-json:repeated enable rescans magic wand without alerting', () => {
-    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'vn-loader.json'), 'utf8'));
     const documentLike = createLoaderDocumentLike();
     const alerts = [];
     let ensureCalls = 0;
@@ -132,7 +132,7 @@ test('gate:loader-json:repeated enable rescans magic wand without alerting', () 
             callback();
             return 1;
         },
-        IGS: {
+        VN: {
             ensureMagicWandEntry() {
                 ensureCalls += 1;
                 return { ok: true, entries: 1 };
@@ -153,12 +153,12 @@ test('gate:loader-json:repeated enable rescans magic wand without alerting', () 
     assert.equal(alerts.length, 0);
     assert.ok(ensureCalls >= 1);
     assert.equal(documentLike.head.children.length, 0);
-    assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.status, 'ready');
-    assert.equal(root.__IGS_AUTO_UPDATE_LOADER__.reused, true);
+    assert.equal(root.__VN_AUTO_UPDATE_LOADER__.status, 'ready');
+    assert.equal(root.__VN_AUTO_UPDATE_LOADER__.reused, true);
 });
 
 test('gate:loader-json:adds-temporary-magic-wand-entry-before-remote-bundle-loads', () => {
-    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'vn-loader.json'), 'utf8'));
     const documentLike = createLoaderDocumentLike({ magicMenu: true });
     const alerts = [];
     const root = {
@@ -184,16 +184,16 @@ test('gate:loader-json:adds-temporary-magic-wand-entry-before-remote-bundle-load
     });
     vm.runInContext(loaderJson.content, context);
 
-    const entry = documentLike.magicMenu.querySelector('[data-igs-loader-entry="1"]');
+    const entry = documentLike.magicMenu.querySelector('[data-vn-loader-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-magic-entry'), '1');
-    assert.equal(entry.getAttribute('data-igs-version'), 'loader');
-    assert.match(entry.innerHTML, /沉浸式galgame系统/);
+    assert.equal(entry.getAttribute('data-vn-magic-entry'), '1');
+    assert.equal(entry.getAttribute('data-vn-version'), 'loader');
+    assert.match(entry.innerHTML, /Visual Novel/);
     assert.deepEqual(alerts, []);
 });
 
 test('gate:loader-json:loads-main-commit-by-default-with-main-fallback', async () => {
-    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'vn-loader.json'), 'utf8'));
     const scripts = [];
     const alerts = [];
     const fetched = [];
@@ -237,13 +237,13 @@ test('gate:loader-json:loads-main-commit-by-default-with-main-fallback', async (
 
     assert.deepEqual(alerts, []);
     assert.equal(scripts.length, 1);
-    assert.match(scripts[0], /@1234567890abcdef1234567890abcdef12345678\/app\/dist\/igs\.bundle\.js/);
+    assert.match(scripts[0], /@1234567890abcdef1234567890abcdef12345678\/app\/dist\/vn\.bundle\.js/);
     assert.ok(fetched.some((url) => url.includes('/branches/main')));
-    assert.ok(fetched.some((url) => url.includes('@1234567890abcdef1234567890abcdef12345678/app/dist/igs.bundle.js')));
+    assert.ok(fetched.some((url) => url.includes('@1234567890abcdef1234567890abcdef12345678/app/dist/vn.bundle.js')));
 });
 
 test('gate:loader-json:explicit-fixed-ref-falls-back-to-main-when-cdn-is-missing', async () => {
-    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'igs-loader.json'), 'utf8'));
+    const loaderJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', 'vn-loader.json'), 'utf8'));
     const scripts = [];
     const alerts = [];
     const fetched = [];
@@ -257,7 +257,7 @@ test('gate:loader-json:explicit-fixed-ref-falls-back-to-main-when-cdn-is-missing
     const root = {
         document: documentLike,
         parent: null,
-        IGS_LOADER_REF: 'v9.9.9',
+        VN_LOADER_REF: 'v9.9.9',
         alert: (message) => alerts.push(message),
         console,
         setTimeout,
@@ -283,20 +283,20 @@ test('gate:loader-json:explicit-fixed-ref-falls-back-to-main-when-cdn-is-missing
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     assert.deepEqual(alerts, []);
-    assert.ok(fetched.some((url) => url.includes('@v9.9.9/app/dist/igs.bundle.js')));
+    assert.ok(fetched.some((url) => url.includes('@v9.9.9/app/dist/vn.bundle.js')));
     assert.equal(scripts.length, 1);
-    assert.match(scripts[0], /@main\/app\/dist\/igs\.bundle\.js/);
+    assert.match(scripts[0], /@main\/app\/dist\/vn\.bundle\.js/);
 });
 
-test('gate:igs-compat:legacy-storage', () => {
-    const fixture = readJson('fixtures/igs/legacy-storage.json');
+test('gate:visual-novel-compat:legacy-storage', () => {
+    const fixture = readJson('fixtures/visual-novel/legacy-storage.json');
     const storageLike = {
         getItem(key) {
             return Object.prototype.hasOwnProperty.call(fixture, key) ? fixture[key] : null;
         },
     };
 
-    const result = readLegacyImmersiveGalgameSystemSettings(storageLike, 'mobile');
+    const result = readLegacyVisualNovelSettings(storageLike, 'mobile');
     assert.equal(result.ok, true);
     assert.equal(result.readerMode, 'mobile');
     assert.equal(result.displayMode, 'pc');
@@ -304,9 +304,9 @@ test('gate:igs-compat:legacy-storage', () => {
     assert.equal(result.readerSettingsByMode.pc.toolbarDirection, 'horizontal');
     assert.equal(result.readerSettingsByMode.mobile.toolbarDirection, 'vertical');
 
-    const invalidResult = readLegacyImmersiveGalgameSystemSettings({
+    const invalidResult = readLegacyVisualNovelSettings({
         getItem(key) {
-            if (key === 'igs_igs_bridge_config') return '{bad json';
+            if (key === 'vn_visual_novel_bridge_config') return '{bad json';
             return null;
         },
     });
@@ -314,9 +314,9 @@ test('gate:igs-compat:legacy-storage', () => {
     assert.equal(invalidResult.reason, 'invalid-legacy-json');
 });
 
-test('gate:igs-compat:api-shape', async () => {
-    const contract = readJson('fixtures/igs/api-contract.json');
-    const legacyStorage = readJson('fixtures/igs/legacy-storage.json');
+test('gate:visual-novel-compat:api-shape', async () => {
+    const contract = readJson('fixtures/visual-novel/api-contract.json');
+    const legacyStorage = readJson('fixtures/visual-novel/legacy-storage.json');
     const globalObject = {
         localStorage: {
             getItem(key) {
@@ -324,7 +324,7 @@ test('gate:igs-compat:api-shape', async () => {
             },
         },
     };
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: globalObject,
         hostAdapter: {
             getCurrentMessage: async () => null,
@@ -333,63 +333,63 @@ test('gate:igs-compat:api-shape', async () => {
     });
 
     for (const method of contract.methods) {
-        assert.equal(typeof igs[method], 'function');
+        assert.equal(typeof vn[method], 'function');
     }
 
-    const unifiedSettings = igs.getUnifiedSettings({ mode: 'pc' });
+    const unifiedSettings = vn.getUnifiedSettings({ mode: 'pc' });
     for (const field of contract.unifiedSettingsFields) {
         assert.ok(Object.prototype.hasOwnProperty.call(unifiedSettings, field));
     }
     assert.equal(unifiedSettings.readerMode, 'pc');
     assert.equal(unifiedSettings.bridge.imageApi.mode, 'nai');
     try {
-        const settingsResult = igs.openSettings({ tab: 'basic' });
+        const settingsResult = vn.openSettings({ tab: 'basic' });
         assert.equal(settingsResult.ok, true);
         assert.equal(settingsResult.snapshot.tabs.length, 5);
         assert.equal(settingsResult.snapshot.tabs[0].label, '基础');
-        const generated = await igs.generateImage({ prompt: 'moon' });
+        const generated = await vn.generateImage({ prompt: 'moon' });
         assert.equal(generated.ok, false);
         assert.equal(generated.reason, '请先在设置中填写图像 API 地址');
     } finally {
-        igs.destroy();
+        vn.destroy();
     }
 });
 
-test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
-    const fixture = readJson('fixtures/igs-ui/original-reader-snapshot.json');
+test('gate:visual-novel-ui:reader-source-keeps-original-selectors', () => {
+    const fixture = readJson('fixtures/visual-novel-ui/original-reader-snapshot.json');
     const source = getOriginalReaderSource('0.3.20');
 
     for (const selector of fixture.requiredSelectors) {
         assert.ok(source.selectors.includes(selector));
-        if (selector !== '#igs-overlay') {
+        if (selector !== '#vn-overlay') {
             assert.match(source.html, new RegExp(selectorToken(selector)));
         }
     }
 
-    assert.equal(source.styleContract.overlayZIndex, fixture.styles['#igs-overlay'].zIndex);
-    assert.equal(source.styleContract.dialogWidth, fixture.styles['.igs-dialog'].width);
-    assert.equal(source.styleContract.inputHeight, fixture.styles['.igs-input'].height);
-    assert.equal(source.styleContract.sendButtonMinWidth, fixture.styles['.igs-send-btn'].minWidth);
-    assert.equal(source.styleContract.toolbarButtonSize, fixture.styles['.igs-icon-btn'].width);
+    assert.equal(source.styleContract.overlayZIndex, fixture.styles['#vn-overlay'].zIndex);
+    assert.equal(source.styleContract.dialogWidth, fixture.styles['.vn-dialog'].width);
+    assert.equal(source.styleContract.inputHeight, fixture.styles['.vn-input'].height);
+    assert.equal(source.styleContract.sendButtonMinWidth, fixture.styles['.vn-send-btn'].minWidth);
+    assert.equal(source.styleContract.toolbarButtonSize, fixture.styles['.vn-icon-btn'].width);
     assert.match(source.html, /data-act="toggle-bar"/);
     assert.match(source.html, /data-act="close"/);
     assert.match(source.html, /viewBox="0 0 24 24"/);
-    assert.match(source.styleText, /#igs-overlay\.igs-floating\.is-dragging #igs-click-layer\{cursor:grabbing;\}/);
-    assert.match(source.styleText, /#igs-overlay\.igs-floating #igs-click-layer\{cursor:grab;touch-action:none;\}/);
-    assert.match(source.styleText, /#igs-overlay\.igs-floating \.igs-progress\{flex-shrink:0;\}/);
-    assert.match(source.styleText, /#igs-overlay\.igs-floating \.igs-text\{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;\}/);
-    assert.match(source.styleText, /#igs-overlay\.igs-floating \.igs-controls\{flex-shrink:0;\}/);
+    assert.match(source.styleText, /#vn-overlay\.vn-floating\.is-dragging #vn-click-layer\{cursor:grabbing;\}/);
+    assert.match(source.styleText, /#vn-overlay\.vn-floating #vn-click-layer\{cursor:grab;touch-action:none;\}/);
+    assert.match(source.styleText, /#vn-overlay\.vn-floating \.vn-progress\{flex-shrink:0;\}/);
+    assert.match(source.styleText, /#vn-overlay\.vn-floating \.vn-text\{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;\}/);
+    assert.match(source.styleText, /#vn-overlay\.vn-floating \.vn-controls\{flex-shrink:0;\}/);
     assert.doesNotMatch(source.html, />‹</);
     assert.doesNotMatch(source.html, />⚙</);
 });
 
-test('gate:igs-ui:settings-shell-keeps-original-tabs', () => {
-    const fixture = readJson('fixtures/igs-ui/settings-panel-snapshot.json');
+test('gate:visual-novel-ui:settings-shell-keeps-original-tabs', () => {
+    const fixture = readJson('fixtures/visual-novel-ui/settings-panel-snapshot.json');
     const shell = getSettingsShellTemplate();
 
-    assert.match(shell, /igs-settings-shell/);
-    assert.match(shell, /igs-settings-tabs/);
-    assert.match(shell, /igs-settings-body/);
+    assert.match(shell, /vn-settings-shell/);
+    assert.match(shell, /vn-settings-tabs/);
+    assert.match(shell, /vn-settings-body/);
 
     for (const tab of fixture.tabs) {
         const defined = SETTINGS_TAB_DEFS.find(([id]) => id === tab.id);
@@ -399,8 +399,8 @@ test('gate:igs-ui:settings-shell-keeps-original-tabs', () => {
     }
 });
 
-test('gate:igs-ui:settings-style-keeps-original-geometry', () => {
-    const fixture = readJson('fixtures/igs-ui/settings-panel-snapshot.json');
+test('gate:visual-novel-ui:settings-style-keeps-original-geometry', () => {
+    const fixture = readJson('fixtures/visual-novel-ui/settings-panel-snapshot.json');
     const styleText = getSettingsStyleText();
 
     assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.viewportLeft)));
@@ -412,12 +412,12 @@ test('gate:igs-ui:settings-style-keeps-original-geometry', () => {
     assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.segmentedHeight)));
     assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.switchHeight)));
     assert.match(styleText, new RegExp(escapeRegExp(fixture.styleChecks.mobileMedia)));
-    assert.match(styleText, /\.igs-segmented-btn\{[^}]*min-width:0;[^}]*overflow:hidden/);
-    assert.match(styleText, /\.igs-segmented-btn-label\{[^}]*display:block;[^}]*max-width:100%;[^}]*overflow:hidden;[^}]*text-overflow:ellipsis;[^}]*white-space:nowrap/);
+    assert.match(styleText, /\.vn-segmented-btn\{[^}]*min-width:0;[^}]*overflow:hidden/);
+    assert.match(styleText, /\.vn-segmented-btn-label\{[^}]*display:block;[^}]*max-width:100%;[^}]*overflow:hidden;[^}]*text-overflow:ellipsis;[^}]*white-space:nowrap/);
 });
 
 test('gate:api:public-api-exposes-text-preset-groups', () => {
-    const igs = bootstrapIGS({
+    const vn = bootstrapVN({
         global: {},
         hostAdapter: {
             getCurrentMessage: async () => null,
@@ -425,14 +425,14 @@ test('gate:api:public-api-exposes-text-preset-groups', () => {
         },
     });
 
-    assert.equal(typeof igs.api.textFilterPresets.register, 'function');
-    assert.equal(typeof igs.api.textFormatPresets.register, 'function');
-    assert.equal(typeof igs.api.sceneRegexPresets.register, 'function');
-    assert.equal(typeof igs.api.textFilterPresets.setCurrent, 'function');
-    assert.equal(typeof igs.api.textFormatPresets.getCurrent, 'function');
-    assert.equal(typeof igs.api.sceneRegexPresets.exportAll, 'function');
+    assert.equal(typeof vn.api.textFilterPresets.register, 'function');
+    assert.equal(typeof vn.api.textFormatPresets.register, 'function');
+    assert.equal(typeof vn.api.sceneRegexPresets.register, 'function');
+    assert.equal(typeof vn.api.textFilterPresets.setCurrent, 'function');
+    assert.equal(typeof vn.api.textFormatPresets.getCurrent, 'function');
+    assert.equal(typeof vn.api.sceneRegexPresets.exportAll, 'function');
 
-    igs.destroy();
+    vn.destroy();
 });
 
 function readJson(relativePath) {

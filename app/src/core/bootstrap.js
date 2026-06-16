@@ -6,31 +6,31 @@ import { parseSceneText } from '../scene/text-parser.js';
 import { createSceneState } from '../scene/scene-state.js';
 import { resolveScene } from '../scene/scene-resolver.js';
 import {
-    readLegacyImmersiveGalgameSystemSettings,
-    writeLegacyImmersiveGalgameSystemSettings,
+    readLegacyVisualNovelSettings,
+    writeLegacyVisualNovelSettings,
     resolveLegacyReaderMode,
-} from '../storage/legacy-igs.js';
+} from '../storage/legacy-visual-novel.js';
 import { createPresetStore } from '../storage/preset-store.js';
 import { createLayerController } from '../visual/layer-controller.js';
 import { createStageRenderer } from '../visual/stage-renderer.js';
 import { resolveVisualMode } from '../visual/visual-mode.js';
-import { createImmersiveGalgameSystemReaderHost } from '../visual/igs-ui/reader-host.js';
+import { createVisualNovelReaderHost } from '../visual/visual-novel-ui/reader-host.js';
 import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
 
-const IGS_VERSION = '0.8.1';
+const VN_VERSION = '0.8.1';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
 
-export function bootstrapIGS(options = {}) {
+export function bootstrapVN(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
     const events = options.events || createEventBus();
     const hostAdapter = options.hostAdapter || createTavernHelperAdapter(globalObject);
     const storageLike = options.storage || getStorageLike(globalObject);
-    const legacyImmersiveGalgameSystem = options.legacyImmersiveGalgameSystemSettings || readLegacyImmersiveGalgameSystemSettings(storageLike);
+    const legacyVisualNovel = options.legacyVisualNovelSettings || readLegacyVisualNovelSettings(storageLike);
     const presetStore = options.presetStore || createPresetStore(storageLike);
     const presetRegistry = options.presetRegistry || createPresetRegistry({ store: presetStore });
     const inputChannel = createInputChannel(hostAdapter);
@@ -46,15 +46,15 @@ export function bootstrapIGS(options = {}) {
     const promptInjector = options.promptInjector || createPromptInjector(globalObject);
     const state = {
         status: 'booting',
-        config: mergeInitialConfig(options.config, legacyImmersiveGalgameSystem),
-        legacyImmersiveGalgameSystem,
+        config: mergeInitialConfig(options.config, legacyVisualNovel),
+        legacyVisualNovel,
         currentScene: createSceneState(),
         lastRender: null,
         destroyed: false,
     };
 
     const app = {
-        version: IGS_VERSION,
+        version: VN_VERSION,
         global: globalObject,
         events,
         hostAdapter,
@@ -66,16 +66,16 @@ export function bootstrapIGS(options = {}) {
         collectMessageImages,
         getState,
         getPresetRegistry,
-        getLegacyImmersiveGalgameSystemSettings,
+        getLegacyVisualNovelSettings,
         getUnifiedSettingsSnapshot,
         saveUnifiedSettings,
         destroy,
-        immersiveGalgameSystemUi: null,
+        visualNovelUi: null,
         magicWandEntry: null,
     };
     let publicApi = null;
     let sceneAssetsInjectionTimer = null;
-    app.immersiveGalgameSystemUi = options.immersiveGalgameSystemUi || createImmersiveGalgameSystemReaderHost({
+    app.visualNovelUi = options.visualNovelUi || createVisualNovelReaderHost({
         global: globalObject,
         version: app.version,
         getUnifiedSettings: getUnifiedSettingsSnapshot,
@@ -128,7 +128,7 @@ export function bootstrapIGS(options = {}) {
         ...(options.magicWandEntryOptions || {}),
         global: globalObject,
         version: app.version,
-        label: '沉浸式galgame系统',
+        label: 'Visual Novel',
         open: (mode) => publicApi.openLatestAvailable(mode),
         resolveMode: () => {
             const snapshot = publicApi.getUnifiedSettings({});
@@ -140,7 +140,7 @@ export function bootstrapIGS(options = {}) {
     }
     state.status = 'ready';
     scheduleSceneAssetsInjection(SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS, 1);
-    events.emit('igs:ready', publicApi);
+    events.emit('vn:ready', publicApi);
 
     return publicApi;
 
@@ -170,13 +170,13 @@ export function bootstrapIGS(options = {}) {
             layoutSettings: context.layoutSettings,
             viewport: context.viewport || getViewport(globalObject),
             isMobile: context.isMobile,
-            legacyImmersiveGalgameSystem: state.legacyImmersiveGalgameSystem,
+            legacyVisualNovel: state.legacyVisualNovel,
             systemMessages: context.systemMessages,
             choiceState: context.choiceState,
         });
         state.currentScene = renderedScene;
         state.lastRender = renderResult;
-        events.emit('igs:scene', renderedScene);
+        events.emit('vn:scene', renderedScene);
         return { ok: true, scene: renderedScene, render: renderResult };
     }
 
@@ -212,12 +212,12 @@ export function bootstrapIGS(options = {}) {
         return {
             status: state.status,
             config: state.config,
-            legacyImmersiveGalgameSystem: state.legacyImmersiveGalgameSystem,
+            legacyVisualNovel: state.legacyVisualNovel,
             presets: presetRegistry.snapshot(),
             currentScene: state.currentScene,
             lastRender: state.lastRender,
             destroyed: state.destroyed,
-            immersiveGalgameSystemUi: app.immersiveGalgameSystemUi ? app.immersiveGalgameSystemUi.getState() : null,
+            visualNovelUi: app.visualNovelUi ? app.visualNovelUi.getState() : null,
             magicWandEntry: app.magicWandEntry && typeof app.magicWandEntry.getState === 'function'
                 ? app.magicWandEntry.getState()
                 : null,
@@ -228,32 +228,32 @@ export function bootstrapIGS(options = {}) {
         return presetRegistry;
     }
 
-    function getLegacyImmersiveGalgameSystemSettings() {
-        return cloneData(state.legacyImmersiveGalgameSystem);
+    function getLegacyVisualNovelSettings() {
+        return cloneData(state.legacyVisualNovel);
     }
 
     function getUnifiedSettingsSnapshot(input = {}) {
         const bridge = {
-            ...cloneData(state.legacyImmersiveGalgameSystem && state.legacyImmersiveGalgameSystem.bridge || {}),
+            ...cloneData(state.legacyVisualNovel && state.legacyVisualNovel.bridge || {}),
             ...cloneData(state.config || {}),
         };
         const readerMode = resolveLegacyReaderMode(
             input && typeof input === 'object' ? input.mode : input,
-            state.legacyImmersiveGalgameSystem && state.legacyImmersiveGalgameSystem.displayMode,
+            state.legacyVisualNovel && state.legacyVisualNovel.displayMode,
             bridge,
         );
-        const readerSettingsByMode = cloneData(state.legacyImmersiveGalgameSystem && state.legacyImmersiveGalgameSystem.readerSettingsByMode || {});
+        const readerSettingsByMode = cloneData(state.legacyVisualNovel && state.legacyVisualNovel.readerSettingsByMode || {});
         return {
             version: app.version,
             bridge,
             imageApi: cloneData(bridge.imageApi || {}),
             readerMode,
-            readerSettings: cloneData(readerSettingsByMode[readerMode] || state.legacyImmersiveGalgameSystem.readerSettings || {}),
+            readerSettings: cloneData(readerSettingsByMode[readerMode] || state.legacyVisualNovel.readerSettings || {}),
         };
     }
 
     function saveUnifiedSettings(payload = {}) {
-        const currentLegacy = state.legacyImmersiveGalgameSystem || readLegacyImmersiveGalgameSystemSettings(storageLike);
+        const currentLegacy = state.legacyVisualNovel || readLegacyVisualNovelSettings(storageLike);
         const nextBridge = {
             ...cloneData(currentLegacy.bridge || {}),
             ...cloneData(state.config || {}),
@@ -285,19 +285,19 @@ export function bootstrapIGS(options = {}) {
             readerSettingsByMode,
         };
         const writeResult = storageLike
-            ? writeLegacyImmersiveGalgameSystemSettings(storageLike, nextLegacy)
+            ? writeLegacyVisualNovelSettings(storageLike, nextLegacy)
             : { ok: true, legacy: nextLegacy, persisted: false };
         if (writeResult.ok === false) return writeResult;
-        state.legacyImmersiveGalgameSystem = cloneData(writeResult.legacy);
+        state.legacyVisualNovel = cloneData(writeResult.legacy);
         state.config = {
             ...cloneData(state.config || {}),
             ...cloneData(nextBridge),
         };
-        events.emit('igs:legacy-settings-updated', cloneData(state.legacyImmersiveGalgameSystem));
+        events.emit('vn:legacy-settings-updated', cloneData(state.legacyVisualNovel));
         syncSceneAssetsInjectionWithRetry(1);
         return {
             ok: true,
-            legacy: cloneData(state.legacyImmersiveGalgameSystem),
+            legacy: cloneData(state.legacyVisualNovel),
             unified: getUnifiedSettingsSnapshot({ mode: readerMode }),
         };
     }
@@ -352,21 +352,21 @@ export function bootstrapIGS(options = {}) {
         state.status = 'destroyed';
         clearSceneAssetsInjectionTimer();
         promptInjector.clear();
-        if (app.immersiveGalgameSystemUi && typeof app.immersiveGalgameSystemUi.destroy === 'function') {
-            app.immersiveGalgameSystemUi.destroy();
+        if (app.visualNovelUi && typeof app.visualNovelUi.destroy === 'function') {
+            app.visualNovelUi.destroy();
         }
         if (app.magicWandEntry && typeof app.magicWandEntry.destroy === 'function') {
             app.magicWandEntry.destroy();
         }
         detachPublicApi(globalObject, publicApi);
-        events.emit('igs:destroy', publicApi);
+        events.emit('vn:destroy', publicApi);
         events.clear();
         return { ok: true };
     }
 
     function ensureAlive() {
         if (state.destroyed) {
-            throw new Error('IGS instance has been destroyed.');
+            throw new Error('VN instance has been destroyed.');
         }
     }
 
@@ -450,9 +450,9 @@ export function bootstrapIGS(options = {}) {
     }
 }
 
-export function destroyIGS(globalObject = globalThis.window || globalThis) {
-    if (globalObject && globalObject.IGS && typeof globalObject.IGS.destroy === 'function') {
-        return globalObject.IGS.destroy();
+export function destroyVN(globalObject = globalThis.window || globalThis) {
+    if (globalObject && globalObject.VN && typeof globalObject.VN.destroy === 'function') {
+        return globalObject.VN.destroy();
     }
     return { ok: true, reason: 'not-running' };
 }
@@ -489,11 +489,11 @@ function getViewport(globalObject) {
     return { width: 0, height: 0 };
 }
 
-function mergeInitialConfig(explicitConfig, legacyImmersiveGalgameSystem) {
+function mergeInitialConfig(explicitConfig, legacyVisualNovel) {
     const nextConfig = cloneData(explicitConfig || {});
-    if (!legacyImmersiveGalgameSystem || legacyImmersiveGalgameSystem.ok === false) return nextConfig;
+    if (!legacyVisualNovel || legacyVisualNovel.ok === false) return nextConfig;
     return {
-        ...cloneData(legacyImmersiveGalgameSystem.bridge || {}),
+        ...cloneData(legacyVisualNovel.bridge || {}),
         ...nextConfig,
     };
 }

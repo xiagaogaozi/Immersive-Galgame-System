@@ -1,5 +1,5 @@
 {
-  "type": "igs-import-bundle",
+  "type": "vn-import-bundle",
   "items": [
     {
       "format": "igs_preset_v1",
@@ -19,7 +19,7 @@
       "name": "字幕式干净 CSS",
       "version": 1,
       "data": {
-        "css": ".igs-dialogue-layer{background:rgba(0,0,0,.56);}"
+        "css": ".vn-dialogue-layer{background:rgba(0,0,0,.56);}"
       }
     },
     {

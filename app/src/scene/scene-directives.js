@@ -9,7 +9,7 @@ export function extractSceneDirectives(text) {
 
     for (let i = 0; i < lines.length; i++) {
         const trimmed = lines[i].trim();
-        const match = trimmed.match(/^@igs-scene:([^|\n]*?)\|([^|\n]*?)\|([^|\n]*?)\|(.*)$/);
+        const match = trimmed.match(/^@vn-scene:([^|\n]*?)\|([^|\n]*?)\|([^|\n]*?)\|(.*)$/);
         if (match) {
             directives.push({
                 lineIndex: lineCount,

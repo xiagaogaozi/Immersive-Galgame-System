@@ -1,13 +1,13 @@
-# Immersive Galgame System AI 协作流程
+# Visual Novel AI 协作流程
 
-本文件是 `projects/<当前本地项目文件夹>/` 的项目级协作规则。上级分流仍以 `../../AGENTS.md` 与 `../../../AGENTS.md` 为准；本项目当前是独立 app 工程，最终发布为独立酒馆助手脚本 loader JSON，不默认接入奶龙工具箱发布壳。
+本文件是 `projects/Visual Novel/` 的项目级协作规则。上级分流仍以 `../../AGENTS.md` 与 `../../../AGENTS.md` 为准；本项目当前是独立 app 工程，最终发布为独立酒馆助手脚本 loader JSON，不默认接入奶龙工具箱发布壳。
 
 ## 基本约定
 
-- 默认项目目录：`<当前项目目录>`
+- 默认项目目录：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`
 - 默认工作形态：`loader/` 只放远程 bundle loader，主程序只放 `app/`。
-- 最终导入产物：`loader/酒馆助手脚本-沉浸式galgame系统（自动更新） v<当前版本>.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
-- 原版脚本来源：`<当前项目目录> 原版备份`。
+- 最终导入产物：`loader/酒馆助手脚本-Visual Novel（自动更新） v<当前版本>.json`，格式参考 `D:\下载\酒馆\奶龙王\nailongwang-main\_inbox\酒馆助手脚本-玉子手机.json`；`loader/vn-loader.json` 保留为固定内部入口和自动化校验基准。
+- 原版脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel 原版备份`。
 - 打包发布入口文档：`docs/PACKAGING_WORKFLOW.md` 与 `docs/RELEASE.md`。
 - 不新增 `project.json`、`latest/`、`archive/`、`tavern helper/` 等奶龙工具箱发布壳目录，除非用户明确要求重新接入工具箱流程。
 - 不运行奶龙工具箱 `pack-project`、`verify-project`、`validate`、`check-refs` 作为本项目验收，除非用户明确要求。
@@ -26,7 +26,7 @@
 - `R4` loader、dist、发布流程、版本号或远程 bundle 链路修改：运行 `pnpm build`、`pnpm simulate`、`pnpm perf`，并保留模拟发布证据。
 - `R5` 真实 provider、真实 shujuku 写入、真实用户数据迁移或不可逆操作：先用 fake provider / fake shujuku / fixtures 做确定性模拟，真实链路必须等用户明确确认。
 
-本项目当前不要求安装版实机验真，也不要求 Computer Use 实机操作。NailongHub 工作流中的实机验真位置，在本项目一律替换为 Immersive Galgame System 模拟测试。
+本项目当前不要求安装版实机验真，也不要求 Computer Use 实机操作。NailongHub 工作流中的实机验真位置，在本项目一律替换为 Visual Novel 模拟测试。
 
 ## 执行清单规则
 
@@ -88,8 +88,8 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 - 用户明确要求只做本地草稿、不上传或不打标签时，才跳过 GitHub 上传；最终回复必须说明 skipped 原因。
 - 用户明确要求发布酒馆导入件时，才额外生成 loader、release notes 或 GitHub Release。
 - 发布候选不得依赖真实 API key、真实聊天记录或真实 shujuku 数据作为唯一验证来源。
-- 最终给酒馆导入的是版本化中文发布文件，不是 `app/dist/igs.bundle.js`，也不是原版 `Immersive Galgame System` 的 `latest/*.json`。
-- `loader/igs-loader.json` 和版本化中文发布文件的 `content` 必须来自 `loader/igs-loader.js` 原文，JSON 反序列化后必须完全一致。
+- 最终给酒馆导入的是版本化中文发布文件，不是 `app/dist/vn.bundle.js`，也不是原版 `Visual Novel` 的 `latest/*.json`。
+- `loader/vn-loader.json` 和版本化中文发布文件的 `content` 必须来自 `loader/vn-loader.js` 原文，JSON 反序列化后必须完全一致。
 - 远程 bundle 地址必须是普通用户可访问的公开地址；当前 private 仓库的 raw 地址不能作为最终发布源。
 - 发布流程、字段格式和校验命令以 `docs/PACKAGING_WORKFLOW.md` 为准。
 
@@ -98,7 +98,7 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 - 每一轮产生文件改动后，结束前必须在本项目独立仓库执行 `git add .`、`git commit`、`git push origin main`。
 - 每一轮提交后必须创建版本标签并推送：`git tag -a v<当前版本> -m "<版本说明>"` 与 `git push origin v<当前版本>`。
 - 如果当前版本标签已存在，不得强推覆盖；应提升 patch 版本并更新 `app/package.json`、`README.md`、必要的运行时版本常量和 `app/dist/manifest.json`。
-- 上传前必须确认 `git rev-parse --show-toplevel` 指向 `<当前项目目录>`，禁止从上级 `nailongwang-main` 仓库提交本项目。
+- 上传前必须确认 `git rev-parse --show-toplevel` 指向 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`，禁止从上级 `nailongwang-main` 仓库提交本项目。
 - 上传后必须回查 `git status --short --branch`、`git ls-remote --heads origin main` 与 `git ls-remote --tags origin v<当前版本>`，确认远程分支和标签存在。
 - 只有用户明确要求“只本地修改/不要上传/不要打标签”时才能跳过；跳过必须写入最终回复和必要的 README/docs 技术债记录。
 

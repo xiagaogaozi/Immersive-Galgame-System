@@ -1,4 +1,4 @@
-import { resolveLegacyReaderMode } from '../storage/legacy-igs.js';
+import { resolveLegacyReaderMode } from '../storage/legacy-visual-novel.js';
 import { getResponsiveLayout } from './responsive-layout.js';
 
 const READER_MODES = Object.freeze(['pc', 'mobile', 'web', 'fullscreen']);
@@ -7,7 +7,7 @@ const TOOLBAR_PLACEMENTS = Object.freeze(['top-left', 'top-right', 'top', 'botto
 const DIALOGUE_STYLES = Object.freeze(['panel', 'subtitle', 'bubble']);
 
 export function createReaderState(input = {}) {
-    const legacy = getLegacySettings(input.legacyImmersiveGalgameSystem);
+    const legacy = getLegacySettings(input.legacyVisualNovel);
     const mode = resolveReaderMode(input, legacy);
     const isMobile = resolveIsMobile(input, mode);
     const viewport = normalizeViewport(input.viewport);
@@ -38,37 +38,37 @@ export function createReaderState(input = {}) {
         false,
     );
     const cssVars = {
-        '--igs-dialogue-font-size': normalizePixelValue(
+        '--vn-dialogue-font-size': normalizePixelValue(
             firstDefined(mergedSettings.dialogueFontSize, mergedSettings.fontSize),
             defaultFontSize(layout),
         ),
-        '--igs-dialogue-width': normalizeSizeValue(
+        '--vn-dialogue-width': normalizeSizeValue(
             firstDefined(mergedSettings.dialogueWidth, mergedSettings.dialogWidth),
             defaultDialogueWidth(layout),
         ),
-        '--igs-dialogue-height': normalizeSizeValue(
+        '--vn-dialogue-height': normalizeSizeValue(
             firstDefined(mergedSettings.dialogueHeight, mergedSettings.dialogHeight),
             'auto',
         ),
-        '--igs-dialogue-opacity': normalizeOpacity(
+        '--vn-dialogue-opacity': normalizeOpacity(
             firstDefined(mergedSettings.dialogueOpacity, mergedSettings.dialogOpacity),
             0.72,
         ),
-        '--igs-toolbar-placement-x': normalizePixelValue(
+        '--vn-toolbar-placement-x': normalizePixelValue(
             firstDefined(mergedSettings.toolbarPlacementX, mergedSettings.toolbarX, mergedSettings.positionX),
             16,
         ),
-        '--igs-toolbar-placement-y': normalizePixelValue(
+        '--vn-toolbar-placement-y': normalizePixelValue(
             firstDefined(mergedSettings.toolbarPlacementY, mergedSettings.toolbarY, mergedSettings.positionY),
             16,
         ),
     };
     const attributes = {
-        'data-igs-toolbar-layout': toolbarLayout,
-        'data-igs-toolbar-placement': toolbarPlacement,
-        'data-igs-dialogue-style': dialogueStyle,
-        'data-igs-nameplate-visible': String(nameplateVisible),
-        'data-igs-avatar-visible': String(avatarVisible),
+        'data-vn-toolbar-layout': toolbarLayout,
+        'data-vn-toolbar-placement': toolbarPlacement,
+        'data-vn-dialogue-style': dialogueStyle,
+        'data-vn-nameplate-visible': String(nameplateVisible),
+        'data-vn-avatar-visible': String(avatarVisible),
     };
 
     return Object.freeze({

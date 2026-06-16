@@ -1,4 +1,4 @@
-const INJECTION_ID = 'igs-scene-assets-format-rule';
+const INJECTION_ID = 'vn-scene-assets-format-rule';
 const EXTENSION_PROMPT_IN_PROMPT = 0;
 const EXTENSION_PROMPT_NONE = -1;
 const EXTENSION_PROMPT_SYSTEM = 0;

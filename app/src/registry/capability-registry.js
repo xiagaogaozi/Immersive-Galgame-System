@@ -256,7 +256,7 @@ export function createCapabilityRegistry(options = {}) {
     function exportGroup(type) {
         const normalizedType = normalizeString(type);
         return {
-            type: 'igs-import-bundle',
+            type: 'vn-import-bundle',
             items: listAll(normalizedType).map(toExportableItem),
         };
     }

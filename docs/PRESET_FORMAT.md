@@ -36,8 +36,8 @@
 
 - 必须声明稳定槽位依赖。
 - 必须提供 `settingsSchema`，让 `设置 -> 阅读器` 知道哪些参数可调。
-- CSS 应读取 `data-igs-*` 和 `--igs-*` 变量。
-- 不得破坏 `.igs-stage`、`.igs-toolbar`、`.igs-dialogue-layer` 等核心槽位。
+- CSS 应读取 `data-vn-*` 和 `--vn-*` 变量。
+- 不得破坏 `.vn-stage`、`.vn-toolbar`、`.vn-dialogue-layer` 等核心槽位。
 
 ## Image Provider 预设要求
 

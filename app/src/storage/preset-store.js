@@ -1,4 +1,4 @@
-export const PRESET_STORE_KEY = 'igs:preset-registry:v1';
+export const PRESET_STORE_KEY = 'vn:preset-registry:v1';
 
 export function createPresetStore(storageLike, options = {}) {
     const key = options.key || PRESET_STORE_KEY;

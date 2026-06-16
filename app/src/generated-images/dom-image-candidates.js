@@ -27,7 +27,7 @@ const ADAPTER_SELECTORS = Object.freeze({
             '[data-location-hash]',
             '[data-slot-index]',
             '[data-image-index]',
-            '[data-igs-image-slot]',
+            '[data-vn-image-slot]',
             'img[data-image-id]',
             'img[data-location-hash]',
             '[data-image-id] img',
@@ -341,24 +341,24 @@ function imageCandidateGroupKey(sourceNode, imageNode, url, order) {
 
 function collectNodeMetadata(sourceNode, imageNode = null) {
     const source = sourceNode && typeof sourceNode === 'object' ? sourceNode : imageNode;
-    const metadataNode = safeClosest(source, '[data-location-hash],[data-image-id],[data-slot-index],[data-image-index],[data-igs-image-slot]');
+    const metadataNode = safeClosest(source, '[data-location-hash],[data-image-id],[data-slot-index],[data-image-index],[data-vn-image-slot]');
     return {
         imageId: safeGetAttribute(source, 'data-image-id')
             || safeGetAttribute(imageNode, 'data-image-id')
             || safeGetAttribute(metadataNode, 'data-image-id')
-            || safeGetAttribute(source, 'data-igs-image-id')
-            || safeGetAttribute(imageNode, 'data-igs-image-id')
-            || safeGetAttribute(metadataNode, 'data-igs-image-id')
+            || safeGetAttribute(source, 'data-vn-image-id')
+            || safeGetAttribute(imageNode, 'data-vn-image-id')
+            || safeGetAttribute(metadataNode, 'data-vn-image-id')
             || '',
         locationHash: safeGetAttribute(source, 'data-location-hash')
             || safeGetAttribute(imageNode, 'data-location-hash')
             || safeGetAttribute(metadataNode, 'data-location-hash')
-            || safeGetAttribute(source, 'data-igs-location-hash')
-            || safeGetAttribute(imageNode, 'data-igs-location-hash')
-            || safeGetAttribute(metadataNode, 'data-igs-location-hash')
+            || safeGetAttribute(source, 'data-vn-location-hash')
+            || safeGetAttribute(imageNode, 'data-vn-location-hash')
+            || safeGetAttribute(metadataNode, 'data-vn-location-hash')
             || '',
-        slotIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-slot-index', 'data-image-index', 'data-igs-image-slot']),
-        buttonIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-button-index', 'data-image-index', 'data-slot-index', 'data-igs-image-slot']),
+        slotIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-slot-index', 'data-image-index', 'data-vn-image-slot']),
+        buttonIndex: readIndexAttribute(source, imageNode, metadataNode, ['data-button-index', 'data-image-index', 'data-slot-index', 'data-vn-image-slot']),
     };
 }
 

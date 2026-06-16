@@ -1,4 +1,4 @@
-export const CAPABILITY_STORE_KEY = 'igs:capability-registry:v1';
+export const CAPABILITY_STORE_KEY = 'vn:capability-registry:v1';
 
 export function createCapabilityStore(storageLike, options = {}) {
     const key = options.key || CAPABILITY_STORE_KEY;

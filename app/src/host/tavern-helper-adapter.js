@@ -5,10 +5,10 @@ import {
 } from '../scene/message-source.js';
 import { collectDomRegenerateButtonCandidates } from '../generated-images/dom-image-candidates.js';
 
-const INTERNAL_READER_ATTR = 'data-igs-internal-reader';
+const INTERNAL_READER_ATTR = 'data-vn-internal-reader';
 const HIDDEN_CACHE_WINDOW_MS = 300;
-const IGS_IMAGE_PLACEHOLDER_SELECTOR = '[data-igs-image-placeholder="1"], .igs-image-placeholder';
-const LEGACY_IMAGE_PLACEHOLDER_SELECTOR = '.igs-img-ph';
+const VN_IMAGE_PLACEHOLDER_SELECTOR = '[data-vn-image-placeholder="1"], .vn-image-placeholder';
+const LEGACY_IMAGE_PLACEHOLDER_SELECTOR = '.vn-img-ph';
 
 export function createTavernHelperAdapter(globalObject = globalThis.window || globalThis) {
     let hiddenMessageCache = { at: 0, ids: null };
@@ -189,7 +189,7 @@ export function ensureMessageImagePlaceholders(message, imageSlots = []) {
     const signature = placeholders.map(buildImagePlaceholderSignature).join('\n');
     const ownedSignature = owned.map((node) => String(
         node && typeof node.getAttribute === 'function'
-            ? node.getAttribute('data-igs-placeholder-signature') || ''
+            ? node.getAttribute('data-vn-placeholder-signature') || ''
             : '',
     )).join('\n');
     if (owned.length === placeholders.length && ownedSignature === signature) {
@@ -263,7 +263,7 @@ function normalizeImagePlaceholderBlocks(imageSlots) {
         output.push({
             block,
             slotIndex,
-            imageId: String(slot && slot.imageId || `igs-slot-${slotIndex + 1}`).trim(),
+            imageId: String(slot && slot.imageId || `vn-slot-${slotIndex + 1}`).trim(),
             locationHash: String(slot && slot.locationHash || '').trim(),
             title: String(slot && slot.title || `图 ${slotIndex + 1}`).trim(),
         });
@@ -274,7 +274,7 @@ function normalizeImagePlaceholderBlocks(imageSlots) {
 function getOwnedImagePlaceholders(mesText) {
     if (!mesText || typeof mesText.querySelectorAll !== 'function') return [];
     try {
-        return Array.from(mesText.querySelectorAll(IGS_IMAGE_PLACEHOLDER_SELECTOR));
+        return Array.from(mesText.querySelectorAll(VN_IMAGE_PLACEHOLDER_SELECTOR));
     } catch (error) {
         return [];
     }
@@ -285,20 +285,20 @@ function createMessageImagePlaceholderNode(ownerDocument, placeholder) {
         ? ownerDocument.createElement('div')
         : buildFallbackPlaceholderNode();
     if (typeof node.setAttribute === 'function') {
-        node.setAttribute('data-igs-placeholder', '1');
-        node.setAttribute('data-igs-image-placeholder', '1');
-        node.setAttribute('data-igs-image-slot', String(placeholder.slotIndex));
+        node.setAttribute('data-vn-placeholder', '1');
+        node.setAttribute('data-vn-image-placeholder', '1');
+        node.setAttribute('data-vn-image-slot', String(placeholder.slotIndex));
         node.setAttribute('data-slot-index', String(placeholder.slotIndex));
         node.setAttribute('data-image-index', String(placeholder.slotIndex));
         node.setAttribute('data-image-id', placeholder.imageId);
-        node.setAttribute('data-igs-image-id', placeholder.imageId);
+        node.setAttribute('data-vn-image-id', placeholder.imageId);
         if (placeholder.locationHash) {
             node.setAttribute('data-location-hash', placeholder.locationHash);
-            node.setAttribute('data-igs-location-hash', placeholder.locationHash);
+            node.setAttribute('data-vn-location-hash', placeholder.locationHash);
         }
-        node.setAttribute('data-igs-placeholder-signature', buildImagePlaceholderSignature(placeholder));
+        node.setAttribute('data-vn-placeholder-signature', buildImagePlaceholderSignature(placeholder));
     }
-    node.className = 'igs-img-ph igs-image-placeholder';
+    node.className = 'vn-img-ph vn-image-placeholder';
     node.style = node.style || {};
     node.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;font-size:0';
     node.textContent = String(placeholder.block || '');

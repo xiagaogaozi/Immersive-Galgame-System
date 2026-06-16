@@ -1,6 +1,6 @@
 {
-  "name": "沉浸式galgame系统",
+  "name": "Visual Novel",
   "version": "0.8.1",
-  "entry": "igs.bundle.js",
-  "style": "igs.bundle.css"
+  "entry": "vn.bundle.js",
+  "style": "vn.bundle.css"
 }

@@ -260,7 +260,7 @@ export function createReaderImageService(options = {}) {
                 }
                 const nextImage = {
                     url: generated.url,
-                    providerId: String(generated.providerId || 'igs.provider.nai').trim(),
+                    providerId: String(generated.providerId || 'vn.provider.nai').trim(),
                     source: String(generated.source || 'generated-image').trim(),
                     filename: String(generated.filename || '').trim(),
                 };
@@ -392,9 +392,9 @@ function collectSceneImages(scene = {}, render = {}) {
         && render.stage.layers.background.resource.url;
 
     for (const candidate of [
-        { url: renderGenerated, providerId: 'igs.scene.generated', source: 'scene-generated' },
-        { url: generated, providerId: 'igs.scene.generated', source: 'scene-generated' },
-        { url: background, providerId: 'igs.scene.background', source: 'scene-background' },
+        { url: renderGenerated, providerId: 'vn.scene.generated', source: 'scene-generated' },
+        { url: generated, providerId: 'vn.scene.generated', source: 'scene-generated' },
+        { url: background, providerId: 'vn.scene.background', source: 'scene-background' },
     ]) {
         const url = String(candidate.url || '').trim();
         if (!url) continue;
@@ -723,7 +723,7 @@ function normalizePositiveInteger(value, fallback) {
 function buildFilename(messageId, currentIndex, url) {
     const extension = resolveFileExtension(url);
     const safeMessageId = normalizeMessageId(messageId) ?? 'scene';
-    return `igs-${safeMessageId}-${normalizeIndex(currentIndex) + 1}.${extension}`;
+    return `vn-${safeMessageId}-${normalizeIndex(currentIndex) + 1}.${extension}`;
 }
 
 function resolveFileExtension(url) {

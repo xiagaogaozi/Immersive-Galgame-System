@@ -18,7 +18,7 @@ export const DEFAULT_SOURCE_FILTER = Object.freeze({
 
 export const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     enabled: true,
-    pattern: '^@(?:igs-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
+    pattern: '^@(?:vn-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
     flags: 'gm',
     replacement: '[$1]：$2',
 });
@@ -74,7 +74,7 @@ export function getVisibleMessageTextFromElement(mesElement) {
     if (!mesText || typeof mesText.cloneNode !== 'function') return '';
     const cloneNode = mesText.cloneNode(true);
     if (typeof cloneNode.querySelectorAll === 'function') {
-        cloneNode.querySelectorAll('script,style,iframe,button,[role="button"],[data-igs-internal-reader],.igs-img-ph,.igs-image-placeholder,[data-igs-image-placeholder="1"],.mes_buttons,.extraMesButtons').forEach((node) => {
+        cloneNode.querySelectorAll('script,style,iframe,button,[role="button"],[data-vn-internal-reader],.vn-img-ph,.vn-image-placeholder,[data-vn-image-placeholder="1"],.mes_buttons,.extraMesButtons').forEach((node) => {
             if (node && typeof node.remove === 'function') node.remove();
         });
     }
@@ -162,7 +162,7 @@ export function buildBridgeImageSource(raw, filter) {
     return source.trim();
 }
 
-export function applyImmersiveGalgameSystemBodyFormat(raw, rule) {
+export function applyVisualNovelBodyFormat(raw, rule) {
     const source = String(raw || '');
     const cfg = normalizeVirtualRegex(rule);
     const result = {
@@ -195,7 +195,7 @@ export function applyImmersiveGalgameSystemBodyFormat(raw, rule) {
 export function buildFormattedReaderSource(formattedText, imageSource) {
     const parts = [
         '<now_plot>',
-        '<content data-igs-formatted="1">',
+        '<content data-vn-formatted="1">',
         String(formattedText || '').trim(),
         '</content>',
         '</now_plot>',
@@ -213,7 +213,7 @@ export function buildFormattedTextPipeline(raw, sourceFilter, formatRule, option
     const directiveResult = options.sceneAssetsEnabled
         ? extractSceneDirectives(filtered.textSource)
         : { directives: [], strippedText: filtered.textSource };
-    const formatted = applyImmersiveGalgameSystemBodyFormat(filtered.textSource, formatRule);
+    const formatted = applyVisualNovelBodyFormat(filtered.textSource, formatRule);
     const formattedText = String(formatted.formattedRaw || '').trim();
 
     return {
@@ -232,7 +232,7 @@ export function buildFormattedTextPipeline(raw, sourceFilter, formatRule, option
     };
 }
 
-export function buildImmersiveGalgameSystemTextPayload(message, options = {}) {
+export function buildVisualNovelTextPayload(message, options = {}) {
     const raw = getMessagePrimaryText(message);
     const sourceFilter = normalizeSourceFilter(options.sourceFilter);
     const virtualRegex = normalizeVirtualRegex(options.virtualRegex);
@@ -301,7 +301,7 @@ export function buildImmersiveGalgameSystemTextPayload(message, options = {}) {
         warnings.push({ code: 'forced-fallback', message: 'Fell back to visible text or cleaned raw source.' });
     }
     if (!formattedText) {
-        errors.push({ code: 'empty-igs-text', message: 'No readable Immersive Galgame System text could be extracted.' });
+        errors.push({ code: 'empty-visual-novel-text', message: 'No readable Visual Novel text could be extracted.' });
     }
 
     return {

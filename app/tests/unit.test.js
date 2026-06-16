@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createInputChannel } from '../src/host/input-channel.js';
 import { createPresetRegistry } from '../src/presets/preset-registry.js';
 import {
-    buildImmersiveGalgameSystemTextPayload,
+    buildVisualNovelTextPayload,
     cleanNarrativeSource,
     DEFAULT_SOURCE_FILTER,
     DEFAULT_VIRTUAL_REGEX,
@@ -32,7 +32,7 @@ import {
     createTavernHelperAdapter,
     ensureMessageImagePlaceholders,
 } from '../src/host/tavern-helper-adapter.js';
-import { createImmersiveGalgameSystemReaderHost } from '../src/visual/igs-ui/reader-host.js';
+import { createVisualNovelReaderHost } from '../src/visual/visual-novel-ui/reader-host.js';
 import { createPromptInjector } from '../src/host/prompt-injector.js';
 import {
     extractSceneDirectives,
@@ -121,14 +121,14 @@ test('gate:presets:bad-preset-does-not-overwrite-current', () => {
     assert.equal(after.data.pattern, '@bubble:([^|\\n]+)\\|([^|\\n]+)\\|([^\\n]+)');
 });
 
-test('gate:presets:export-group-keeps-igs-bundle-shape', () => {
+test('gate:presets:export-group-keeps-vn-bundle-shape', () => {
     const bundle = readJson('fixtures/presets/text-presets-import-bundle.json');
     const registry = createPresetRegistry();
 
     registry.importBundle(bundle);
     const exported = registry.exportGroup('text-format-preset');
 
-    assert.equal(exported.type, 'igs-import-bundle');
+    assert.equal(exported.type, 'vn-import-bundle');
     assert.equal(exported.items.length, 1);
     assert.equal(exported.items[0].type, 'text-format-preset');
 });
@@ -199,9 +199,9 @@ test('gate:scene:text-pipeline:bad-regex-does-not-throw', () => {
     assert.equal(scene.textPipelineErrors[0].presetType, 'text-format-preset');
 });
 
-test('gate:scene:igs-message-source:extracts-readable-text-from-host-ui-html', () => {
+test('gate:scene:visual-novel-message-source:extracts-readable-text-from-host-ui-html', () => {
     const message = readJson('fixtures/tavern/host-ui-leak-message.json');
-    const payload = buildImmersiveGalgameSystemTextPayload(message);
+    const payload = buildVisualNovelTextPayload(message);
 
     assert.equal(payload.formattedText.includes('API Connections'), false);
     assert.equal(payload.formattedText.includes('rightNavHolder'), false);
@@ -211,8 +211,8 @@ test('gate:scene:igs-message-source:extracts-readable-text-from-host-ui-html', (
     assert.equal(payload.usedFallback, true);
 });
 
-test('gate:scene:igs-message-source:reader-segments-skip-scene-tags', () => {
-    const payload = buildImmersiveGalgameSystemTextPayload({
+test('gate:scene:visual-novel-message-source:reader-segments-skip-scene-tags', () => {
+    const payload = buildVisualNovelTextPayload({
         text: '[角色: 艾莉]\n艾莉: 第一句。 第二句。',
     });
 
@@ -221,7 +221,7 @@ test('gate:scene:igs-message-source:reader-segments-skip-scene-tags', () => {
 });
 
 test('gate:scene:image-slots:parses-image-tags-in-order', () => {
-    const source = readText('fixtures/igs/image-slot-binding-message.txt');
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
     const slots = parseImageSlots(source, source, DEFAULT_SOURCE_FILTER);
 
     assert.equal(slots.length, 6);
@@ -244,8 +244,8 @@ test('gate:scene:image-slots:parses-image-tags-in-order', () => {
 });
 
 test('gate:scene:image-slots:maps-reader-segments-to-slot-indexes', () => {
-    const source = readText('fixtures/igs/image-slot-binding-message.txt');
-    const payload = buildImmersiveGalgameSystemTextPayload({ text: source }, {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
         sourceFilter: DEFAULT_SOURCE_FILTER,
     });
     const mapped = buildSegmentImageMap(source, payload.textSegments, payload.imageSlots);
@@ -255,8 +255,8 @@ test('gate:scene:image-slots:maps-reader-segments-to-slot-indexes', () => {
     assert.deepEqual(payload.segmentImageSlots, [0, 1, 2]);
 });
 
-test('gate:scene:igs-message-source:formats-default-bubble-body', () => {
-    const payload = buildImmersiveGalgameSystemTextPayload({
+test('gate:scene:visual-novel-message-source:formats-default-bubble-body', () => {
+    const payload = buildVisualNovelTextPayload({
         text: '<content>@bubble:玉子|开心|[欢迎来到图书馆。]</content>',
     }, {
         virtualRegex: DEFAULT_VIRTUAL_REGEX,
@@ -288,18 +288,18 @@ test('gate:host:prompt-injector-registers-scene-rule-as-in-prompt-extension-prom
         },
     };
     const injector = createPromptInjector(globalObject);
-    const result = injector.inject('rule: @igs-scene');
+    const result = injector.inject('rule: @vn-scene');
 
     assert.deepEqual(result, { ok: true, method: 'extension-prompt', verified: true });
     assert.equal(calls.length, 1);
     assert.equal(calls[0].position, 0);
     assert.equal(calls[0].role, 0);
-    assert.equal(extensionPrompts['igs-scene-assets-format-rule'].value, 'rule: @igs-scene');
-    assert.equal(extensionPrompts['igs-scene-assets-format-rule'].position, 0);
+    assert.equal(extensionPrompts['vn-scene-assets-format-rule'].value, 'rule: @vn-scene');
+    assert.equal(extensionPrompts['vn-scene-assets-format-rule'].position, 0);
     assert.equal(injector.isActive(), true);
 
     injector.clear();
-    assert.equal(Object.hasOwn(extensionPrompts, 'igs-scene-assets-format-rule'), false);
+    assert.equal(Object.hasOwn(extensionPrompts, 'vn-scene-assets-format-rule'), false);
     assert.equal(injector.isActive(), false);
 });
 
@@ -328,9 +328,9 @@ test('gate:scene:scene-assets-falls-back-to-single-configured-background-and-moo
 test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {
     const { directives } = extractSceneDirectives([
         'Opening narration.',
-        '@igs-scene:Alice|calm|Room|[Hello.]',
+        '@vn-scene:Alice|calm|Room|[Hello.]',
         'Alice keeps working.',
-        '@igs-scene:Bob|annoyed||[Move faster.]',
+        '@vn-scene:Bob|annoyed||[Move faster.]',
         'Bob leaves later.',
     ].join('\n'));
 
@@ -340,8 +340,8 @@ test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {
     assert.deepEqual(resolveSceneStateAtIndex(directives, 3), { scene: 'Room', character: 'Bob', mood: 'annoyed' });
 });
 
-test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
-    const host = createImmersiveGalgameSystemReaderHost({
+test('gate:visual-novel-ui:scene-assets-keeps-sprite-with-existing-background', () => {
+    const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
             version: '0.4.9',
@@ -367,7 +367,7 @@ test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
 
     const opened = host.openReader({
         message: {
-            text: '@igs-scene:Kaito|calm|Room|[Ready.]\nKaito keeps working.',
+            text: '@vn-scene:Kaito|calm|Room|[Ready.]\nKaito keeps working.',
         },
         render: {
             stage: {
@@ -384,15 +384,15 @@ test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
 
     assert.equal(opened.snapshot.content.backgroundImage, 'https://example.com/room.png');
     assert.equal(opened.snapshot.content.spriteImage, 'https://example.com/kaito.png');
-    assert.match(opened.snapshot.html, /id="igs-sprite"/);
-    assert.equal(opened.snapshot.styles['#igs-sprite'].display, 'block');
+    assert.match(opened.snapshot.html, /id="vn-sprite"/);
+    assert.equal(opened.snapshot.styles['#vn-sprite'].display, 'block');
 
     host.destroy();
 });
 
-test('gate:scene:igs-message-source:extracts-scene-directives-from-fallback-text', () => {
-    const payload = buildImmersiveGalgameSystemTextPayload({
-        text: '@igs-scene:小林海斗|平静|B班教室|[できるもん！]',
+test('gate:scene:visual-novel-message-source:extracts-scene-directives-from-fallback-text', () => {
+    const payload = buildVisualNovelTextPayload({
+        text: '@vn-scene:小林海斗|平静|B班教室|[できるもん！]',
     }, {
         sceneAssets: { enabled: true },
     });
@@ -403,8 +403,8 @@ test('gate:scene:igs-message-source:extracts-scene-directives-from-fallback-text
     assert.equal(payload.sceneDirectives[0].scene, 'B班教室');
 });
 
-test('gate:igs-ui:reader-host-skips-empty-scene-text-and-falls-back-to-readable-text', () => {
-    const host = createImmersiveGalgameSystemReaderHost({
+test('gate:visual-novel-ui:reader-host-skips-empty-scene-text-and-falls-back-to-readable-text', () => {
+    const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
             version: '0.3.20',
@@ -430,8 +430,8 @@ test('gate:igs-ui:reader-host-skips-empty-scene-text-and-falls-back-to-readable-
     host.destroy();
 });
 
-test('gate:igs-ui:reader-host-keeps-one-line-multi-sentence-on-a-single-page', () => {
-    const host = createImmersiveGalgameSystemReaderHost({
+test('gate:visual-novel-ui:reader-host-keeps-one-line-multi-sentence-on-a-single-page', () => {
+    const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
             version: '0.3.20',
@@ -456,8 +456,8 @@ test('gate:igs-ui:reader-host-keeps-one-line-multi-sentence-on-a-single-page', (
     host.destroy();
 });
 
-test('gate:igs-ui:reader-host-splits-single-newline-paragraphs-into-multiple-pages', () => {
-    const host = createImmersiveGalgameSystemReaderHost({
+test('gate:visual-novel-ui:reader-host-splits-single-newline-paragraphs-into-multiple-pages', () => {
+    const host = createVisualNovelReaderHost({
         global: {},
         getUnifiedSettings: () => ({
             version: '0.3.20',
@@ -482,7 +482,7 @@ test('gate:igs-ui:reader-host-splits-single-newline-paragraphs-into-multiple-pag
     host.destroy();
 });
 
-test('gate:scene:igs-message-source:clean-narrative-source-strips-host-ui-tags', () => {
+test('gate:scene:visual-novel-message-source:clean-narrative-source-strips-host-ui-tags', () => {
     const cleaned = cleanNarrativeSource(readJson('fixtures/tavern/host-ui-leak-message.json').text);
 
     assert.equal(cleaned.includes('<div'), false);
@@ -513,8 +513,8 @@ test('gate:visual-reader-state:normalizes-settings', () => {
     assert.equal(state.toolbarLayout, 'vertical');
     assert.equal(state.toolbarPlacement, 'bottom-right');
     assert.equal(state.avatarVisible, true);
-    assert.equal(state.cssVars['--igs-dialogue-font-size'], '15px');
-    assert.equal(state.attributes['data-igs-dialogue-style'], 'panel');
+    assert.equal(state.cssVars['--vn-dialogue-font-size'], '15px');
+    assert.equal(state.attributes['data-vn-dialogue-style'], 'panel');
 });
 
 test('gate:visual-responsive-layout:desktop-portrait-landscape', () => {
@@ -537,7 +537,7 @@ test('gate:visual-stage-model:exposes-stable-stage-shape', () => {
         visualMode: 'background-character',
     }, readerState);
 
-    assert.equal(stage.type, 'igs-stage-model');
+    assert.equal(stage.type, 'vn-stage-model');
     assert.equal(stage.layers.background.visible, true);
     assert.equal(stage.layers.generated.visible, false);
     assert.equal(stage.layers.dialogue.text, '我们到了。');
@@ -570,15 +570,15 @@ test('gate:api:public api attaches stable global aliases', async () => {
     });
 
     attachPublicApi(globalObject, api);
-    assert.equal(globalObject.IGS, api);
-    assert.equal(globalObject.ImmersiveGalgameSystem, api);
+    assert.equal(globalObject.VN, api);
+    assert.equal(globalObject.VisualNovel, api);
     assert.equal(api.api.imageProviders.register({ id: 'provider.fake' }).ok, true);
     assert.equal(api.api.imageProviders.list().length, 1);
     assert.equal(api.api.textFilterPresets.register(readJson('fixtures/text/text-filter-preset.json')).ok, true);
     assert.equal(typeof api.api.textFilterPresets.setCurrent, 'function');
     assert.equal(api.api.textFilterPresets.setCurrent('preset.text-filter.content-only').ok, true);
     assert.equal(api.api.textFilterPresets.getCurrent().id, 'preset.text-filter.content-only');
-    assert.equal(api.api.textFilterPresets.exportAll().type, 'igs-import-bundle');
+    assert.equal(api.api.textFilterPresets.exportAll().type, 'vn-import-bundle');
     assert.equal(api.ensureMagicWandEntry().reason, 'magic-wand-entry-not-mounted');
 });
 
@@ -703,8 +703,8 @@ test('gate:generated-images:image-api-client-parses-zip-image-response', async (
 });
 
 test('gate:generated-images:reader-image-service-prefers-slot-binding-over-scan-order', async () => {
-    const source = readText('fixtures/igs/image-slot-binding-message.txt');
-    const payload = buildImmersiveGalgameSystemTextPayload({ text: source }, {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
         sourceFilter: DEFAULT_SOURCE_FILTER,
     });
     const service = createReaderImageService({
@@ -741,8 +741,8 @@ test('gate:generated-images:reader-image-service-prefers-slot-binding-over-scan-
 });
 
 test('gate:generated-images:reader-image-service-keeps-single-unnumbered-image-unbound-with-image-tags', async () => {
-    const source = readText('fixtures/igs/image-slot-binding-message.txt');
-    const payload = buildImmersiveGalgameSystemTextPayload({ text: source }, {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
         sourceFilter: DEFAULT_SOURCE_FILTER,
     });
     const service = createReaderImageService({
@@ -781,8 +781,8 @@ test('gate:generated-images:reader-image-service-keeps-single-unnumbered-image-u
 });
 
 test('gate:generated-images:reader-image-service-does-not-show-later-slot-on-first-segment', async () => {
-    const source = readText('fixtures/igs/image-slot-binding-message.txt');
-    const payload = buildImmersiveGalgameSystemTextPayload({ text: source }, {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
         sourceFilter: DEFAULT_SOURCE_FILTER,
     });
     const service = createReaderImageService({
@@ -818,8 +818,8 @@ test('gate:generated-images:reader-image-service-does-not-show-later-slot-on-fir
 });
 
 test('gate:generated-images:reader-image-service-keeps-global-generic-images-out-when-message-scope-is-required', async () => {
-    const source = readText('fixtures/igs/image-slot-binding-message.txt');
-    const payload = buildImmersiveGalgameSystemTextPayload({ text: source }, {
+    const source = readText('fixtures/visual-novel/image-slot-binding-message.txt');
+    const payload = buildVisualNovelTextPayload({ text: source }, {
         sourceFilter: DEFAULT_SOURCE_FILTER,
     });
     const leakedImage = createFakeImageNode('https://example.com/role-card.png');
@@ -890,9 +890,9 @@ test('gate:host:ensure-message-image-placeholders-reuses-owned-placeholder', () 
     assert.equal(second.ok, true);
     assert.equal(second.reason, 'placeholder-present');
     assert.equal(mesText.children.length, 2);
-    assert.equal(mesText.children[0].getAttribute('data-igs-image-placeholder'), '1');
-    assert.equal(mesText.children[0].getAttribute('data-igs-image-slot'), '0');
-    assert.equal(mesText.children[1].getAttribute('data-igs-image-slot'), '1');
+    assert.equal(mesText.children[0].getAttribute('data-vn-image-placeholder'), '1');
+    assert.equal(mesText.children[0].getAttribute('data-vn-image-slot'), '0');
+    assert.equal(mesText.children[1].getAttribute('data-vn-image-slot'), '1');
     assert.match(mesText.children[0].textContent, /image###one###/);
     assert.match(mesText.children[1].textContent, /image###two###/);
 });
@@ -1023,12 +1023,12 @@ function createTestMesTextRoot() {
         },
         querySelectorAll(selector) {
             const owned = children.filter((child) => {
-                const hasOwnedClass = String(child.className || '').split(/\s+/).includes('igs-image-placeholder');
-                const hasOwnedAttr = child.getAttribute && child.getAttribute('data-igs-image-placeholder') === '1';
-                const hasLegacyClass = String(child.className || '').split(/\s+/).includes('igs-img-ph');
-                return selector === '[data-igs-image-placeholder="1"], .igs-image-placeholder'
+                const hasOwnedClass = String(child.className || '').split(/\s+/).includes('vn-image-placeholder');
+                const hasOwnedAttr = child.getAttribute && child.getAttribute('data-vn-image-placeholder') === '1';
+                const hasLegacyClass = String(child.className || '').split(/\s+/).includes('vn-img-ph');
+                return selector === '[data-vn-image-placeholder="1"], .vn-image-placeholder'
                     ? hasOwnedClass || hasOwnedAttr
-                    : selector === '.igs-img-ph'
+                    : selector === '.vn-img-ph'
                         ? hasLegacyClass
                         : false;
             });

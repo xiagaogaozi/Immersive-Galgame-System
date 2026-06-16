@@ -1,0 +1,58 @@
+{
+  "requiredSelectors": [
+    "#vn-overlay",
+    "#vn-bg",
+    "#vn-bg-blur",
+    "#vn-sprite",
+    "#vn-click-layer",
+    ".vn-dialog",
+    ".vn-ctrl-bar",
+    "#vn-bar-btns",
+    "#vn-settings",
+    ".vn-controls",
+    "#vn-send-status",
+    "#vn-input",
+    "#vn-send-btn",
+    "#vn-toast"
+  ],
+  "styles": {
+    "#vn-overlay": {
+      "zIndex": "2147483000",
+      "background": "#000"
+    },
+    ".vn-dialog": {
+      "width": "min(880px,calc(100vw - 32px))",
+      "padding": "22px 26px 18px",
+      "borderRadius": "22px"
+    },
+    ".vn-input": {
+      "height": "32px"
+    },
+    ".vn-send-btn": {
+      "minWidth": "58px"
+    },
+    ".vn-icon-btn": {
+      "width": "36px",
+      "height": "36px"
+    },
+    "#vn-overlay.vn-floating #vn-click-layer": {
+      "cursor": "grab",
+      "touchAction": "none"
+    },
+    "#vn-overlay.vn-floating.is-dragging #vn-click-layer": {
+      "cursor": "grabbing"
+    },
+    "#vn-overlay.vn-floating .vn-progress": {
+      "flexShrink": "0"
+    },
+    "#vn-overlay.vn-floating .vn-text": {
+      "minHeight": "0",
+      "overflowY": "auto",
+      "marginBottom": "12px",
+      "flex": "1 1 auto"
+    },
+    "#vn-overlay.vn-floating .vn-controls": {
+      "flexShrink": "0"
+    }
+  }
+}

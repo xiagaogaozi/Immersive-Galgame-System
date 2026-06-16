@@ -31,7 +31,7 @@
     "time": ["夜晚"],
     "weather": ["雨"]
   },
-  "background": "indexeddb://igs-assets/background/school_night_rain.webp",
+  "background": "indexeddb://vn-assets/background/school_night_rain.webp",
   "priority": 100
 }
 ```
@@ -42,8 +42,8 @@
 {
   "character": "玉子",
   "emotion": "害羞",
-  "sprite": "indexeddb://igs-assets/tamako/blush.webp",
-  "avatar": "indexeddb://igs-assets/tamako/avatar-blush.webp",
+  "sprite": "indexeddb://vn-assets/tamako/blush.webp",
+  "avatar": "indexeddb://vn-assets/tamako/avatar-blush.webp",
   "position": "right"
 }
 ```
@@ -78,4 +78,4 @@
 
 - `weather` 可映射到雨、雪、雾、晴天、阴天等效果。
 - `time` 可映射到白天、傍晚、夜晚 tint。
-- 环境效果只影响 IGS 舞台，不修改 SillyTavern 聊天楼层正文或样式。
+- 环境效果只影响 VN 舞台，不修改 SillyTavern 聊天楼层正文或样式。
