@@ -151,7 +151,7 @@ export function createImmersiveGalgameSystemReaderHost(options = {}) {
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
-        readerSettings._vnTheme = unified.bridge.vnTheme || null;
+        readerSettings._igsTheme = unified.bridge.igsTheme || null;
         const snapshot = buildReaderSnapshot(
             payload,
             nextMode,
@@ -424,19 +424,19 @@ export function createImmersiveGalgameSystemReaderHost(options = {}) {
         }
 
         setPath(draft, path, normalizeSettingsValue(path, value));
-        if (path === 'bridge.vnTheme.preset' && value === 'custom') {
-            const prevName = draft.bridge.vnTheme._prevPreset || 'genshin';
-            const source = IGS_THEME_PRESETS[prevName] || IGS_THEME_PRESETS.genshin;
+        if (path === 'bridge.igsTheme.preset' && value === 'custom') {
+            const previousPresetName = draft.bridge.igsTheme._prevPreset || 'genshin';
+            const source = IGS_THEME_PRESETS[previousPresetName] || IGS_THEME_PRESETS.genshin;
             const fields = ['nameAlign', 'dividerSymbol', 'nameFont', 'textFont', 'thoughtFont', 'nameColor', 'textColor', 'thoughtColor', 'dividerColor'];
             for (const f of fields) {
-                setPath(draft, `bridge.vnTheme.${f}`, source[f]);
+                setPath(draft, `bridge.igsTheme.${f}`, source[f]);
             }
         }
-        if (path === 'bridge.vnTheme.preset' && value !== 'custom') {
-            setPath(draft, 'bridge.vnTheme._prevPreset', value);
+        if (path === 'bridge.igsTheme.preset' && value !== 'custom') {
+            setPath(draft, 'bridge.igsTheme._prevPreset', value);
         }
-        if (path.startsWith('bridge.vnTheme.') && path !== 'bridge.vnTheme.preset' && path !== 'bridge.vnTheme._prevPreset') {
-            setPath(draft, 'bridge.vnTheme.preset', 'custom');
+        if (path.startsWith('bridge.igsTheme.') && path !== 'bridge.igsTheme.preset' && path !== 'bridge.igsTheme._prevPreset') {
+            setPath(draft, 'bridge.igsTheme.preset', 'custom');
         }
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
@@ -561,7 +561,7 @@ export function createImmersiveGalgameSystemReaderHost(options = {}) {
         state.activeReader.mode = nextMode;
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
-        readerSettings._vnTheme = unified.bridge.vnTheme || null;
+        readerSettings._igsTheme = unified.bridge.igsTheme || null;
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, nextMode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
         return { ok: true };
@@ -984,26 +984,26 @@ export function createImmersiveGalgameSystemReaderHost(options = {}) {
             const disabled = !sceneAssets.enabled;
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
-            const vnTheme = bridge.vnTheme || {};
-            const themeCustom = vnTheme.preset === 'custom';
-            const activePreset = IGS_THEME_PRESETS[vnTheme.preset] || IGS_THEME_PRESETS.minimal;
-            const displayTheme = themeCustom ? vnTheme : activePreset;
+            const igsTheme = bridge.igsTheme || {};
+            const themeCustom = igsTheme.preset === 'custom';
+            const activePreset = IGS_THEME_PRESETS[igsTheme.preset] || IGS_THEME_PRESETS.minimal;
+            const displayTheme = themeCustom ? igsTheme : activePreset;
             return renderTemplate(getSettingsTabTemplate('scene'), {
                 sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
                 sceneGroupClass: `igs-settings-section igs-settings-full${disabled ? ' igs-settings-api-group is-disabled' : ''}`,
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
-                themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
-                nameAlignField: field('bridge.vnTheme.nameAlign', '对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
-                dividerField: field('bridge.vnTheme.dividerSymbol', '样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
-                nameFontField: field('bridge.vnTheme.nameFont', '字体', selectInput('bridge.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                textFontField: field('bridge.vnTheme.textFont', '字体', selectInput('bridge.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                thoughtFontField: field('bridge.vnTheme.thoughtFont', '字体', selectInput('bridge.vnTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                nameColorField: field('bridge.vnTheme.nameColor', '颜色', colorInput('bridge.vnTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), disabled || !themeCustom)),
-                textColorField: field('bridge.vnTheme.textColor', '颜色', colorInput('bridge.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
-                thoughtColorField: field('bridge.vnTheme.thoughtColor', '颜色', colorInput('bridge.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
-                dividerColorField: field('bridge.vnTheme.dividerColor', '颜色', colorInput('bridge.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
+                themePresetField: field('bridge.igsTheme.preset', '对话主题', selectInput('bridge.igsTheme.preset', igsTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
+                nameAlignField: field('bridge.igsTheme.nameAlign', '对齐', selectInput('bridge.igsTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
+                dividerField: field('bridge.igsTheme.dividerSymbol', '样式', selectInput('bridge.igsTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
+                nameFontField: field('bridge.igsTheme.nameFont', '字体', selectInput('bridge.igsTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                textFontField: field('bridge.igsTheme.textFont', '字体', selectInput('bridge.igsTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                thoughtFontField: field('bridge.igsTheme.thoughtFont', '字体', selectInput('bridge.igsTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                nameColorField: field('bridge.igsTheme.nameColor', '颜色', colorInput('bridge.igsTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), disabled || !themeCustom)),
+                textColorField: field('bridge.igsTheme.textColor', '颜色', colorInput('bridge.igsTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
+                thoughtColorField: field('bridge.igsTheme.thoughtColor', '颜色', colorInput('bridge.igsTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
+                dividerColorField: field('bridge.igsTheme.dividerColor', '颜色', colorInput('bridge.igsTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
                 themeAdvancedClass: themeCustom ? '' : 'igs-settings-api-group is-disabled',
             });
         }
@@ -1283,7 +1283,7 @@ export function createImmersiveGalgameSystemReaderHost(options = {}) {
         normalized.virtualRegex = normalizeVirtualRegex(normalized.virtualRegex);
         normalized.imageApi = normalizeImageApi(normalized.imageApi);
         normalized.sceneAssets = normalizeSceneAssets(normalized.sceneAssets);
-        normalized.vnTheme = normalizeVnTheme(normalized.vnTheme);
+        normalized.igsTheme = normalizeIgsTheme(normalized.igsTheme);
         return normalized;
     }
 
@@ -1311,7 +1311,7 @@ export function createImmersiveGalgameSystemReaderHost(options = {}) {
         return normalized;
     }
 
-    function normalizeVnTheme(value) {
+    function normalizeIgsTheme(value) {
         const normalized = cloneData(value || {});
         const validPresets = ['genshin', 'honkai', 'minimal', 'custom'];
         if (!validPresets.includes(normalized.preset)) normalized.preset = 'genshin';

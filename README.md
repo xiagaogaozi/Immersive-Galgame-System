@@ -185,7 +185,7 @@ projects/<当前本地项目文件夹>/
 
 - 默认预设改为原神风（之前默认极简模式分隔线为 'none' 导致不显示）。
 - 缩小角色名与分隔线之间间距（2px）、分隔线与台词之间间距（4px），贴近原神对话 UI 效果。
-- 修复 `normalizeVnTheme` 中 `nameAlign` 的 fallback 逻辑。
+- 修复 `normalizeIgsTheme` 中 `nameAlign` 的 fallback 逻辑。
 
 ### v0.7.3 - 2026-06-16
 

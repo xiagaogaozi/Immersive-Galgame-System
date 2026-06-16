@@ -119,20 +119,20 @@ export function resolveSpriteLayout(layouts, mode, character) {
 }
 
 export function resolveActiveTheme(snapshot) {
-    const vnTheme = snapshot.readerSettings._vnTheme || {};
-    const presetName = vnTheme.preset || 'genshin';
+    const igsTheme = snapshot.readerSettings._igsTheme || {};
+    const presetName = igsTheme.preset || 'genshin';
     const preset = IGS_THEME_PRESETS[presetName] || IGS_THEME_PRESETS.genshin;
     if (presetName === 'custom') {
         return {
-            nameAlign: vnTheme.nameAlign || preset.nameAlign,
-            dividerSymbol: vnTheme.dividerSymbol != null ? vnTheme.dividerSymbol : preset.dividerSymbol,
-            nameFont: vnTheme.nameFont || preset.nameFont,
-            textFont: vnTheme.textFont || preset.textFont,
-            thoughtFont: vnTheme.thoughtFont || preset.thoughtFont,
-            nameColor: vnTheme.nameColor || preset.nameColor,
-            textColor: vnTheme.textColor || preset.textColor,
-            thoughtColor: vnTheme.thoughtColor || preset.thoughtColor,
-            dividerColor: vnTheme.dividerColor || preset.dividerColor,
+            nameAlign: igsTheme.nameAlign || preset.nameAlign,
+            dividerSymbol: igsTheme.dividerSymbol != null ? igsTheme.dividerSymbol : preset.dividerSymbol,
+            nameFont: igsTheme.nameFont || preset.nameFont,
+            textFont: igsTheme.textFont || preset.textFont,
+            thoughtFont: igsTheme.thoughtFont || preset.thoughtFont,
+            nameColor: igsTheme.nameColor || preset.nameColor,
+            textColor: igsTheme.textColor || preset.textColor,
+            thoughtColor: igsTheme.thoughtColor || preset.thoughtColor,
+            dividerColor: igsTheme.dividerColor || preset.dividerColor,
         };
     }
     return { ...preset };
