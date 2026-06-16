@@ -160,14 +160,14 @@ function isSafeVnSelector(selector) {
     if (!text) return false;
     return text.split(',')
         .map((part) => part.trim())
-        .every((part) => /^(#vn-|\.vn-|\[data-vn-)/.test(part));
+        .every((part) => /^(#igs-|\.igs-|\[data-igs-)/.test(part));
 }
 
 function normalizeUiSettings(ui = {}) {
     return {
         currentSkin: String(ui.currentSkin || ''),
         cssPreset: String(ui.cssPreset || ''),
-        cssScope: ui.cssScope === 'advanced' ? 'advanced' : 'vn-only',
+        cssScope: ui.cssScope === 'advanced' ? 'advanced' : 'igs-only',
         cssPresetsEnabled: ui.cssPresetsEnabled !== false,
         advancedCssEnabled: ui.advancedCssEnabled === true,
         customCss: String(ui.customCss || ''),

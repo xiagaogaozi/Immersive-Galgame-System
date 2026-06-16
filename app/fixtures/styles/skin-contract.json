@@ -1,20 +1,20 @@
 {
   "slots": [
-    ".vn-stage",
-    ".vn-background-layer",
-    ".vn-generated-layer",
-    ".vn-character-layer",
-    ".vn-dialogue-layer",
-    ".vn-hud-layer",
-    ".vn-toolbar",
-    ".vn-choice-layer",
-    ".vn-system-layer"
+    ".igs-stage",
+    ".igs-background-layer",
+    ".igs-generated-layer",
+    ".igs-character-layer",
+    ".igs-dialogue-layer",
+    ".igs-hud-layer",
+    ".igs-toolbar",
+    ".igs-choice-layer",
+    ".igs-system-layer"
   ],
   "attributes": {
-    "data-vn-toolbar-layout": "vertical",
-    "data-vn-toolbar-placement": "top-right",
-    "data-vn-dialogue-style": "box",
-    "data-vn-nameplate-visible": "true",
-    "data-vn-avatar-visible": "true"
+    "data-igs-toolbar-layout": "vertical",
+    "data-igs-toolbar-placement": "top-right",
+    "data-igs-dialogue-style": "box",
+    "data-igs-nameplate-visible": "true",
+    "data-igs-avatar-visible": "true"
   }
 }

@@ -4,7 +4,7 @@ import {
 } from '../image-api-client.js';
 
 export const naiProvider = {
-    id: 'vn.provider.nai',
+    id: 'igs.provider.nai',
     type: 'image-provider',
     providerType: 'nai',
     label: 'NAI',
@@ -28,7 +28,7 @@ export const naiProvider = {
         return {
             ok: true,
             ...result,
-            providerId: 'vn.provider.nai',
+            providerId: 'igs.provider.nai',
             source: 'generated-image',
         };
     },

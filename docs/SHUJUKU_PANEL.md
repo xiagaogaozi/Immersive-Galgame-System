@@ -1,11 +1,11 @@
 # shujuku 表格页草案
 
-shujuku 表格页是 VN 内置前端，不负责导入 shujuku 表格模板。
+shujuku 表格页是 IGS 内置前端，不负责导入 shujuku 表格模板。
 
 ## 目标
 
 - 读取当前 shujuku 表格数据。
-- 在 VN 设置界面内可视化编辑。
+- 在 IGS 设置界面内可视化编辑。
 - 支持单元格编辑、整行编辑、增行、删行。
 - 支持刷新数据与世界书。
 - 样式受 UI/CSS 预设控制。
@@ -25,12 +25,12 @@ await api.refreshDataAndWorldbook();
 ## CSS 命名
 
 ```css
-.vn-shujuku-panel {}
-.vn-shujuku-toolbar {}
-.vn-shujuku-table {}
-.vn-shujuku-row {}
-.vn-shujuku-cell {}
-.vn-shujuku-editor {}
+.igs-shujuku-panel {}
+.igs-shujuku-toolbar {}
+.igs-shujuku-table {}
+.igs-shujuku-row {}
+.igs-shujuku-cell {}
+.igs-shujuku-editor {}
 ```
 
 ## 禁止

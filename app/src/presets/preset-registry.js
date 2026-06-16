@@ -193,7 +193,7 @@ export function createPresetRegistry(options = {}) {
     function exportGroup(type) {
         const normalizedType = normalizeType(type);
         return {
-            type: 'vn-import-bundle',
+            type: 'igs-import-bundle',
             items: normalizedType ? list(normalizedType) : [],
         };
     }

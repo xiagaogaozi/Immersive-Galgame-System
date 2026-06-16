@@ -2,7 +2,7 @@
 
 ## 职责
 
-- 启动 VN 主程序。
+- 启动 IGS 主程序。
 - 创建事件总线、状态仓库、生命周期管理器。
 - 管理桌面/移动端全局能力检测。
 - 协调 `host`、`scene`、`visual`、`presets`、`registry` 等模块初始化顺序。
@@ -15,6 +15,6 @@
 
 ## 对外契约
 
-- 提供 `bootstrapVN(options)`。
-- 提供 `destroyVN()`。
-- 触发 `vn:ready`、`vn:destroy`、`vn:error` 事件。
+- 提供 `bootstrapIGS(options)`。
+- 提供 `destroyIGS()`。
+- 触发 `igs:ready`、`igs:destroy`、`igs:error` 事件。

@@ -18,4 +18,4 @@
 
 ## 样式
 
-所有样式必须使用 `.vn-shujuku-*` class，允许 UI/CSS 预设覆盖。
+所有样式必须使用 `.igs-shujuku-*` class，允许 UI/CSS 预设覆盖。

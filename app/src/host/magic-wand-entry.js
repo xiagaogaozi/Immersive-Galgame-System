@@ -4,11 +4,11 @@ const DEFAULT_MENU_SELECTORS = Object.freeze([
     '.extensions_block .list-group',
 ]);
 
-const ENTRY_SELECTOR = '[data-vn-magic-entry="1"]';
+const ENTRY_SELECTOR = '[data-igs-magic-entry="1"]';
 
 export function createMagicWandEntry(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
-    const label = options.label || 'Visual Novel';
+    const label = options.label || '沉浸式galgame系统';
     const version = String(options.version || '');
     const menuSelectors = options.menuSelectors || DEFAULT_MENU_SELECTORS;
     const retryIntervalMs = options.retryIntervalMs === false
@@ -62,7 +62,7 @@ export function createMagicWandEntry(options = {}) {
                 entries += 1;
                 continue;
             }
-            const usePrimaryId = !found.doc.getElementById('vn-magic-entry-btn');
+            const usePrimaryId = !found.doc.getElementById('igs-magic-entry-btn');
             found.menu.appendChild(createMagicEntryButton(found.doc, usePrimaryId));
             entries += 1;
         }
@@ -122,11 +122,11 @@ export function createMagicWandEntry(options = {}) {
 
     function createMagicEntryButton(doc, usePrimaryId) {
         const button = doc.createElement('a');
-        if (usePrimaryId) button.id = 'vn-magic-entry-btn';
-        button.className = 'list-group-item vn-magic-entry';
+        if (usePrimaryId) button.id = 'igs-magic-entry-btn';
+        button.className = 'list-group-item igs-magic-entry';
         button.href = 'javascript:void(0)';
-        button.setAttribute('data-vn-magic-entry', '1');
-        button.setAttribute('data-vn-version', version);
+        button.setAttribute('data-igs-magic-entry', '1');
+        button.setAttribute('data-igs-version', version);
         button.setAttribute('title', `打开${label}`);
         button.setAttribute('aria-label', `打开${label}`);
         button.innerHTML = `<span class="fa-solid fa-book-open" aria-hidden="true"></span> ${escapeHtml(label)}`;
@@ -141,17 +141,17 @@ export function createMagicWandEntry(options = {}) {
         }
         const mode = resolveSafeMode();
         if (!open) {
-            notify('VN 入口尚未绑定打开函数。', 'error');
+            notify('IGS 入口尚未绑定打开函数。', 'error');
             return { ok: false, reason: 'missing-open-handler' };
         }
 
         const result = open(mode);
         Promise.resolve(result).then((resolved) => {
             if (!resolved || resolved.ok === false) {
-                notify(`VN 阅读器打开失败：${resolveErrorMessage(resolved)}`, 'error');
+                notify(`IGS 阅读器打开失败：${resolveErrorMessage(resolved)}`, 'error');
             }
         }).catch((error) => {
-            notify(`VN 阅读器打开失败：${error && error.message || String(error)}`, 'error');
+            notify(`IGS 阅读器打开失败：${error && error.message || String(error)}`, 'error');
         });
 
         closeMagicWandMenu(forcedCurrentTarget || event && event.currentTarget);
@@ -268,7 +268,7 @@ export function createMagicWandEntry(options = {}) {
         safeQueryAll(candidateDoc, ENTRY_SELECTOR).forEach((button) => {
             const shouldRemove = !menuElements.includes(button.parentNode)
                 || !isMagicEntryListItem(button)
-                || button.getAttribute('data-vn-version') !== version;
+                || button.getAttribute('data-igs-version') !== version;
             if (shouldRemove) {
                 button.removeEventListener('click', handleMagicEntryClick);
                 button.remove();
@@ -331,9 +331,9 @@ function escapeHtml(value) {
 function defaultNotify(message, type = 'info') {
     const root = globalThis.window || globalThis;
     if (root.toastr && typeof root.toastr[type] === 'function') {
-        root.toastr[type](message, 'VN');
+        root.toastr[type](message, 'IGS');
         return;
     }
     const logger = type === 'error' ? console.error : console.info;
-    logger('[VN]', message);
+    logger('[IGS]', message);
 }
