@@ -319,11 +319,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         removeImageLoadingSpinner(bg);
     } else if (bg) {
         bg.style.backgroundImage = '';
-        if (snapshot.content.imageExpectedCount > 0 && snapshot.content.imageBoundCount < snapshot.content.imageExpectedCount) {
-            ensureImageLoadingSpinner(bg);
-        } else {
-            removeImageLoadingSpinner(bg);
-        }
+        removeImageLoadingSpinner(bg);
     }
     if (bgBlur && snapshot.content.backgroundImage) {
         bgBlur.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;

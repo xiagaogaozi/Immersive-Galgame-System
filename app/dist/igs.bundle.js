@@ -2521,10 +2521,12 @@ const DEFAULT_SOURCE_FILTER = Object.freeze({
 });
 const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     enabled: true,
-    pattern: '^@(?:igs-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
+    pattern: '^@(?:(?:[a-z]{2,8}-)?scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
     flags: 'gm',
     replacement: '[$1]：$2',
 });
+
+const SCENE_DIRECTIVE_FORMAT_REGEX = /^@(?:(?:[a-z]{2,8}-)?scene|bubble):([^|\n]+)\|[^|\n]*\|(?:[^|\n]*\|)?\[([^\]]*)\]$/gmi;
 
 const HOST_UI_HTML_MARKERS = Object.freeze([
     'api connections',
@@ -2677,7 +2679,15 @@ function applyImmersiveGalgameSystemBodyFormat(raw, rule) {
         const regex = new RegExp(cfg.pattern, cfg.flags);
         result.formattedRaw = source.replace(regex, cfg.replacement);
         result.virtualRegexChanged = result.formattedRaw !== source;
-        if (!result.virtualRegexChanged) result.formatSourceKind = 'raw';
+        if (!result.virtualRegexChanged) {
+            const fallbackFormatted = source.replace(SCENE_DIRECTIVE_FORMAT_REGEX, '[$1]：$2');
+            if (fallbackFormatted !== source) {
+                result.formattedRaw = fallbackFormatted;
+                result.virtualRegexChanged = true;
+            } else {
+                result.formatSourceKind = 'raw';
+            }
+        }
     } catch (error) {
         result.formattedRaw = source;
         result.formatSourceKind = 'body-format-error';
@@ -3256,7 +3266,7 @@ function extractSceneDirectives(text) {
 
     for (let i = 0; i < lines.length; i++) {
         const trimmed = lines[i].trim();
-        const match = trimmed.match(/^@igs-scene:([^|\n]*?)\|([^|\n]*?)\|([^|\n]*?)\|(.*)$/);
+        const match = trimmed.match(/^@(?:[a-z]{2,8}-)?scene:([^|\n]*?)\|([^|\n]*?)\|([^|\n]*?)\|(.*)$/i);
         if (match) {
             directives.push({
                 lineIndex: lineCount,
@@ -9116,11 +9126,7 @@ function createReaderButton(doc, id, title, html) {
         removeImageLoadingSpinner(bg);
     } else if (bg) {
         bg.style.backgroundImage = '';
-        if (snapshot.content.imageExpectedCount > 0 && snapshot.content.imageBoundCount < snapshot.content.imageExpectedCount) {
-            ensureImageLoadingSpinner(bg);
-        } else {
-            removeImageLoadingSpinner(bg);
-        }
+        removeImageLoadingSpinner(bg);
     }
     if (bgBlur && snapshot.content.backgroundImage) {
         bgBlur.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
