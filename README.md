@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.7.1`：修复场景模式下角色名未展示、预设主题值未正确显示。
+- 当前项目版本 `v0.7.2`：修复角色名从 scene directive 解析、speaker 前缀剥离顺序。
 - `v0.6.1` 修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
 - `v0.6.0` 图片绑定精确化（移除激进兜底、chatu8 按 DOM 顺序绑定 slot）、混合模式生图与场景素材分区。
 - `v0.5.4` 修复立绘保存后缩回、移除拖拽限制。
@@ -132,6 +132,12 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.7.2 - 2026-06-16
+
+- 修复角色名未从 `@vn-scene` directive 提取：`resolvedSpeaker` 现在从 `resolveSceneStateAtIndex().character` 获取，不再依赖外部 payload 的 `scene.speaker` 字段。
+- 修复 `displayText` 计算顺序错误导致 `ReferenceError`：将 `displayText` 构建移至 scene directive 解析之后。
+- 设置面板中非自定义预设时，字段值现在反映所选预设的实际配置。
 
 ### v0.7.1 - 2026-06-16
 

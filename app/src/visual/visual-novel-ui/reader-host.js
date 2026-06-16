@@ -1179,11 +1179,6 @@ export function createVisualNovelReaderHost(options = {}) {
         const displayImageState = applyImageCountOverride(imageState, readerSettings.imageCountOverride);
         const currentText = segments[normalizedIndex] || text;
         const sceneAssetsEnabled = readerSettings._sceneAssets && readerSettings._sceneAssets.enabled;
-        const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
-            ? `${scene.speaker}: ${currentText}`
-            : (sceneAssetsEnabled && scene.speaker && currentText)
-                ? stripSpeakerPrefix(currentText, scene.speaker)
-                : currentText;
         const backgroundImage = firstNonEmptyString(
             displayImageState.displayUrl,
             displayImageState.currentUrl,
@@ -1197,6 +1192,7 @@ export function createVisualNovelReaderHost(options = {}) {
             : Array.isArray(payload.sceneDirectives) ? payload.sceneDirectives : [];
         let finalBackgroundImage = backgroundImage;
         let spriteImage = null;
+        let resolvedSpeaker = scene.speaker || '';
         const extractedSegmentImageSlots = Array.isArray(extracted.segmentImageSlots) ? extracted.segmentImageSlots : [];
         const rawSegmentSlotValue = extractedSegmentImageSlots[normalizedIndex];
         const segmentHasBoundSlot = rawSegmentSlotValue != null
@@ -1216,11 +1212,17 @@ export function createVisualNovelReaderHost(options = {}) {
                 const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
                 finalBackgroundImage = assetUrls.backgroundUrl || '';
                 spriteImage = assetUrls.spriteUrl || null;
+                if (sceneState.character) resolvedSpeaker = sceneState.character;
             } else {
                 finalBackgroundImage = '';
                 spriteImage = null;
             }
         }
+        const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
+            ? `${scene.speaker}: ${currentText}`
+            : (sceneAssetsEnabled && resolvedSpeaker && currentText)
+                ? stripSpeakerPrefix(currentText, resolvedSpeaker)
+                : currentText;
         const overlayClasses = ['vn-mode-' + mode];
         if (mode === 'pc' || mode === 'mobile') overlayClasses.push('vn-floating');
         if (mode === 'mobile') overlayClasses.push('vn-floating-mobile');
@@ -1255,7 +1257,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 },
             },
             content: {
-                speaker: scene.speaker || '',
+                speaker: resolvedSpeaker,
                 text: currentText,
                 fullText: text,
                 displayText,
