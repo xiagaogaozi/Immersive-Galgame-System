@@ -122,6 +122,9 @@ const SCENE_TAB_TEMPLATE = `
       {{nameAlignField}}
       <div class="{{themeAdvancedClass}}">
         {{dividerField}}
+        {{nameFontField}}
+        {{textFontField}}
+        {{thoughtFontField}}
         {{nameColorField}}
         {{textColorField}}
         {{thoughtColorField}}

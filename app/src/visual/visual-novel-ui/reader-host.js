@@ -49,8 +49,8 @@ const VN_THEME_PRESETS = Object.freeze({
         thoughtFont: 'inherit',
         nameColor: '#ffeeb8',
         textColor: '#f4f4f6',
-        thoughtColor: 'rgba(200,200,220,.72)',
-        dividerColor: 'rgba(255,238,184,.4)',
+        thoughtColor: '#c8c8dc',
+        dividerColor: '#ffeeb8',
     }),
     honkai: Object.freeze({
         nameAlign: 'center',
@@ -60,8 +60,8 @@ const VN_THEME_PRESETS = Object.freeze({
         thoughtFont: 'inherit',
         nameColor: '#c8e0ff',
         textColor: '#e8ecf4',
-        thoughtColor: 'rgba(160,190,255,.68)',
-        dividerColor: 'rgba(200,224,255,.35)',
+        thoughtColor: '#a0beff',
+        dividerColor: '#c8e0ff',
     }),
     minimal: Object.freeze({
         nameAlign: 'left',
@@ -69,10 +69,10 @@ const VN_THEME_PRESETS = Object.freeze({
         nameFont: 'inherit',
         textFont: 'inherit',
         thoughtFont: 'inherit',
-        nameColor: 'rgba(255,255,255,.7)',
+        nameColor: '#b3b3b3',
         textColor: '#f4f4f6',
-        thoughtColor: 'rgba(255,255,255,.5)',
-        dividerColor: 'transparent',
+        thoughtColor: '#808080',
+        dividerColor: '#404040',
     }),
 });
 
@@ -1419,10 +1419,13 @@ export function createVisualNovelReaderHost(options = {}) {
                 themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'minimal', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
                 nameAlignField: field('bridge.vnTheme.nameAlign', '角色名对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
                 dividerField: field('bridge.vnTheme.dividerSymbol', '分隔线样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
-                nameColorField: field('bridge.vnTheme.nameColor', '角色名颜色', textInput('bridge.vnTheme.nameColor', displayTheme.nameColor || '#ffeeb8', '#ffeeb8', 'text', disabled || !themeCustom)),
-                textColorField: field('bridge.vnTheme.textColor', '台词颜色', textInput('bridge.vnTheme.textColor', displayTheme.textColor || '#f4f4f6', '#f4f4f6', 'text', disabled || !themeCustom)),
-                thoughtColorField: field('bridge.vnTheme.thoughtColor', '心里话颜色', textInput('bridge.vnTheme.thoughtColor', displayTheme.thoughtColor || 'rgba(200,200,220,.72)', 'rgba(200,200,220,.72)', 'text', disabled || !themeCustom)),
-                dividerColorField: field('bridge.vnTheme.dividerColor', '分隔线颜色', textInput('bridge.vnTheme.dividerColor', displayTheme.dividerColor || 'rgba(255,238,184,.4)', 'rgba(255,238,184,.4)', 'text', disabled || !themeCustom)),
+                nameFontField: field('bridge.vnTheme.nameFont', '角色名字体', selectInput('bridge.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                textFontField: field('bridge.vnTheme.textFont', '台词字体', selectInput('bridge.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                thoughtFontField: field('bridge.vnTheme.thoughtFont', '心里话字体', selectInput('bridge.vnTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                nameColorField: field('bridge.vnTheme.nameColor', '角色名颜色', colorInput('bridge.vnTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), disabled || !themeCustom)),
+                textColorField: field('bridge.vnTheme.textColor', '台词颜色', colorInput('bridge.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
+                thoughtColorField: field('bridge.vnTheme.thoughtColor', '心里话颜色', colorInput('bridge.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
+                dividerColorField: field('bridge.vnTheme.dividerColor', '分隔线颜色', colorInput('bridge.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
                 themeAdvancedClass: themeCustom ? '' : 'vn-settings-api-group is-disabled',
             });
         }
@@ -1912,7 +1915,7 @@ export function createVisualNovelReaderHost(options = {}) {
             const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
             if (sceneAssetsEnabled && snapshot.content.speaker) {
                 speakerEl.textContent = snapshot.content.speaker;
-                speakerEl.style.display = '';
+                speakerEl.style.display = 'block';
                 speakerEl.style.textAlign = theme.nameAlign;
                 speakerEl.style.fontFamily = theme.nameFont && theme.nameFont !== 'inherit' ? theme.nameFont : '';
                 speakerEl.style.color = theme.nameColor || '';
@@ -1927,13 +1930,13 @@ export function createVisualNovelReaderHost(options = {}) {
             if (sceneAssetsEnabled && snapshot.content.speaker && theme.dividerSymbol !== 'none') {
                 if (theme.dividerSymbol === 'gradient') {
                     dividerEl.textContent = '';
-                    dividerEl.style.display = '';
+                    dividerEl.style.display = 'block';
                     dividerEl.style.height = '1px';
                     dividerEl.style.background = `linear-gradient(90deg, transparent, ${theme.dividerColor || 'rgba(255,255,255,.15)'}, transparent)`;
                     dividerEl.style.color = '';
                 } else {
                     dividerEl.textContent = theme.dividerSymbol;
-                    dividerEl.style.display = '';
+                    dividerEl.style.display = 'block';
                     dividerEl.style.height = '';
                     dividerEl.style.background = '';
                     dividerEl.style.color = theme.dividerColor || '';
@@ -2883,6 +2886,23 @@ function disabledAttr(disabled) {
 
 function textInput(path, value, placeholder, type = 'text', disabled = false) {
     return `<input data-path="${esc(path)}" type="${esc(type)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}>`;
+}
+
+function colorInput(path, value, disabled = false) {
+    return `<input data-path="${esc(path)}" type="color" value="${esc(value || '#ffffff')}"${disabledAttr(disabled)}>`;
+}
+
+function toHex(color) {
+    if (!color) return '#ffffff';
+    if (color.startsWith('#') && (color.length === 7 || color.length === 4)) return color;
+    const match = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (match) {
+        const r = Math.min(255, Number(match[1]));
+        const g = Math.min(255, Number(match[2]));
+        const b = Math.min(255, Number(match[3]));
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+    return '#ffffff';
 }
 
 function textareaInput(path, value, placeholder = '') {
