@@ -163,26 +163,56 @@ function buildSentenceImageMappings(raw, totalImageCount) {
 }
 
 function buildSceneAssetsMapping(raw, segments, totalImageCount) {
-    const sentenceMappings = buildSentenceImageMappings(raw, totalImageCount);
-    const result = new Array(segments.length).fill(null);
-    if (!sentenceMappings.length) {
-        if (totalImageCount > 0 && segments.length > 0) {
-            result[segments.length - 1] = 0;
-        }
-        return result;
+    const source = String(raw || '');
+    if (!source.trim() || !segments.length || totalImageCount <= 0) {
+        return new Array(segments.length).fill(null);
     }
-    for (let i = 0; i < sentenceMappings.length; i++) {
-        const mapping = sentenceMappings[i];
-        if (mapping.imgIdx == null) continue;
+
+    let cleaned = source.replace(/<\/content>\s*<content[^>]*>/gi, '\n\n');
+    cleaned = cleaned.replace(/<image\b[^>]*>[\s\S]*?<\/image>/gi, ' \x00IMG\x00 ');
+    cleaned = cleaned.replace(/<imgthink[^>]*>[\s\S]*?<\/imgthink>/gi, '');
+    cleaned = cleaned.replace(/image###[\s\S]*?###/gi, '');
+    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '');
+    cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, '');
+    cleaned = cleaned.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    cleaned = cleaned.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '');
+    cleaned = cleaned.replace(/【[^】\n]{0,100}】/g, '');
+    cleaned = cleaned.replace(/<[^>]+>/g, '');
+    cleaned = cleaned.replace(/\r/g, '');
+
+    const sentences = [];
+    let imageCount = 0;
+    const lines = cleaned.split(/\n+/);
+    const imageAfterSentence = new Set();
+    for (const line of lines) {
+        const parts = line.split('\x00IMG\x00');
+        for (let index = 0; index < parts.length; index += 1) {
+            const text = parts[index].replace(/\s+/g, ' ').trim();
+            if (text) sentences.push({ text, imgIdx: imageCount });
+            if (index < parts.length - 1) {
+                if (sentences.length > 0) {
+                    imageAfterSentence.add(sentences.length - 1);
+                }
+                imageCount += 1;
+            }
+        }
+    }
+
+    if (!sentences.length || !imageCount) {
+        return new Array(segments.length).fill(null);
+    }
+
+    const result = new Array(segments.length).fill(null);
+    for (const sentenceIdx of imageAfterSentence) {
         const segIdx = Math.min(
             segments.length - 1,
-            sentenceMappings.length === segments.length
-                ? i
-                : Math.floor(i * segments.length / Math.max(sentenceMappings.length, 1)),
+            sentences.length === segments.length
+                ? sentenceIdx
+                : Math.floor(sentenceIdx * segments.length / Math.max(sentences.length, 1)),
         );
         const targetIdx = Math.max(0, segIdx);
         if (result[targetIdx] === null) {
-            result[targetIdx] = clampImageIndex(mapping.imgIdx, totalImageCount);
+            result[targetIdx] = clampImageIndex(sentences[sentenceIdx].imgIdx, totalImageCount);
         }
     }
     return result;

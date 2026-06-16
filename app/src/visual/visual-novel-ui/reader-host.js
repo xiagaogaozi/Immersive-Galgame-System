@@ -1151,11 +1151,15 @@ export function createVisualNovelReaderHost(options = {}) {
             : Array.isArray(payload.sceneDirectives) ? payload.sceneDirectives : [];
         let finalBackgroundImage = backgroundImage;
         let spriteImage = null;
-        const segmentSlotIndex = resolveSegmentImageIndex(payload, normalizedIndex);
-        const slotBoundUrl = segmentSlotIndex != null
+        const segmentImageSlots = Array.isArray(payload.segmentImageSlots) ? payload.segmentImageSlots : [];
+        const rawSegmentSlotValue = segmentImageSlots[normalizedIndex];
+        const segmentHasBoundSlot = rawSegmentSlotValue != null
+            && Number.isFinite(Number(rawSegmentSlotValue))
+            && Number(rawSegmentSlotValue) >= 0;
+        const slotBoundUrl = segmentHasBoundSlot
             && Array.isArray(displayImageState.slots)
-            && displayImageState.slots[segmentSlotIndex]
-            ? String(displayImageState.slots[segmentSlotIndex].url || '').trim()
+            && displayImageState.slots[Math.floor(Number(rawSegmentSlotValue))]
+            ? String(displayImageState.slots[Math.floor(Number(rawSegmentSlotValue))].url || '').trim()
             : '';
         if (slotBoundUrl) {
             finalBackgroundImage = slotBoundUrl;

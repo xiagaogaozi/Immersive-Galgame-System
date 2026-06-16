@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-vn-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-vn-version'), '0.6.0');
+    assert.equal(entry.getAttribute('data-vn-version'), '0.6.1');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /Visual Novel/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
