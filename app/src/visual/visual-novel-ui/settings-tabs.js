@@ -116,19 +116,27 @@ const SCENE_TAB_TEMPLATE = `
     <div class="vn-source-filter vn-settings-full">
       <div>
         <div class="vn-source-filter-title">对话主题</div>
-        <div class="vn-source-filter-note">影响角色名、分隔线和心声样式。选择预设或自定义各项。</div>
+        <div class="vn-source-filter-note">选择预设或切换自定义逐项调整。</div>
       </div>
       {{themePresetField}}
-      {{nameAlignField}}
       <div class="{{themeAdvancedClass}}">
-        {{dividerField}}
-        {{nameFontField}}
-        {{textFontField}}
-        {{thoughtFontField}}
-        {{nameColorField}}
-        {{textColorField}}
-        {{thoughtColorField}}
-        {{dividerColorField}}
+        <div class="vn-source-filter">
+          <div class="vn-source-filter-title">角色名</div>
+          <div class="vn-settings-row">{{nameFontField}}{{nameColorField}}</div>
+          {{nameAlignField}}
+        </div>
+        <div class="vn-source-filter">
+          <div class="vn-source-filter-title">台词</div>
+          <div class="vn-settings-row">{{textFontField}}{{textColorField}}</div>
+        </div>
+        <div class="vn-source-filter">
+          <div class="vn-source-filter-title">心里话</div>
+          <div class="vn-settings-row">{{thoughtFontField}}{{thoughtColorField}}</div>
+        </div>
+        <div class="vn-source-filter">
+          <div class="vn-source-filter-title">分隔线</div>
+          <div class="vn-settings-row">{{dividerField}}{{dividerColorField}}</div>
+        </div>
       </div>
     </div>
   </div>

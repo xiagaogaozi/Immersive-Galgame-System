@@ -1417,15 +1417,15 @@ export function createVisualNovelReaderHost(options = {}) {
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
                 themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
-                nameAlignField: field('bridge.vnTheme.nameAlign', '角色名对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
-                dividerField: field('bridge.vnTheme.dividerSymbol', '分隔线样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
-                nameFontField: field('bridge.vnTheme.nameFont', '角色名字体', selectInput('bridge.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                textFontField: field('bridge.vnTheme.textFont', '台词字体', selectInput('bridge.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                thoughtFontField: field('bridge.vnTheme.thoughtFont', '心里话字体', selectInput('bridge.vnTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                nameColorField: field('bridge.vnTheme.nameColor', '角色名颜色', colorInput('bridge.vnTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), disabled || !themeCustom)),
-                textColorField: field('bridge.vnTheme.textColor', '台词颜色', colorInput('bridge.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
-                thoughtColorField: field('bridge.vnTheme.thoughtColor', '心里话颜色', colorInput('bridge.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
-                dividerColorField: field('bridge.vnTheme.dividerColor', '分隔线颜色', colorInput('bridge.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
+                nameAlignField: field('bridge.vnTheme.nameAlign', '对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
+                dividerField: field('bridge.vnTheme.dividerSymbol', '样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
+                nameFontField: field('bridge.vnTheme.nameFont', '字体', selectInput('bridge.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                textFontField: field('bridge.vnTheme.textFont', '字体', selectInput('bridge.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                thoughtFontField: field('bridge.vnTheme.thoughtFont', '字体', selectInput('bridge.vnTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                nameColorField: field('bridge.vnTheme.nameColor', '颜色', colorInput('bridge.vnTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), disabled || !themeCustom)),
+                textColorField: field('bridge.vnTheme.textColor', '颜色', colorInput('bridge.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
+                thoughtColorField: field('bridge.vnTheme.thoughtColor', '颜色', colorInput('bridge.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
+                dividerColorField: field('bridge.vnTheme.dividerColor', '颜色', colorInput('bridge.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
                 themeAdvancedClass: themeCustom ? '' : 'vn-settings-api-group is-disabled',
             });
         }
@@ -1559,6 +1559,7 @@ export function createVisualNovelReaderHost(options = {}) {
         root.addEventListener('input', (event) => {
             const target = event.target;
             if (!target || !target.getAttribute) return;
+            if (target.type === 'color') return;
             const path = target.getAttribute('data-path');
             if (path) {
                 controller.setValue(path, target.value);
@@ -3538,7 +3539,7 @@ function resolveActiveTheme(snapshot) {
     if (presetName === 'custom') {
         return {
             nameAlign: vnTheme.nameAlign || preset.nameAlign,
-            dividerSymbol: vnTheme.dividerSymbol || preset.dividerSymbol,
+            dividerSymbol: vnTheme.dividerSymbol != null ? vnTheme.dividerSymbol : preset.dividerSymbol,
             nameFont: vnTheme.nameFont || preset.nameFont,
             textFont: vnTheme.textFont || preset.textFont,
             thoughtFont: vnTheme.thoughtFont || preset.thoughtFont,

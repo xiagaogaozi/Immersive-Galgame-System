@@ -16,6 +16,7 @@ const SETTINGS_STYLE_TEXT = `
 .vn-settings-field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:rgba(255,255,255,.58)}
 .vn-settings-field em{font-style:normal;font-size:11px;color:rgba(255,255,255,.36);line-height:1.45}
 .vn-settings-field input,.vn-settings-field select,.vn-settings-field textarea{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);border-radius:11px;padding:9px 11px;font:inherit;font-size:13px;outline:none}
+.vn-settings-field input[type="color"]{width:42px;height:36px;padding:3px;border-radius:8px;cursor:pointer}
 .vn-settings-field textarea{min-height:132px;resize:vertical;line-height:1.55;font-family:ui-monospace,Consolas,monospace}
 .vn-settings-field input:focus,.vn-settings-field select:focus,.vn-settings-field textarea:focus{border-color:rgba(92,170,255,.58);background:rgba(255,255,255,.11)}
 .vn-settings-api-group{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
