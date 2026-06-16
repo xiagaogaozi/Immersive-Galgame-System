@@ -1,4 +1,4 @@
-import { LEGACY_READER_MODES, resolveLegacyReaderMode } from '../../storage/legacy-visual-novel.js';
+import { LEGACY_READER_MODES, resolveLegacyReaderMode } from '../../storage/legacy-igs.js';
 import { buildNarrativeSegments } from '../../scene/image-slots.js';
 import { SETTINGS_TAB_DEFS } from './settings-tabs.js';
 import { TOOLBAR_ACTIONS, VN_THEME_PRESETS } from './reader-host-constants.js';
@@ -146,6 +146,6 @@ export function renderDialogueHtml(text, theme, sceneAssetsEnabled) {
         if (theme.thoughtFont && theme.thoughtFont !== 'inherit') styles.push(`font-family:${theme.thoughtFont}`);
         if (theme.thoughtColor) styles.push(`color:${theme.thoughtColor}`);
         const styleAttr = styles.length ? ` style="${styles.join(';')}"` : '';
-        return `<span class="vn-thought"${styleAttr}>${inner}</span>`;
+        return `<span class="igs-thought"${styleAttr}>${inner}</span>`;
     });
 }

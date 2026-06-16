@@ -10,7 +10,7 @@ import {
     readElementWidth,
     removeImageLoadingSpinner,
 } from './reader-dom-utils.js';
-import { computeLineHeight, normalizeOpacity, vnDebug } from './reader-value-utils.js';
+import { computeLineHeight, normalizeOpacity, igsDebug } from './reader-value-utils.js';
 import {
     renderDialogueHtml,
     resolveActiveTheme,
@@ -20,8 +20,8 @@ import { applyReaderModeRuntime } from './reader-runtime.js';
 
 export function createReaderButton(doc, id, title, html) {
     const button = doc.createElement('button');
-    button.id = `vn-btn-${id}`;
-    button.className = 'vn-icon-btn';
+    button.id = `igs-btn-${id}`;
+    button.className = 'igs-icon-btn';
     button.type = 'button';
     button.setAttribute('data-act', id);
     button.setAttribute('title', title);
@@ -32,112 +32,112 @@ export function createReaderButton(doc, id, title, html) {
 export function buildFallbackReaderOverlay(doc) {
     if (!doc || typeof doc.createElement !== 'function') return null;
     const overlay = doc.createElement('div');
-    overlay.id = 'vn-overlay';
+    overlay.id = 'igs-overlay';
 
     const bgBlur = doc.createElement('div');
-    bgBlur.id = 'vn-bg-blur';
+    bgBlur.id = 'igs-bg-blur';
     overlay.appendChild(bgBlur);
 
     const bg = doc.createElement('div');
-    bg.id = 'vn-bg';
+    bg.id = 'igs-bg';
     overlay.appendChild(bg);
 
     const sprite = doc.createElement('div');
-    sprite.id = 'vn-sprite';
+    sprite.id = 'igs-sprite';
     overlay.appendChild(sprite);
 
     const clickLayer = doc.createElement('div');
-    clickLayer.id = 'vn-click-layer';
+    clickLayer.id = 'igs-click-layer';
     overlay.appendChild(clickLayer);
 
     const dialog = doc.createElement('div');
-    dialog.id = 'vn-dialog';
-    dialog.className = 'vn-dialog';
+    dialog.id = 'igs-dialog';
+    dialog.className = 'igs-dialog';
     overlay.appendChild(dialog);
 
     const ctrlBar = doc.createElement('div');
-    ctrlBar.id = 'vn-ctrl-bar';
-    ctrlBar.className = 'vn-ctrl-bar';
+    ctrlBar.id = 'igs-ctrl-bar';
+    ctrlBar.className = 'igs-ctrl-bar';
     dialog.appendChild(ctrlBar);
 
     const barBtns = doc.createElement('div');
-    barBtns.id = 'vn-bar-btns';
+    barBtns.id = 'igs-bar-btns';
     ctrlBar.appendChild(barBtns);
     for (const button of ORIGINAL_READER_TOOLBAR_BUTTONS) {
         barBtns.appendChild(createReaderButton(doc, button.id, button.title, button.html));
     }
 
     const settings = doc.createElement('div');
-    settings.id = 'vn-settings';
+    settings.id = 'igs-settings';
     settings.setAttribute('aria-hidden', 'true');
     ctrlBar.appendChild(settings);
 
     const pinned = doc.createElement('div');
-    pinned.id = 'vn-bar-pinned';
+    pinned.id = 'igs-bar-pinned';
     ctrlBar.appendChild(pinned);
 
     ctrlBar.appendChild(createReaderButton(doc, 'toggle-bar', '收纳/展开按钮', ORIGINAL_READER_ICONS.toggleBar));
     ctrlBar.appendChild(createReaderButton(doc, 'close', '退出', ORIGINAL_READER_ICONS.close));
 
     const progress = doc.createElement('div');
-    progress.id = 'vn-progress';
-    progress.className = 'vn-progress';
+    progress.id = 'igs-progress';
+    progress.className = 'igs-progress';
     dialog.appendChild(progress);
 
     const statusLine = doc.createElement('div');
-    statusLine.id = 'vn-status-line';
-    statusLine.className = 'vn-status-line';
+    statusLine.id = 'igs-status-line';
+    statusLine.className = 'igs-status-line';
     dialog.appendChild(statusLine);
 
     const speakerEl = doc.createElement('div');
-    speakerEl.id = 'vn-speaker';
-    speakerEl.className = 'vn-speaker';
+    speakerEl.id = 'igs-speaker';
+    speakerEl.className = 'igs-speaker';
     dialog.appendChild(speakerEl);
 
     const dividerEl = doc.createElement('div');
-    dividerEl.id = 'vn-divider';
-    dividerEl.className = 'vn-divider';
+    dividerEl.id = 'igs-divider';
+    dividerEl.className = 'igs-divider';
     dialog.appendChild(dividerEl);
 
     const text = doc.createElement('div');
-    text.id = 'vn-text';
-    text.className = 'vn-text';
+    text.id = 'igs-text';
+    text.className = 'igs-text';
     dialog.appendChild(text);
 
     const controls = doc.createElement('div');
-    controls.className = 'vn-controls';
+    controls.className = 'igs-controls';
     dialog.appendChild(controls);
 
     const sendStatus = doc.createElement('div');
-    sendStatus.id = 'vn-send-status';
+    sendStatus.id = 'igs-send-status';
     sendStatus.setAttribute('aria-live', 'polite');
     controls.appendChild(sendStatus);
 
     const spinner = doc.createElement('span');
-    spinner.className = 'vn-spinner';
+    spinner.className = 'igs-spinner';
     sendStatus.appendChild(spinner);
 
     const sendStatusText = doc.createElement('span');
-    sendStatusText.id = 'vn-send-status-text';
+    sendStatusText.id = 'igs-send-status-text';
     sendStatusText.textContent = '已发送，等待 AI 回复…';
     sendStatus.appendChild(sendStatusText);
 
     const input = doc.createElement('input');
-    input.id = 'vn-input';
-    input.className = 'vn-input';
+    input.id = 'igs-input';
+    input.className = 'igs-input';
     input.type = 'text';
     input.placeholder = '输入内容后按 Enter 发送';
     controls.appendChild(input);
 
     const sendButton = doc.createElement('button');
-    sendButton.id = 'vn-send-btn';
-    sendButton.className = 'vn-send-btn';
+    sendButton.id = 'igs-send-btn';
+    sendButton.className = 'igs-send-btn';
     sendButton.type = 'button';
     sendButton.textContent = '发送';
     controls.appendChild(sendButton);
 
     const toast = doc.createElement('div');
-    toast.id = 'vn-toast';
+    toast.id = 'igs-toast';
     toast.setAttribute('aria-live', 'polite');
     dialog.appendChild(toast);
 
@@ -147,32 +147,32 @@ export function buildFallbackReaderOverlay(doc) {
 export function buildFallbackSettingsOverlay(doc, snapshot, ctx = {}) {
     if (!doc || typeof doc.createElement !== 'function') return null;
     const overlay = doc.createElement('div');
-    overlay.id = 'vn-unified-settings';
-    overlay.setAttribute('data-vn-vn-ui', 'true');
+    overlay.id = 'igs-unified-settings';
+    overlay.setAttribute('data-igs-igs-ui', 'true');
 
     const shell = doc.createElement('div');
-    shell.className = 'vn-settings-shell';
+    shell.className = 'igs-settings-shell';
     shell.setAttribute('role', 'dialog');
     shell.setAttribute('aria-modal', 'true');
     shell.setAttribute('aria-label', '设置');
     overlay.appendChild(shell);
 
     const head = doc.createElement('div');
-    head.className = 'vn-settings-head';
+    head.className = 'igs-settings-head';
     shell.appendChild(head);
 
     const title = doc.createElement('div');
-    title.className = 'vn-settings-title';
+    title.className = 'igs-settings-title';
     title.textContent = '设置';
     head.appendChild(title);
 
     const badge = doc.createElement('div');
-    badge.className = 'vn-settings-badge';
+    badge.className = 'igs-settings-badge';
     badge.textContent = ctx.version || '0.5.4';
     head.appendChild(badge);
 
     const close = doc.createElement('button');
-    close.className = 'vn-settings-close';
+    close.className = 'igs-settings-close';
     close.type = 'button';
     close.setAttribute('data-action', 'close');
     close.setAttribute('aria-label', '关闭');
@@ -180,11 +180,11 @@ export function buildFallbackSettingsOverlay(doc, snapshot, ctx = {}) {
     head.appendChild(close);
 
     const tabs = doc.createElement('div');
-    tabs.className = 'vn-settings-tabs';
+    tabs.className = 'igs-settings-tabs';
     shell.appendChild(tabs);
     for (const tab of snapshot.tabs || []) {
         const button = doc.createElement('button');
-        button.className = `vn-settings-tab${tab.active ? ' is-active' : ''}`;
+        button.className = `igs-settings-tab${tab.active ? ' is-active' : ''}`;
         button.type = 'button';
         button.setAttribute('data-tab', tab.id);
         button.textContent = tab.label;
@@ -192,7 +192,7 @@ export function buildFallbackSettingsOverlay(doc, snapshot, ctx = {}) {
     }
 
     const body = doc.createElement('div');
-    body.className = 'vn-settings-body';
+    body.className = 'igs-settings-body';
     if (typeof ctx.renderSettingsBody === 'function') {
         body.innerHTML = ctx.renderSettingsBody(snapshot.tab, snapshot.draft, {
             imageResult: snapshot.resultText && snapshot.resultText.image,
@@ -206,8 +206,8 @@ export function buildFallbackSettingsOverlay(doc, snapshot, ctx = {}) {
 
 export function applyToolbarState(root, current) {
     if (!root || !current) return;
-    const collapsible = root.querySelector('#vn-bar-btns');
-    const pinned = root.querySelector('#vn-bar-pinned');
+    const collapsible = root.querySelector('#igs-bar-btns');
+    const pinned = root.querySelector('#igs-bar-pinned');
     const readerSettings = current.snapshot && current.snapshot.readerSettings || {};
     const pins = new Set(Array.isArray(readerSettings.pinnedBtns) ? readerSettings.pinnedBtns : []);
     const hiddenSet = new Set(Array.isArray(readerSettings.hiddenBtns) ? readerSettings.hiddenBtns : []);
@@ -216,7 +216,7 @@ export function applyToolbarState(root, current) {
         : TOOLBAR_ACTIONS.map(([id]) => id);
 
     for (const id of order) {
-        const button = root.querySelector(`#vn-btn-${id}`);
+        const button = root.querySelector(`#igs-btn-${id}`);
         if (!button) continue;
         if (hiddenSet.has(id)) {
             button.style.display = 'none';
@@ -243,12 +243,12 @@ export function applyToolbarState(root, current) {
 }
 
 export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
-    const dialog = refs.dialog || root.querySelector('#vn-dialog');
-    const textEl = refs.textEl || root.querySelector('#vn-text');
-    const toolbar = refs.toolbar || root.querySelector('#vn-ctrl-bar');
-    const controls = root.querySelector('.vn-controls');
-    const bg = root.querySelector('#vn-bg');
-    const bgBlur = root.querySelector('#vn-bg-blur');
+    const dialog = refs.dialog || root.querySelector('#igs-dialog');
+    const textEl = refs.textEl || root.querySelector('#igs-text');
+    const toolbar = refs.toolbar || root.querySelector('#igs-ctrl-bar');
+    const controls = root.querySelector('.igs-controls');
+    const bg = root.querySelector('#igs-bg');
+    const bgBlur = root.querySelector('#igs-bg-blur');
     const readerSettings = snapshot.readerSettings || {};
     const inlineMode = snapshot.mode === 'pc' || snapshot.mode === 'mobile';
     const win = getOwnerWindow(root);
@@ -302,17 +302,17 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
 
 export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     root.className = snapshot.classes.join(' ');
-    root.setAttribute('data-vn-vn-ui', 'true');
+    root.setAttribute('data-igs-igs-ui', 'true');
 
-    const bg = root.querySelector('#vn-bg');
-    const bgBlur = root.querySelector('#vn-bg-blur');
-    const textEl = root.querySelector('#vn-text');
-    const input = root.querySelector('#vn-input');
-    const send = root.querySelector('#vn-send-btn');
-    const dialog = root.querySelector('#vn-dialog');
-    const toolbar = root.querySelector('#vn-ctrl-bar');
-    const clickLayer = root.querySelector('#vn-click-layer');
-    const toast = root.querySelector('#vn-toast');
+    const bg = root.querySelector('#igs-bg');
+    const bgBlur = root.querySelector('#igs-bg-blur');
+    const textEl = root.querySelector('#igs-text');
+    const input = root.querySelector('#igs-input');
+    const send = root.querySelector('#igs-send-btn');
+    const dialog = root.querySelector('#igs-dialog');
+    const toolbar = root.querySelector('#igs-ctrl-bar');
+    const clickLayer = root.querySelector('#igs-click-layer');
+    const toast = root.querySelector('#igs-toast');
 
     if (bg && snapshot.content.backgroundImage) {
         bg.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
@@ -332,7 +332,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         bgBlur.style.backgroundImage = '';
         bgBlur.style.opacity = '0';
     }
-    const spriteEl = root.querySelector('#vn-sprite');
+    const spriteEl = root.querySelector('#igs-sprite');
     if (spriteEl && snapshot.content.spriteImage) {
         spriteEl.style.backgroundImage = `url("${snapshot.content.spriteImage.replace(/"/g, '&quot;')}")`;
         spriteEl.style.display = 'block';
@@ -341,7 +341,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             const layout = resolveSpriteLayout(snapshot.readerSettings.spriteLayouts, snapshot.mode, snapshot.content.speaker);
             spriteEl.style.backgroundSize = `${layout.scale}%`;
             spriteEl.style.backgroundPosition = `${layout.posX}% ${layout.posY}%`;
-            vnDebug('[DEBUG-sprite] apply-layout', { mode: snapshot.mode, speaker: snapshot.content.speaker, index: snapshot.content.currentIndex, layoutKey: snapshot.content.speaker ? `${snapshot.mode}::${snapshot.content.speaker}` : snapshot.mode, layout: { ...layout } });
+            igsDebug('[DEBUG-sprite] apply-layout', { mode: snapshot.mode, speaker: snapshot.content.speaker, index: snapshot.content.currentIndex, layoutKey: snapshot.content.speaker ? `${snapshot.mode}::${snapshot.content.speaker}` : snapshot.mode, layout: { ...layout } });
         }
     } else if (spriteEl) {
         spriteEl.style.backgroundImage = '';
@@ -364,7 +364,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             textEl.style.color = '';
         }
     }
-    const speakerEl = root.querySelector('#vn-speaker');
+    const speakerEl = root.querySelector('#igs-speaker');
     if (speakerEl) {
         const theme = resolveActiveTheme(snapshot);
         const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
@@ -378,7 +378,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             speakerEl.style.display = 'none';
         }
     }
-    const dividerEl = root.querySelector('#vn-divider');
+    const dividerEl = root.querySelector('#igs-divider');
     if (dividerEl) {
         const theme = resolveActiveTheme(snapshot);
         const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
@@ -400,7 +400,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             dividerEl.style.display = 'none';
         }
     }
-    const statusLine = root.querySelector('#vn-status-line');
+    const statusLine = root.querySelector('#igs-status-line');
     if (statusLine) {
         if (snapshot.readerSettings.showStatusLine) {
             statusLine.textContent = snapshot.content.progress;
@@ -444,9 +444,9 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         dialog.addEventListener('click', (event) => {
             if (current.hidden) return;
             if (event.target && event.target.closest && (
-                event.target.closest('.vn-controls')
-                || event.target.closest('#vn-ctrl-bar')
-                || event.target.closest('#vn-settings')
+                event.target.closest('.igs-controls')
+                || event.target.closest('#igs-ctrl-bar')
+                || event.target.closest('#igs-settings')
             )) {
                 return;
             }
@@ -462,7 +462,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         });
     }
     if (dialog) {
-        dialog.classList.toggle('vn-hidden', current.hidden);
+        dialog.classList.toggle('igs-hidden', current.hidden);
         if (snapshot.readerSettings.glassOpacity != null) {
             dialog.style.background = `rgba(20,20,22,${snapshot.readerSettings.glassOpacity})`;
         }

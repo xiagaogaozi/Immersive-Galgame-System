@@ -1,13 +1,13 @@
 {
   "requiredSelectors": [
-    "#vn-unified-settings",
-    ".vn-settings-shell",
-    ".vn-settings-head",
-    ".vn-settings-tabs",
-    ".vn-settings-body",
-    ".vn-segmented",
-    ".vn-source-filter",
-    ".vn-settings-preview"
+    "#igs-unified-settings",
+    ".igs-settings-shell",
+    ".igs-settings-head",
+    ".igs-settings-tabs",
+    ".igs-settings-body",
+    ".igs-segmented",
+    ".igs-source-filter",
+    ".igs-settings-preview"
   ],
   "tabs": [
     {
@@ -77,11 +77,11 @@
     }
   ],
   "styleChecks": {
-    "viewportLeft": "left:var(--vn-settings-vleft)",
-    "viewportTop": "top:var(--vn-settings-vtop)",
-    "viewportWidth": "width:var(--vn-settings-vw)",
-    "viewportHeight": "height:var(--vn-settings-vh)",
-    "shellWidth": "width:var(--vn-settings-width)",
+    "viewportLeft": "left:var(--igs-settings-vleft)",
+    "viewportTop": "top:var(--igs-settings-vtop)",
+    "viewportWidth": "width:var(--igs-settings-vw)",
+    "viewportHeight": "height:var(--igs-settings-vh)",
+    "shellWidth": "width:var(--igs-settings-width)",
     "headerHeight": "height:54px",
     "segmentedHeight": "height:40px",
     "switchHeight": "height:38px",

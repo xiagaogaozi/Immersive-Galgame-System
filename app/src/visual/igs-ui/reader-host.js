@@ -1,5 +1,5 @@
 import {
-    buildVisualNovelTextPayload,
+    buildIgsTextPayload,
     getMessagePrimaryText,
     normalizeSourceFilter,
     normalizeVirtualRegex,
@@ -103,7 +103,7 @@ import {
     buildFallbackSettingsOverlay,
 } from './reader-dom-render.js';
 
-export function createVisualNovelReaderHost(options = {}) {
+export function createIgsReaderHost(options = {}) {
     const state = {
         activeReader: null,
         activeSettings: null,
@@ -639,8 +639,8 @@ export function createVisualNovelReaderHost(options = {}) {
             writeToast('图片收集不可用。');
             return { ok: false, reason: 'collect-not-available' };
         }
-        const overlay = current.dom && current.dom.root || (options.global || globalThis).document && (options.global || globalThis).document.querySelector('#vn-overlay');
-        const bgContainer = overlay && overlay.querySelector('#vn-bg');
+        const overlay = current.dom && current.dom.root || (options.global || globalThis).document && (options.global || globalThis).document.querySelector('#igs-overlay');
+        const bgContainer = overlay && overlay.querySelector('#igs-bg');
         ensureImageLoadingSpinner(bgContainer);
 
         const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
@@ -731,7 +731,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const scene = cloneData(payload.scene || (payload.render && payload.render.scene) || {});
         const render = payload.render || {};
         const stage = render.stage || {};
-        const extracted = buildVisualNovelTextPayload(payload.message || payload.raw || '', {
+        const extracted = buildIgsTextPayload(payload.message || payload.raw || '', {
             sourceFilter: payload.sourceFilter,
             virtualRegex: payload.virtualRegex,
             visibleText: payload.visibleText,
@@ -802,9 +802,9 @@ export function createVisualNovelReaderHost(options = {}) {
             : (sceneAssetsEnabled && resolvedSpeaker && currentText)
                 ? stripSpeakerPrefix(currentText, resolvedSpeaker)
                 : currentText;
-        const overlayClasses = ['vn-mode-' + mode];
-        if (mode === 'pc' || mode === 'mobile') overlayClasses.push('vn-floating');
-        if (mode === 'mobile') overlayClasses.push('vn-floating-mobile');
+        const overlayClasses = ['igs-mode-' + mode];
+        if (mode === 'pc' || mode === 'mobile') overlayClasses.push('igs-floating');
+        if (mode === 'mobile') overlayClasses.push('igs-floating-mobile');
 
         return {
             mode,
@@ -812,26 +812,26 @@ export function createVisualNovelReaderHost(options = {}) {
             selectors: Array.from(ORIGINAL_READER_REQUIRED_SELECTORS),
             classes: overlayClasses,
             styles: {
-                '#vn-overlay': {
+                '#igs-overlay': {
                     zIndex: ORIGINAL_READER_STYLE_CONTRACT.overlayZIndex,
                     background: '#000',
                 },
-                '.vn-dialog': {
+                '.igs-dialog': {
                     width: ORIGINAL_READER_STYLE_CONTRACT.dialogWidth,
                     borderRadius: '22px',
                     padding: '22px 26px 18px',
                 },
-                '.vn-input': {
+                '.igs-input': {
                     height: ORIGINAL_READER_STYLE_CONTRACT.inputHeight,
                 },
-                '.vn-send-btn': {
+                '.igs-send-btn': {
                     minWidth: ORIGINAL_READER_STYLE_CONTRACT.sendButtonMinWidth,
                 },
-                '.vn-icon-btn': {
+                '.igs-icon-btn': {
                     width: ORIGINAL_READER_STYLE_CONTRACT.toolbarButtonSize,
                     height: ORIGINAL_READER_STYLE_CONTRACT.toolbarButtonSize,
                 },
-                '#vn-sprite': {
+                '#igs-sprite': {
                     display: spriteImage ? 'block' : 'none',
                 },
             },
@@ -867,7 +867,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 enterSends: true,
                 shiftEnterSends: false,
             },
-            html: `<div id="vn-overlay" class="${overlayClasses.join(' ')}" data-vn-vn-ui="true">${getOriginalReaderHtml()}</div>`,
+            html: `<div id="igs-overlay" class="${overlayClasses.join(' ')}" data-igs-igs-ui="true">${getOriginalReaderHtml()}</div>`,
             source: getOriginalReaderSource(options.version || '0.5.4'),
         };
     }
@@ -877,7 +877,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const tab = normalizeSettingsTab(settingsState.tab);
         const body = renderSettingsBody(tab, draft, settingsState.asyncState);
         const tabsHtml = SETTINGS_TAB_DEFS.map(([id, label]) => {
-            return `<button type="button" class="vn-settings-tab${tab === id ? ' is-active' : ''}" data-tab="${id}">${label}</button>`;
+            return `<button type="button" class="igs-settings-tab${tab === id ? ' is-active' : ''}" data-tab="${id}">${label}</button>`;
         }).join('');
 
         return {
@@ -892,7 +892,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 requiredActions: Array.from((SETTINGS_PANEL_TAB_CONTRACT[id] || {}).requiredActions || []),
             })),
             activeContract: SETTINGS_PANEL_TAB_CONTRACT[tab],
-            html: `<div id="vn-unified-settings" data-vn-vn-ui="true">${renderTemplate(getSettingsShellTemplate(), {
+            html: `<div id="igs-unified-settings" data-igs-igs-ui="true">${renderTemplate(getSettingsShellTemplate(), {
                 version: esc(options.version || '0.5.4'),
                 tabs: tabsHtml,
                 body,
@@ -914,7 +914,7 @@ export function createVisualNovelReaderHost(options = {}) {
 
         if (tab === 'basic') {
             return renderTemplate(getSettingsTabTemplate('basic'), {
-                openModeField: `<div class="vn-settings-full vn-segmented-field">${field(
+                openModeField: `<div class="igs-settings-full igs-segmented-field">${field(
                     'bridge.openMode',
                     '切换模式',
                     segmentedInput(
@@ -949,7 +949,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 regexPatternField: field('bridge.virtualRegex.pattern', '查找表达式', textareaInput('bridge.virtualRegex.pattern', bridge.virtualRegex.pattern, '^@bubble:([^|\\n]+)\\|[^|\\n]*\\|\\[?([^\\n]*?)\\]?$')),
                 regexFlagsField: field('bridge.virtualRegex.flags', 'flags', textInput('bridge.virtualRegex.flags', bridge.virtualRegex.flags, 'i'), '例如 i、g、s、m；留空表示无 flags。'),
                 regexReplacementField: field('bridge.virtualRegex.replacement', '替换文本', textareaInput('bridge.virtualRegex.replacement', bridge.virtualRegex.replacement, '[$1]：$2')),
-                regexPreview: esc(asyncState.virtualRegexPreview || '点击“测试当前楼层”预览最终 VN 正文。'),
+                regexPreview: esc(asyncState.virtualRegexPreview || '点击“测试当前楼层”预览最终 IGS 正文。'),
             });
         }
 
@@ -960,9 +960,9 @@ export function createVisualNovelReaderHost(options = {}) {
                 : '外部扩展模式会优先按适配器检测 chatu8 / chami。';
             const promptPrefixInput = `<textarea data-path="bridge.imageApi.promptPrefix" placeholder="可选，生成图片时追加到正文前"${disabledAttr(apiDisabled)}>${esc(imageApi.promptPrefix || '')}</textarea>`;
             return renderTemplate(getSettingsTabTemplate('image'), {
-                imageModeField: field('bridge.imageApi.mode', '图像模式', selectInput('bridge.imageApi.mode', imageApi.mode, [['extension', '使用现有插图扩展'], ['nai', 'VN 内置 NAI API']])),
+                imageModeField: field('bridge.imageApi.mode', '图像模式', selectInput('bridge.imageApi.mode', imageApi.mode, [['extension', '使用现有插图扩展'], ['nai', 'IGS 内置 NAI API']])),
                 adapterField: field('bridge.imageApi.externalAdapter', '插图扩展', selectInput('bridge.imageApi.externalAdapter', imageApi.externalAdapter, [['auto', '自动检测'], ['chatu8', 'st-chatu8 / chatu8'], ['chami', 'chami_tavern-scene-plugin']], imageApi.mode === 'nai'), imageModeNote),
-                apiGroupClass: 'vn-settings-api-group' + (apiDisabled ? ' is-disabled' : ''),
+                apiGroupClass: 'igs-settings-api-group' + (apiDisabled ? ' is-disabled' : ''),
                 endpointField: field('bridge.imageApi.endpoint', '图像 API 地址', textInput('bridge.imageApi.endpoint', imageApi.endpoint, 'https://...', 'text', apiDisabled), apiDisabled ? '内置 NAI API 模式启用时可编辑。' : ''),
                 apiKeyField: field('bridge.imageApi.apiKey', 'API Key', secretInput('bridge.imageApi.apiKey', imageApi.apiKey, '留空则不发送 Authorization', apiDisabled)),
                 modelField: field('bridge.imageApi.model', '模型', modelPicker('bridge.imageApi.model', imageApi.model, imageApi.availableModels, 'fetch-image-models', 'nai-diffusion-3', apiDisabled)),
@@ -990,7 +990,7 @@ export function createVisualNovelReaderHost(options = {}) {
             const displayTheme = themeCustom ? vnTheme : activePreset;
             return renderTemplate(getSettingsTabTemplate('scene'), {
                 sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
-                sceneGroupClass: `vn-settings-section vn-settings-full${disabled ? ' vn-settings-api-group is-disabled' : ''}`,
+                sceneGroupClass: `igs-settings-section igs-settings-full${disabled ? ' igs-settings-api-group is-disabled' : ''}`,
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
@@ -1004,7 +1004,7 @@ export function createVisualNovelReaderHost(options = {}) {
                 textColorField: field('bridge.vnTheme.textColor', '颜色', colorInput('bridge.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
                 thoughtColorField: field('bridge.vnTheme.thoughtColor', '颜色', colorInput('bridge.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
                 dividerColorField: field('bridge.vnTheme.dividerColor', '颜色', colorInput('bridge.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
-                themeAdvancedClass: themeCustom ? '' : 'vn-settings-api-group is-disabled',
+                themeAdvancedClass: themeCustom ? '' : 'igs-settings-api-group is-disabled',
             });
         }
 
@@ -1027,8 +1027,8 @@ export function createVisualNovelReaderHost(options = {}) {
     function mountReaderDom(snapshot, controller) {
         const doc = getRootDocument(options.global);
         if (!doc) return null;
-        ensureStyleTag(doc, 'vn-overlay-style', getOriginalReaderStyleText());
-        const existing = doc.getElementById('vn-overlay');
+        ensureStyleTag(doc, 'igs-overlay-style', getOriginalReaderStyleText());
+        const existing = doc.getElementById('igs-overlay');
         if (existing) existing.remove();
 
         const root = doc.createElement('div');
@@ -1042,7 +1042,7 @@ export function createVisualNovelReaderHost(options = {}) {
             await controller.invokeAction(action);
         });
         root.addEventListener('keydown', async (event) => {
-            if (event.target && event.target.id === 'vn-input') {
+            if (event.target && event.target.id === 'igs-input') {
                 const result = await controller.keydown({
                     key: event.key,
                     shiftKey: event.shiftKey,
@@ -1094,8 +1094,8 @@ export function createVisualNovelReaderHost(options = {}) {
     function mountSettingsDom(controller) {
         const doc = getRootDocument(options.global);
         if (!doc) return null;
-        ensureStyleTag(doc, 'vn-unified-settings-style', getSettingsStyleText());
-        const existing = doc.getElementById('vn-unified-settings');
+        ensureStyleTag(doc, 'igs-unified-settings-style', getSettingsStyleText());
+        const existing = doc.getElementById('igs-unified-settings');
         if (existing) existing.remove();
 
         const root = doc.createElement('div');
@@ -1119,7 +1119,7 @@ export function createVisualNovelReaderHost(options = {}) {
             const action = event.target.closest('[data-action]');
             if (action) {
                 if (action.getAttribute('data-action') === 'toggle-secret') {
-                    const wrap = action.closest('.vn-settings-secret');
+                    const wrap = action.closest('.igs-settings-secret');
                     const input = wrap ? wrap.querySelector('input') : null;
                     if (input) {
                         const show = input.type === 'password';
@@ -1209,20 +1209,20 @@ export function createVisualNovelReaderHost(options = {}) {
     function hydrateReaderMount(container, snapshot) {
         clearChildren(container);
         container.innerHTML = snapshot.html;
-        let overlay = container.querySelector('#vn-overlay');
+        let overlay = container.querySelector('#igs-overlay');
         if (!overlay) {
             overlay = buildFallbackReaderOverlay(container.ownerDocument || getRootDocument(options.global));
             if (overlay) container.appendChild(overlay);
         }
         return {
             overlay,
-            dialog: overlay ? overlay.querySelector('#vn-dialog') : null,
-            input: overlay ? overlay.querySelector('#vn-input') : null,
-            sendButton: overlay ? overlay.querySelector('#vn-send-btn') : null,
-            toast: overlay ? overlay.querySelector('#vn-toast') : null,
-            clickLayer: overlay ? overlay.querySelector('#vn-click-layer') : null,
-            text: overlay ? overlay.querySelector('#vn-text') : null,
-            progress: overlay ? overlay.querySelector('#vn-progress') : null,
+            dialog: overlay ? overlay.querySelector('#igs-dialog') : null,
+            input: overlay ? overlay.querySelector('#igs-input') : null,
+            sendButton: overlay ? overlay.querySelector('#igs-send-btn') : null,
+            toast: overlay ? overlay.querySelector('#igs-toast') : null,
+            clickLayer: overlay ? overlay.querySelector('#igs-click-layer') : null,
+            text: overlay ? overlay.querySelector('#igs-text') : null,
+            progress: overlay ? overlay.querySelector('#igs-progress') : null,
         };
     }
 
@@ -1232,11 +1232,11 @@ export function createVisualNovelReaderHost(options = {}) {
         const current = state.activeSettings;
         if (!current || !current.dom || !current.dom.root) return;
         const container = current.dom.root;
-        const prevBody = container.querySelector('.vn-settings-body');
+        const prevBody = container.querySelector('.igs-settings-body');
         const scrollTop = prevBody ? prevBody.scrollTop : 0;
         clearChildren(container);
         container.innerHTML = snapshot.html;
-        current.dom.overlay = container.querySelector('#vn-unified-settings');
+        current.dom.overlay = container.querySelector('#igs-unified-settings');
         if (!current.dom.overlay) {
             current.dom.overlay = buildFallbackSettingsOverlay(container.ownerDocument || getRootDocument(options.global), snapshot, {
                 version: options.version,
@@ -1247,7 +1247,7 @@ export function createVisualNovelReaderHost(options = {}) {
         if (current.dom.overlay) {
             attachSettingsViewportEvents(current.dom, current.dom.overlay);
         }
-        const nextBody = container.querySelector('.vn-settings-body');
+        const nextBody = container.querySelector('.igs-settings-body');
         if (nextBody && scrollTop) nextBody.scrollTop = scrollTop;
     }
 
@@ -1371,7 +1371,7 @@ export function createVisualNovelReaderHost(options = {}) {
         const filter = normalizeSourceFilter(bridge.sourceFilter);
         const virtualRegex = normalizeVirtualRegex(bridge.virtualRegex);
         const previewMessage = resolvePreviewMessage();
-        const payload = buildVisualNovelTextPayload(previewMessage, {
+        const payload = buildIgsTextPayload(previewMessage, {
             sourceFilter: filter,
             virtualRegex,
         });
@@ -1441,7 +1441,7 @@ function applyToastToReader(current, allowed, message) {
     if (!current || !message || allowed === false) return;
     clearReaderToast(current);
     current.toastMessage = String(message);
-    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector("#vn-toast") : null;
+    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector("#igs-toast") : null;
     if (toast) {
         toast.textContent = current.toastMessage;
         toast.style.opacity = "1";
@@ -1464,7 +1464,7 @@ function clearReaderToast(current) {
         current.toastTimer = null;
     }
     current.toastMessage = "";
-    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector("#vn-toast") : null;
+    const toast = current.dom && current.dom.overlay ? current.dom.overlay.querySelector("#igs-toast") : null;
     if (toast) {
         toast.textContent = "";
         toast.style.opacity = "0";

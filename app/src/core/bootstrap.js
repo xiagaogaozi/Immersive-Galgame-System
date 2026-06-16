@@ -6,31 +6,31 @@ import { parseSceneText } from '../scene/text-parser.js';
 import { createSceneState } from '../scene/scene-state.js';
 import { resolveScene } from '../scene/scene-resolver.js';
 import {
-    readLegacyVisualNovelSettings,
-    writeLegacyVisualNovelSettings,
+    readLegacyIgsSettings,
+    writeLegacyIgsSettings,
     resolveLegacyReaderMode,
-} from '../storage/legacy-visual-novel.js';
+} from '../storage/legacy-igs.js';
 import { createPresetStore } from '../storage/preset-store.js';
 import { createLayerController } from '../visual/layer-controller.js';
 import { createStageRenderer } from '../visual/stage-renderer.js';
 import { resolveVisualMode } from '../visual/visual-mode.js';
-import { createVisualNovelReaderHost } from '../visual/visual-novel-ui/reader-host.js';
+import { createIgsReaderHost } from '../visual/igs-ui/reader-host.js';
 import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
 
-const VN_VERSION = '0.8.1';
+const IGS_VERSION = '0.9.0';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
 
-export function bootstrapVN(options = {}) {
+export function bootstrapIGS(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
     const events = options.events || createEventBus();
     const hostAdapter = options.hostAdapter || createTavernHelperAdapter(globalObject);
     const storageLike = options.storage || getStorageLike(globalObject);
-    const legacyVisualNovel = options.legacyVisualNovelSettings || readLegacyVisualNovelSettings(storageLike);
+    const legacyIgs = options.legacyIgsSettings || readLegacyIgsSettings(storageLike);
     const presetStore = options.presetStore || createPresetStore(storageLike);
     const presetRegistry = options.presetRegistry || createPresetRegistry({ store: presetStore });
     const inputChannel = createInputChannel(hostAdapter);
@@ -46,15 +46,15 @@ export function bootstrapVN(options = {}) {
     const promptInjector = options.promptInjector || createPromptInjector(globalObject);
     const state = {
         status: 'booting',
-        config: mergeInitialConfig(options.config, legacyVisualNovel),
-        legacyVisualNovel,
+        config: mergeInitialConfig(options.config, legacyIgs),
+        legacyIgs,
         currentScene: createSceneState(),
         lastRender: null,
         destroyed: false,
     };
 
     const app = {
-        version: VN_VERSION,
+        version: IGS_VERSION,
         global: globalObject,
         events,
         hostAdapter,
@@ -66,16 +66,16 @@ export function bootstrapVN(options = {}) {
         collectMessageImages,
         getState,
         getPresetRegistry,
-        getLegacyVisualNovelSettings,
+        getLegacyIgsSettings,
         getUnifiedSettingsSnapshot,
         saveUnifiedSettings,
         destroy,
-        visualNovelUi: null,
+        igsUi: null,
         magicWandEntry: null,
     };
     let publicApi = null;
     let sceneAssetsInjectionTimer = null;
-    app.visualNovelUi = options.visualNovelUi || createVisualNovelReaderHost({
+    app.igsUi = options.igsUi || createIgsReaderHost({
         global: globalObject,
         version: app.version,
         getUnifiedSettings: getUnifiedSettingsSnapshot,
@@ -128,7 +128,7 @@ export function bootstrapVN(options = {}) {
         ...(options.magicWandEntryOptions || {}),
         global: globalObject,
         version: app.version,
-        label: 'Visual Novel',
+        label: '沉浸式Galgame系统',
         open: (mode) => publicApi.openLatestAvailable(mode),
         resolveMode: () => {
             const snapshot = publicApi.getUnifiedSettings({});
@@ -140,7 +140,7 @@ export function bootstrapVN(options = {}) {
     }
     state.status = 'ready';
     scheduleSceneAssetsInjection(SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS, 1);
-    events.emit('vn:ready', publicApi);
+    events.emit('igs:ready', publicApi);
 
     return publicApi;
 
@@ -170,13 +170,13 @@ export function bootstrapVN(options = {}) {
             layoutSettings: context.layoutSettings,
             viewport: context.viewport || getViewport(globalObject),
             isMobile: context.isMobile,
-            legacyVisualNovel: state.legacyVisualNovel,
+            legacyIgs: state.legacyIgs,
             systemMessages: context.systemMessages,
             choiceState: context.choiceState,
         });
         state.currentScene = renderedScene;
         state.lastRender = renderResult;
-        events.emit('vn:scene', renderedScene);
+        events.emit('igs:scene', renderedScene);
         return { ok: true, scene: renderedScene, render: renderResult };
     }
 
@@ -212,12 +212,12 @@ export function bootstrapVN(options = {}) {
         return {
             status: state.status,
             config: state.config,
-            legacyVisualNovel: state.legacyVisualNovel,
+            legacyIgs: state.legacyIgs,
             presets: presetRegistry.snapshot(),
             currentScene: state.currentScene,
             lastRender: state.lastRender,
             destroyed: state.destroyed,
-            visualNovelUi: app.visualNovelUi ? app.visualNovelUi.getState() : null,
+            igsUi: app.igsUi ? app.igsUi.getState() : null,
             magicWandEntry: app.magicWandEntry && typeof app.magicWandEntry.getState === 'function'
                 ? app.magicWandEntry.getState()
                 : null,
@@ -228,32 +228,32 @@ export function bootstrapVN(options = {}) {
         return presetRegistry;
     }
 
-    function getLegacyVisualNovelSettings() {
-        return cloneData(state.legacyVisualNovel);
+    function getLegacyIgsSettings() {
+        return cloneData(state.legacyIgs);
     }
 
     function getUnifiedSettingsSnapshot(input = {}) {
         const bridge = {
-            ...cloneData(state.legacyVisualNovel && state.legacyVisualNovel.bridge || {}),
+            ...cloneData(state.legacyIgs && state.legacyIgs.bridge || {}),
             ...cloneData(state.config || {}),
         };
         const readerMode = resolveLegacyReaderMode(
             input && typeof input === 'object' ? input.mode : input,
-            state.legacyVisualNovel && state.legacyVisualNovel.displayMode,
+            state.legacyIgs && state.legacyIgs.displayMode,
             bridge,
         );
-        const readerSettingsByMode = cloneData(state.legacyVisualNovel && state.legacyVisualNovel.readerSettingsByMode || {});
+        const readerSettingsByMode = cloneData(state.legacyIgs && state.legacyIgs.readerSettingsByMode || {});
         return {
             version: app.version,
             bridge,
             imageApi: cloneData(bridge.imageApi || {}),
             readerMode,
-            readerSettings: cloneData(readerSettingsByMode[readerMode] || state.legacyVisualNovel.readerSettings || {}),
+            readerSettings: cloneData(readerSettingsByMode[readerMode] || state.legacyIgs.readerSettings || {}),
         };
     }
 
     function saveUnifiedSettings(payload = {}) {
-        const currentLegacy = state.legacyVisualNovel || readLegacyVisualNovelSettings(storageLike);
+        const currentLegacy = state.legacyIgs || readLegacyIgsSettings(storageLike);
         const nextBridge = {
             ...cloneData(currentLegacy.bridge || {}),
             ...cloneData(state.config || {}),
@@ -285,19 +285,19 @@ export function bootstrapVN(options = {}) {
             readerSettingsByMode,
         };
         const writeResult = storageLike
-            ? writeLegacyVisualNovelSettings(storageLike, nextLegacy)
+            ? writeLegacyIgsSettings(storageLike, nextLegacy)
             : { ok: true, legacy: nextLegacy, persisted: false };
         if (writeResult.ok === false) return writeResult;
-        state.legacyVisualNovel = cloneData(writeResult.legacy);
+        state.legacyIgs = cloneData(writeResult.legacy);
         state.config = {
             ...cloneData(state.config || {}),
             ...cloneData(nextBridge),
         };
-        events.emit('vn:legacy-settings-updated', cloneData(state.legacyVisualNovel));
+        events.emit('igs:legacy-settings-updated', cloneData(state.legacyIgs));
         syncSceneAssetsInjectionWithRetry(1);
         return {
             ok: true,
-            legacy: cloneData(state.legacyVisualNovel),
+            legacy: cloneData(state.legacyIgs),
             unified: getUnifiedSettingsSnapshot({ mode: readerMode }),
         };
     }
@@ -352,21 +352,21 @@ export function bootstrapVN(options = {}) {
         state.status = 'destroyed';
         clearSceneAssetsInjectionTimer();
         promptInjector.clear();
-        if (app.visualNovelUi && typeof app.visualNovelUi.destroy === 'function') {
-            app.visualNovelUi.destroy();
+        if (app.igsUi && typeof app.igsUi.destroy === 'function') {
+            app.igsUi.destroy();
         }
         if (app.magicWandEntry && typeof app.magicWandEntry.destroy === 'function') {
             app.magicWandEntry.destroy();
         }
         detachPublicApi(globalObject, publicApi);
-        events.emit('vn:destroy', publicApi);
+        events.emit('igs:destroy', publicApi);
         events.clear();
         return { ok: true };
     }
 
     function ensureAlive() {
         if (state.destroyed) {
-            throw new Error('VN instance has been destroyed.');
+            throw new Error('IGS instance has been destroyed.');
         }
     }
 
@@ -450,9 +450,9 @@ export function bootstrapVN(options = {}) {
     }
 }
 
-export function destroyVN(globalObject = globalThis.window || globalThis) {
-    if (globalObject && globalObject.VN && typeof globalObject.VN.destroy === 'function') {
-        return globalObject.VN.destroy();
+export function destroyIGS(globalObject = globalThis.window || globalThis) {
+    if (globalObject && globalObject.IGS && typeof globalObject.IGS.destroy === 'function') {
+        return globalObject.IGS.destroy();
     }
     return { ok: true, reason: 'not-running' };
 }
@@ -489,11 +489,11 @@ function getViewport(globalObject) {
     return { width: 0, height: 0 };
 }
 
-function mergeInitialConfig(explicitConfig, legacyVisualNovel) {
+function mergeInitialConfig(explicitConfig, legacyIgs) {
     const nextConfig = cloneData(explicitConfig || {});
-    if (!legacyVisualNovel || legacyVisualNovel.ok === false) return nextConfig;
+    if (!legacyIgs || legacyIgs.ok === false) return nextConfig;
     return {
-        ...cloneData(legacyVisualNovel.bridge || {}),
+        ...cloneData(legacyIgs.bridge || {}),
         ...nextConfig,
     };
 }

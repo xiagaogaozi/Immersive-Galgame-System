@@ -1,4 +1,4 @@
-import { createVisualNovelReaderHost } from './src/visual/visual-novel-ui/reader-host.js';
+import { createIgsReaderHost } from './src/visual/igs-ui/reader-host.js';
 
 let store = { bridge: { openMode: 'pc', sceneAssets: { enabled: true, scenes: {}, characters: { '小林海斗': { '默认': 'http://x/sprite.png' } } } }, readerMode: 'pc', readerSettingsByMode: {} };
 
@@ -18,8 +18,8 @@ function saveUnifiedSettings(payload) {
   return { ok: true };
 }
 
-const host = createVisualNovelReaderHost({ version: '0.5.1', global: globalThis, getUnifiedSettings, saveUnifiedSettings });
-const payload = { mode: 'pc', message: '@vn-scene:小林海斗|默认||[测试]', scene: { speaker: '小林海斗' } };
+const host = createIgsReaderHost({ version: '0.5.1', global: globalThis, getUnifiedSettings, saveUnifiedSettings });
+const payload = { mode: 'pc', message: '@igs-scene:小林海斗|默认||[测试]', scene: { speaker: '小林海斗' } };
 const opened = host.openReader(payload, { mode: 'pc' });
 const controller = opened.controller;
 
@@ -36,5 +36,5 @@ snap = host.getState().activeReader.snapshot;
 console.log('[AFTER-RERENDER] layouts.pc=', JSON.stringify(snap.readerSettings.spriteLayouts && snap.readerSettings.spriteLayouts.pc));
 
 // Check what's in the live DOM sprite
-const spriteEl = globalThis.document && globalThis.document.querySelector('#vn-sprite');
+const spriteEl = globalThis.document && globalThis.document.querySelector('#igs-sprite');
 console.log('[DOM] sprite bgSize=', spriteEl && spriteEl.style.backgroundSize, 'bgPos=', spriteEl && spriteEl.style.backgroundPosition);

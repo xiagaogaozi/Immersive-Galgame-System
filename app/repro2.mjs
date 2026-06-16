@@ -1,4 +1,4 @@
-import { bootstrapVN, createMemoryStorage } from './src/index.js';
+import { bootstrapIGS, createMemoryStorage } from './src/index.js';
 function createFakeDocument(viewOptions = {}) {
     const document = {
         defaultView: null,
@@ -20,7 +20,7 @@ function createFakeDocument(viewOptions = {}) {
             return queryAll(document.documentElement, selector);
         },
         elementFromPoint() {
-            return document.getElementById('vn-overlay') || document.body;
+            return document.getElementById('igs-overlay') || document.body;
         },
         exitFullscreen() {
             document.fullscreenElement = null;
@@ -265,11 +265,11 @@ function matchesSelector(element, selector) {
         return element.classList.contains('list-group')
             && Boolean(element.parentNode && element.parentNode.classList && element.parentNode.classList.contains('extensions_block'));
     }
-    if (selector === '[data-vn-magic-entry="1"]') {
-        return element.getAttribute('data-vn-magic-entry') === '1';
+    if (selector === '[data-igs-magic-entry="1"]') {
+        return element.getAttribute('data-igs-magic-entry') === '1';
     }
-    if (selector === '[data-vn-magic-entry="1"]') {
-        return element.getAttribute('data-vn-magic-entry') === '1';
+    if (selector === '[data-igs-magic-entry="1"]') {
+        return element.getAttribute('data-igs-magic-entry') === '1';
     }
     if (selector.startsWith('#')) return element.id === selector.slice(1);
     if (selector.startsWith('.')) {
@@ -326,17 +326,17 @@ function readNumeric(value) {
 const document = createFakeDocument({ innerWidth: 1600, innerHeight: 1200 });
 const globalObject = document.defaultView;
 globalObject.localStorage = createMemoryStorage({
-  vn_visual_novel_bridge_config: JSON.stringify({
+  igs_bridge_config: JSON.stringify({
     openMode: 'pc',
     sceneAssets: { enabled: true, promptRule: 'x', scenes: { '教室': 'http://x/bg.png' }, characters: { '小林海斗': { '默认': 'http://x/s.png' } } },
   }),
 });
-const vn = bootstrapVN({ global: globalObject, autoAttachMagicWand: false,
-  hostAdapter: { getCurrentMessage: async () => ({ id: 7, text: '@vn-scene:小林海斗|默认|教室|[测试]' }), typeAndSend: async () => ({ ok: true }) } });
+const vn = bootstrapIGS({ global: globalObject, autoAttachMagicWand: false,
+  hostAdapter: { getCurrentMessage: async () => ({ id: 7, text: '@igs-scene:小林海斗|默认|教室|[测试]' }), typeAndSend: async () => ({ ok: true }) } });
 await vn.openLatestAvailable('pc');
-const rc = vn.getState().visualNovelUi.activeReader.controller || (await vn.openLatestAvailable('pc')).reader.controller;
-const spriteEl = document.getElementById('vn-sprite');
+const rc = vn.getState().igsUi.activeReader.controller || (await vn.openLatestAvailable('pc')).reader.controller;
+const spriteEl = document.getElementById('igs-sprite');
 console.log('[NORMAL] sprite width style=', JSON.stringify(spriteEl.style.width), 'height=', JSON.stringify(spriteEl.style.height), 'rect=', JSON.stringify(spriteEl.getBoundingClientRect()));
-await (vn.getState().visualNovelUi.activeReader.controller || rc).invokeAction('sprite-edit');
-const s = document.getElementById('vn-sprite');
+await (vn.getState().igsUi.activeReader.controller || rc).invokeAction('sprite-edit');
+const s = document.getElementById('igs-sprite');
 console.log('[EDIT]   sprite width style=', JSON.stringify(s.style.width), 'height=', JSON.stringify(s.style.height), 'inset=', JSON.stringify(s.style.inset), 'rect=', JSON.stringify(s.getBoundingClientRect()));

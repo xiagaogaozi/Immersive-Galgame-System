@@ -74,19 +74,19 @@ export function readNumericPixels(value) {
 
 export function ensureImageLoadingSpinner(container) {
     if (!container) return;
-    if (container.querySelector('.vn-image-loading')) return;
+    if (container.querySelector('.igs-image-loading')) return;
     const wrapper = container.ownerDocument
         ? container.ownerDocument.createElement('div')
         : document.createElement('div');
-    wrapper.className = 'vn-image-loading';
+    wrapper.className = 'igs-image-loading';
     wrapper.setAttribute('aria-label', '图片加载中');
-    wrapper.innerHTML = '<span class="vn-spinner vn-image-spinner"></span>';
+    wrapper.innerHTML = '<span class="igs-spinner igs-image-spinner"></span>';
     container.appendChild(wrapper);
 }
 
 export function removeImageLoadingSpinner(container) {
     if (!container) return;
-    const existing = container.querySelector('.vn-image-loading');
+    const existing = container.querySelector('.igs-image-loading');
     if (existing) existing.remove();
 }
 
@@ -162,8 +162,8 @@ export function syncSettingsViewportVars(root) {
     const height = viewport && Number.isFinite(viewport.height) && viewport.height > 0
         ? viewport.height
         : (win && win.innerHeight) || docEl.clientHeight || 480;
-    root.style.setProperty('--vn-settings-vleft', `${Math.round(left)}px`);
-    root.style.setProperty('--vn-settings-vtop', `${Math.round(top)}px`);
-    root.style.setProperty('--vn-settings-vw', `${Math.round(width)}px`);
-    root.style.setProperty('--vn-settings-vh', `${Math.round(height)}px`);
+    root.style.setProperty('--igs-settings-vleft', `${Math.round(left)}px`);
+    root.style.setProperty('--igs-settings-vtop', `${Math.round(top)}px`);
+    root.style.setProperty('--igs-settings-vw', `${Math.round(width)}px`);
+    root.style.setProperty('--igs-settings-vh', `${Math.round(height)}px`);
 }

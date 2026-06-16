@@ -1,22 +1,22 @@
 (function () {
     'use strict';
 
-    const REPOSITORY = 'xiagaogaozi/Visual-Novel';
+    const REPOSITORY = 'xiagaogaozi/Immersive-Galgame-System';
     const DEFAULT_REF = 'main';
     const MAIN_BASE = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@main`;
     const MAIN_BRANCH_URL = `https://api.github.com/repos/${REPOSITORY}/branches/main`;
-    const INSTANCE_KEY = '__VN_AUTO_UPDATE_LOADER__';
-    const CSS_ID = 'vn-auto-loader-css';
-    const SCRIPT_ID = 'vn-auto-loader-js';
+    const INSTANCE_KEY = '__IGS_AUTO_UPDATE_LOADER__';
+    const CSS_ID = 'igs-auto-loader-css';
+    const SCRIPT_ID = 'igs-auto-loader-js';
     const MAGIC_MENU_SELECTORS = ['#extensionsMenu', '#extensions_menu', '.extensions_block .list-group'];
-    const LOADER_ENTRY_SELECTOR = '[data-vn-loader-entry="1"]';
-    const TRACE_IDS = [CSS_ID, SCRIPT_ID, 'vn-root', 'vn-stage'];
+    const LOADER_ENTRY_SELECTOR = '[data-igs-loader-entry="1"]';
+    const TRACE_IDS = [CSS_ID, SCRIPT_ID, 'igs-root', 'igs-stage'];
 
     const root = resolveRootWindow();
     const doc = getRootDocument();
 
     if (!doc) {
-        console.warn('[VN Loader] 未找到可访问的文档，无法加载 Visual Novel。');
+        console.warn('[IGS Loader] 未找到可访问的文档，无法加载 Immersive Galgame System。');
         return;
     }
 
@@ -32,9 +32,9 @@
     scheduleLoaderMagicWandEntry();
 
     load().catch((error) => {
-        console.error('[VN Loader] 启动失败。', error);
+        console.error('[IGS Loader] 启动失败。', error);
         try {
-            if (typeof root.alert === 'function') root.alert(`Visual Novel 启动失败：${error && error.message || String(error)}`);
+            if (typeof root.alert === 'function') root.alert(`Immersive Galgame System 启动失败：${error && error.message || String(error)}`);
         } catch (alertError) {
             // Ignore blocked alert calls.
         }
@@ -63,13 +63,13 @@
         let lastError = null;
 
         for (const attempt of attempts) {
-            const cssUrl = withCacheBust(`${attempt.base}/app/dist/vn.bundle.css`, attempt);
-            const scriptUrl = withCacheBust(`${attempt.base}/app/dist/vn.bundle.js`, attempt);
+            const cssUrl = withCacheBust(`${attempt.base}/app/dist/igs.bundle.css`, attempt);
+            const scriptUrl = withCacheBust(`${attempt.base}/app/dist/igs.bundle.js`, attempt);
             if (shouldProbeBundleAttempt(attempt, config)) {
                 const probe = await probeBundleUrl(scriptUrl);
                 if (!probe.ok) {
                     lastError = probe.error || new Error(`remote bundle not available: ${scriptUrl}`);
-                    console.warn('[VN Loader] 远程 bundle 探测失败，尝试下一个地址。', attempt.ref, scriptUrl, lastError);
+                    console.warn('[IGS Loader] 远程 bundle 探测失败，尝试下一个地址。', attempt.ref, scriptUrl, lastError);
                     continue;
                 }
             }
@@ -77,28 +77,28 @@
                 injectCss(cssUrl);
                 await injectScript(scriptUrl);
                 scheduleMagicWandEnsure();
-                console.info('[VN Loader] 使用远程版本。', attempt.ref, attempt.base);
+                console.info('[IGS Loader] 使用远程版本。', attempt.ref, attempt.base);
                 return { ...config, activeRef: attempt.ref, activeBase: attempt.base };
             } catch (error) {
                 lastError = error;
                 clearTraceElements();
-                console.warn('[VN Loader] 远程 bundle 加载失败，尝试下一个地址。', attempt.ref, scriptUrl, error);
+                console.warn('[IGS Loader] 远程 bundle 加载失败，尝试下一个地址。', attempt.ref, scriptUrl, error);
             }
         }
 
-        throw lastError || new Error('没有可用的 Visual Novel 远程 bundle。');
+        throw lastError || new Error('没有可用的 Immersive Galgame System 远程 bundle。');
     }
 
     async function resolveLoaderConfig() {
-        const userConfig = getObject(root.VN_LOADER_CONFIG);
-        const explicitRef = String(userConfig.ref || root.VN_LOADER_REF || '').trim();
-        const latestRef = !explicitRef && !userConfig.base && !root.VN_LOADER_BASE
+        const userConfig = getObject(root.IGS_LOADER_CONFIG);
+        const explicitRef = String(userConfig.ref || root.IGS_LOADER_REF || '').trim();
+        const latestRef = !explicitRef && !userConfig.base && !root.IGS_LOADER_BASE
             ? await fetchLatestRef()
             : null;
         const ref = explicitRef || latestRef || DEFAULT_REF;
         const defaultBase = `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${ref}`;
-        const hasCustomBase = Boolean(userConfig.base || root.VN_LOADER_BASE);
-        const base = String(userConfig.base || root.VN_LOADER_BASE || defaultBase).replace(/\/+$/, '');
+        const hasCustomBase = Boolean(userConfig.base || root.IGS_LOADER_BASE);
+        const base = String(userConfig.base || root.IGS_LOADER_BASE || defaultBase).replace(/\/+$/, '');
         const cacheBust = userConfig.cacheBust === undefined ? ref === 'main' || Boolean(explicitRef && !/^v\d+\.\d+\.\d+$/.test(ref)) : userConfig.cacheBust !== false;
         return { ref, base, cacheBust, hasCustomBase, latestRef };
     }
@@ -142,17 +142,17 @@
         try {
             const response = await fetchFn(branchUrl, { cache: 'no-store' });
             if (!response || !response.ok) {
-                console.warn('[VN Loader] 最新 main 提交读取失败，改用 @main。', response && response.status || 'unknown');
+                console.warn('[IGS Loader] 最新 main 提交读取失败，改用 @main。', response && response.status || 'unknown');
                 return '';
             }
             const branch = await readResponseJson(response);
             const ref = normalizeCommitRef(branch && branch.commit && branch.commit.sha);
             if (ref) {
-                console.info('[VN Loader] 发现最新远程提交。', ref, branchUrl);
+                console.info('[IGS Loader] 发现最新远程提交。', ref, branchUrl);
             }
             return ref;
         } catch (error) {
-            console.warn('[VN Loader] 最新 main 提交读取异常，改用 @main。', error);
+            console.warn('[IGS Loader] 最新 main 提交读取异常，改用 @main。', error);
             return '';
         }
     }
@@ -195,7 +195,7 @@
     }
 
     function ensureLoaderMagicWandEntry() {
-        const api = root.VN || root.VisualNovel;
+        const api = root.IGS || root.ImmersiveGalgameSystem;
         if (api && typeof api.ensureMagicWandEntry === 'function') {
             return { ok: true, reason: 'runtime-ready' };
         }
@@ -224,20 +224,20 @@
 
     function createLoaderMagicEntry(candidateDoc) {
         const button = candidateDoc.createElement('a');
-        button.className = 'list-group-item vn-magic-entry is-loading';
+        button.className = 'list-group-item igs-magic-entry is-loading';
         button.href = 'javascript:void(0)';
-        button.setAttribute('data-vn-magic-entry', '1');
-        button.setAttribute('data-vn-loader-entry', '1');
-        button.setAttribute('data-vn-version', 'loader');
-        button.setAttribute('title', 'Visual Novel 正在加载');
-        button.setAttribute('aria-label', 'Visual Novel 正在加载');
-        button.innerHTML = '<span class="fa-solid fa-book-open" aria-hidden="true"></span> Visual Novel';
+        button.setAttribute('data-igs-magic-entry', '1');
+        button.setAttribute('data-igs-loader-entry', '1');
+        button.setAttribute('data-igs-version', 'loader');
+        button.setAttribute('title', '沉浸式Galgame系统 正在加载');
+        button.setAttribute('aria-label', '沉浸式Galgame系统 正在加载');
+        button.innerHTML = '<span class="fa-solid fa-book-open" aria-hidden="true"></span> 沉浸式Galgame系统';
         button.addEventListener('click', (event) => {
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
             }
-            const api = root.VN || root.VisualNovel;
+            const api = root.IGS || root.ImmersiveGalgameSystem;
             if (api && typeof api.openLatestAvailable === 'function') {
                 api.openLatestAvailable();
                 return;
@@ -278,10 +278,10 @@
     }
 
     function notifyLoaderPending() {
-        const message = 'Visual Novel 仍在加载远程脚本，请稍等几秒后再点。';
+        const message = '沉浸式Galgame系统 仍在加载远程脚本，请稍等几秒后再点。';
         try {
             if (root.toastr && typeof root.toastr.info === 'function') {
-                root.toastr.info(message, 'VN');
+                root.toastr.info(message, 'IGS');
                 return;
             }
             if (typeof root.alert === 'function') {
@@ -291,7 +291,7 @@
         } catch (error) {
             // Fall through to console.
         }
-        console.info('[VN Loader]', message);
+        console.info('[IGS Loader]', message);
     }
 
     function getObject(value) {
@@ -300,7 +300,7 @@
 
     function withCacheBust(url, config) {
         if (!config.cacheBust) return url;
-        const mark = `vn_t=${Date.now()}`;
+        const mark = `igs_t=${Date.now()}`;
         return `${url}${url.includes('?') ? '&' : '?'}${mark}`;
     }
 
@@ -324,7 +324,7 @@
     }
 
     function withTimestamp(url) {
-        const mark = `vn_t=${Date.now()}`;
+        const mark = `igs_t=${Date.now()}`;
         return `${url}${url.includes('?') ? '&' : '?'}${mark}`;
     }
 
@@ -349,7 +349,7 @@
             script.type = 'module';
             script.src = src;
             script.onload = () => {
-                console.info('[VN Loader] Visual Novel bundle 已加载。', src);
+                console.info('[IGS Loader] Immersive Galgame System bundle 已加载。', src);
                 resolve(script);
             };
             script.onerror = () => {
@@ -360,7 +360,7 @@
     }
 
     function reconcileExistingRuntime() {
-        const api = root.VN || root.VisualNovel;
+        const api = root.IGS || root.ImmersiveGalgameSystem;
         if (api && typeof api.ensureMagicWandEntry === 'function') {
             const result = safeEnsureMagicWandEntry(api);
             root[INSTANCE_KEY] = {
@@ -370,24 +370,24 @@
                 reused: true,
                 magicWandEntry: result,
             };
-            console.info('[VN Loader] Visual Novel 已加载，已重扫魔法棒入口。', result);
+            console.info('[IGS Loader] Immersive Galgame System 已加载，已重扫魔法棒入口。', result);
             scheduleMagicWandEnsure();
             return { done: true, reason: 'reused-existing-runtime' };
         }
 
         if (api) {
-            console.warn('[VN Loader] 检测到旧版 VN 残留，准备重新加载。');
+            console.warn('[IGS Loader] 检测到旧版 IGS 残留，准备重新加载。');
             try {
                 if (typeof api.destroy === 'function') api.destroy();
             } catch (error) {
-                console.warn('[VN Loader] 旧版 VN 销毁失败，继续清理残留。', error);
+                console.warn('[IGS Loader] 旧版 IGS 销毁失败，继续清理残留。', error);
             }
             clearGlobalApi(api);
         }
 
         const staleTrace = root[INSTANCE_KEY] || TRACE_IDS.find((id) => doc.querySelector(`#${id}`));
         if (staleTrace) {
-            console.info('[VN Loader] 清理旧 loader 残留后重新加载。', staleTrace);
+            console.info('[IGS Loader] 清理旧 loader 残留后重新加载。', staleTrace);
             clearTraceElements();
             try {
                 delete root[INSTANCE_KEY];
@@ -403,7 +403,7 @@
         try {
             return api.ensureMagicWandEntry();
         } catch (error) {
-            console.warn('[VN Loader] 重扫魔法棒入口失败。', error);
+            console.warn('[IGS Loader] 重扫魔法棒入口失败。', error);
             return { ok: false, reason: error && error.message || String(error) };
         }
     }
@@ -413,7 +413,7 @@
         const maxAttempts = 20;
         const tick = () => {
             attempts += 1;
-            const api = root.VN || root.VisualNovel;
+            const api = root.IGS || root.ImmersiveGalgameSystem;
             if (api && typeof api.ensureMagicWandEntry === 'function') {
                 const result = safeEnsureMagicWandEntry(api);
                 if (result && result.ok) return;
@@ -427,14 +427,14 @@
 
     function clearGlobalApi(api) {
         try {
-            if (root.VN === api) delete root.VN;
+            if (root.IGS === api) delete root.IGS;
         } catch (error) {
-            root.VN = undefined;
+            root.IGS = undefined;
         }
         try {
-            if (root.VisualNovel === api) delete root.VisualNovel;
+            if (root.ImmersiveGalgameSystem === api) delete root.ImmersiveGalgameSystem;
         } catch (error) {
-            root.VisualNovel = undefined;
+            root.ImmersiveGalgameSystem = undefined;
         }
     }
 

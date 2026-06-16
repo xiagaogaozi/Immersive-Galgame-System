@@ -1,5 +1,5 @@
 {
-  "type": "vn-import-bundle",
+  "type": "igs-import-bundle",
   "items": [
     {
       "type": "image-provider",
@@ -10,8 +10,8 @@
         "providerType": "extension-dom",
         "adapterKey": "demo-dom",
         "selectors": {
-          "image": ".vn-demo-generated-image",
-          "regenerateButton": ".vn-demo-regenerate"
+          "image": ".igs-demo-generated-image",
+          "regenerateButton": ".igs-demo-regenerate"
         }
       }
     },
@@ -90,7 +90,7 @@
       "version": 1,
       "data": {
         "layout": "floating",
-        "buttonClass": "vn-choice-compact"
+        "buttonClass": "igs-choice-compact"
       }
     },
     {
@@ -100,7 +100,7 @@
       "name": "电影底栏 Skin",
       "version": 1,
       "data": {
-        "css": ".vn-dialogue-layer{align-items:flex-end}.vn-dialog{max-width:860px}",
+        "css": ".igs-dialogue-layer{align-items:flex-end}.igs-dialog{max-width:860px}",
         "layout": {
           "toolbarPlacement": "top-right",
           "dialogueStyle": "subtitle"
@@ -134,8 +134,8 @@
       "version": 1,
       "data": {
         "tokens": {
-          "--vn-dialogue-opacity": "0.72",
-          "--vn-accent-color": "#8ec5ff"
+          "--igs-dialogue-opacity": "0.72",
+          "--igs-accent-color": "#8ec5ff"
         }
       }
     },
@@ -146,7 +146,7 @@
       "name": "全组件覆盖 CSS",
       "version": 1,
       "data": {
-        "css": ".vn-toolbar{gap:10px}.vn-choice-button{min-height:44px}.vn-shujuku-table input{min-width:120px}"
+        "css": ".igs-toolbar{gap:10px}.igs-choice-button{min-height:44px}.igs-shujuku-table input{min-width:120px}"
       }
     },
     {

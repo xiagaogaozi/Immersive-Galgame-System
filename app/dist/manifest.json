@@ -1,6 +1,6 @@
 {
-  "name": "Visual Novel",
-  "version": "0.8.1",
-  "entry": "vn.bundle.js",
-  "style": "vn.bundle.css"
+  "name": "Immersive Galgame System",
+  "version": "0.9.0",
+  "entry": "igs.bundle.js",
+  "style": "igs.bundle.css"
 }

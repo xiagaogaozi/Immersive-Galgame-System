@@ -723,7 +723,7 @@ function normalizePositiveInteger(value, fallback) {
 function buildFilename(messageId, currentIndex, url) {
     const extension = resolveFileExtension(url);
     const safeMessageId = normalizeMessageId(messageId) ?? 'scene';
-    return `vn-${safeMessageId}-${normalizeIndex(currentIndex) + 1}.${extension}`;
+    return `igs-${safeMessageId}-${normalizeIndex(currentIndex) + 1}.${extension}`;
 }
 
 function resolveFileExtension(url) {

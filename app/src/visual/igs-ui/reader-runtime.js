@@ -167,7 +167,7 @@ function applyInlineReaderRuntime(root, mode, runtime, current) {
 
 function installFloatingDragRuntime(root, runtime, current, floatingState, onSuppressClick) {
     if (!root || !runtime || !current) return;
-    const layer = root.querySelector('#vn-click-layer');
+    const layer = root.querySelector('#igs-click-layer');
     const doc = runtime.doc;
     if (!layer || !doc || typeof doc.addEventListener !== 'function') return;
     let active = false;

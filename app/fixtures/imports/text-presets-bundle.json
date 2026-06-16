@@ -1,5 +1,5 @@
 {
-  "type": "vn-import-bundle",
+  "type": "igs-import-bundle",
   "items": [
     {
       "type": "text-filter-preset",

@@ -1,5 +1,5 @@
 import { createPresetGroup, createPresetRegistry } from '../presets/preset-registry.js';
-import { createVisualNovelCompatApi } from './visual-novel-compat.js';
+import { createIgsCompatApi } from './igs-compat.js';
 
 const API_GROUPS = [
     'imageProviders',
@@ -29,10 +29,10 @@ export function createPublicApi(app) {
         name,
         createApiGroup(name, presetRegistry),
     ]));
-    const visualNovelCompatApi = createVisualNovelCompatApi(app);
+    const igsCompatApi = createIgsCompatApi(app);
 
     return {
-        name: 'Visual Novel',
+        name: 'Immersive Galgame System',
         version: app.version,
         api: groupedApi,
 
@@ -54,21 +54,21 @@ export function createPublicApi(app) {
                 : { attached: false, reason: 'magic-wand-entry-not-mounted' };
         },
         destroy: app.destroy,
-        ...visualNovelCompatApi,
+        ...igsCompatApi,
     };
 }
 
 export function attachPublicApi(globalObject, api) {
     if (!globalObject) return api;
-    globalObject.VN = api;
-    globalObject.VisualNovel = api;
+    globalObject.IGS = api;
+    globalObject.ImmersiveGalgameSystem = api;
     return api;
 }
 
 export function detachPublicApi(globalObject, api) {
     if (!globalObject) return;
-    if (globalObject.VN === api) delete globalObject.VN;
-    if (globalObject.VisualNovel === api) delete globalObject.VisualNovel;
+    if (globalObject.IGS === api) delete globalObject.IGS;
+    if (globalObject.ImmersiveGalgameSystem === api) delete globalObject.ImmersiveGalgameSystem;
 }
 
 function createApiGroup(groupName, presetRegistry) {

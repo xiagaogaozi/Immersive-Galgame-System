@@ -8,7 +8,7 @@ export function renderTemplate(template, values) {
 }
 
 export function field(path, label, inputHtml, note) {
-    return `<label class="vn-settings-field"><span>${esc(label)}</span>${inputHtml}${note ? `<em>${esc(note)}</em>` : ''}</label>`;
+    return `<label class="igs-settings-field"><span>${esc(label)}</span>${inputHtml}${note ? `<em>${esc(note)}</em>` : ''}</label>`;
 }
 
 export function disabledAttr(disabled) {
@@ -28,7 +28,7 @@ export function textareaInput(path, value, placeholder = '') {
 }
 
 export function secretInput(path, value, placeholder, disabled) {
-    return `<div class="vn-settings-secret">${textInput(path, value, placeholder, 'password', disabled)}<button type="button" class="vn-settings-secret-toggle" data-action="toggle-secret" aria-label="显示或隐藏密钥" aria-pressed="false"${disabledAttr(disabled)}>显示</button></div>`;
+    return `<div class="igs-settings-secret">${textInput(path, value, placeholder, 'password', disabled)}<button type="button" class="igs-settings-secret-toggle" data-action="toggle-secret" aria-label="显示或隐藏密钥" aria-pressed="false"${disabledAttr(disabled)}>显示</button></div>`;
 }
 
 export function numberInput(path, value, min, max, disabled) {
@@ -36,7 +36,7 @@ export function numberInput(path, value, min, max, disabled) {
 }
 
 export function checkbox(path, value, label) {
-    return `<button type="button" class="vn-switch${value ? ' is-on' : ''}" data-switch="${esc(path)}" aria-pressed="${value ? 'true' : 'false'}"><i></i><span>${esc(label)}</span></button>`;
+    return `<button type="button" class="igs-switch${value ? ' is-on' : ''}" data-switch="${esc(path)}" aria-pressed="${value ? 'true' : 'false'}"><i></i><span>${esc(label)}</span></button>`;
 }
 
 export function selectInput(path, value, items, disabled = false) {
@@ -49,10 +49,10 @@ export function selectInput(path, value, items, disabled = false) {
 
 export function segmentedInput(path, value, items, label) {
     const activeIndex = Math.max(0, items.findIndex((item) => String(item[0]) === String(value)));
-    return `<div class="vn-segmented" role="radiogroup" aria-label="${esc(label || '')}" data-count="${esc(items.length)}" data-active-index="${esc(activeIndex)}" style="--vn-segment-count:${esc(items.length)};--vn-active-index:${esc(activeIndex)};"><span class="vn-segmented-indicator" aria-hidden="true"></span>${items.map((item) => {
+    return `<div class="igs-segmented" role="radiogroup" aria-label="${esc(label || '')}" data-count="${esc(items.length)}" data-active-index="${esc(activeIndex)}" style="--igs-segment-count:${esc(items.length)};--igs-active-index:${esc(activeIndex)};"><span class="igs-segmented-indicator" aria-hidden="true"></span>${items.map((item) => {
         const selected = String(item[0]) === String(value);
-        const icon = item[2] ? `<span class="vn-segmented-btn-icon" aria-hidden="true">${item[2]}</span>` : '';
-        return `<button type="button" class="vn-segmented-btn${item[2] ? ' has-icon' : ''}${selected ? ' is-active' : ''}" data-segment-path="${esc(path)}" data-segment-value="${esc(item[0])}" role="radio" aria-checked="${selected ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}">${icon}<span class="vn-segmented-btn-label">${esc(item[1])}</span></button>`;
+        const icon = item[2] ? `<span class="igs-segmented-btn-icon" aria-hidden="true">${item[2]}</span>` : '';
+        return `<button type="button" class="igs-segmented-btn${item[2] ? ' has-icon' : ''}${selected ? ' is-active' : ''}" data-segment-path="${esc(path)}" data-segment-value="${esc(item[0])}" role="radio" aria-checked="${selected ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}">${icon}<span class="igs-segmented-btn-label">${esc(item[1])}</span></button>`;
     }).join('')}</div>`;
 }
 
@@ -62,15 +62,15 @@ export function modelPicker(path, value, models, action, placeholder, disabled) 
         const selected = model === value ? ' selected' : '';
         return `<option value="${esc(model)}"${selected}>${esc(model)}</option>`;
     })).join('');
-    return `<div class="vn-settings-model"><div class="vn-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="vn-settings-action vn-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
+    return `<div class="igs-settings-model"><div class="igs-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="igs-settings-action igs-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
 }
 
 export function renderSceneAssetList(scenes) {
     const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
     const entries = Object.entries(scenes || {});
-    if (!entries.length) return '<div class="vn-scene-empty">暂无背景图配置</div>';
-    return `<div class="vn-btn-mgr-list">${entries.map(([name, url]) => {
-        return `<div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label">${esc(name)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-bg:${esc(name)}" title="重命名">${pencil}</button><input class="vn-scene-url-input" data-scene-bg="${esc(name)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-bg:${esc(name)}" title="删除"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`;
+    if (!entries.length) return '<div class="igs-scene-empty">暂无背景图配置</div>';
+    return `<div class="igs-btn-mgr-list">${entries.map(([name, url]) => {
+        return `<div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label">${esc(name)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-bg:${esc(name)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-bg="${esc(name)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-bg:${esc(name)}" title="删除"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`;
     }).join('')}</div>`;
 }
 
@@ -78,13 +78,13 @@ export function renderCharacterAssetList(characters) {
     const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
     const trash = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
     const charEntries = Object.entries(characters || {});
-    if (!charEntries.length) return '<div class="vn-scene-empty">暂无角色立绘配置</div>';
+    if (!charEntries.length) return '<div class="igs-scene-empty">暂无角色立绘配置</div>';
     return charEntries.map(([charName, moods]) => {
         const moodEntries = Object.entries(moods || {});
         const moodRows = moodEntries.map(([mood, url]) => {
-            return `<div class="vn-btn-mgr-row vn-scene-mood-row"><span class="vn-btn-mgr-label">${esc(mood)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-mood:${esc(charName)}:${esc(mood)}" title="重命名">${pencil}</button><input class="vn-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-mood:${esc(charName)}:${esc(mood)}" title="删除">${trash}</button></div>`;
+            return `<div class="igs-btn-mgr-row igs-scene-mood-row"><span class="igs-btn-mgr-label">${esc(mood)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-mood:${esc(charName)}:${esc(mood)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-mood:${esc(charName)}:${esc(mood)}" title="删除">${trash}</button></div>`;
         }).join('');
-        return `<div class="vn-scene-char-group"><div class="vn-btn-mgr-row"><span class="vn-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="vn-btn-mgr-icon" data-action="scene-rename-char:${esc(charName)}" title="重命名">${pencil}</button><button type="button" class="vn-btn-mgr-icon" data-action="scene-add-mood:${esc(charName)}" title="添加表情">+</button><button type="button" class="vn-btn-mgr-icon" data-action="scene-remove-char:${esc(charName)}" title="删除角色">${trash}</button></div><div class="vn-btn-mgr-list">${moodRows || '<div class="vn-scene-empty">暂无表情</div>'}</div></div>`;
+        return `<div class="igs-scene-char-group"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-char:${esc(charName)}" title="重命名">${pencil}</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-add-mood:${esc(charName)}" title="添加表情">+</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-char:${esc(charName)}" title="删除角色">${trash}</button></div><div class="igs-btn-mgr-list">${moodRows || '<div class="igs-scene-empty">暂无表情</div>'}</div></div>`;
     }).join('');
 }
 
@@ -103,9 +103,9 @@ export function renderPinnedButtons(pinnedValue, hiddenValue, orderValue) {
         const isPinned = pins.includes(id) && !isHidden;
         const canHide = id !== 'settings';
         const eyeBtn = canHide
-            ? `<button type="button" class="vn-btn-mgr-icon${isHidden ? '' : ' is-on'}" data-action="toolbar-toggle-visible:${esc(id)}" title="显示/隐藏">${isHidden ? eyeOff : eyeOn}</button>`
-            : `<span class="vn-btn-mgr-icon" title="此按钮不可隐藏" style="opacity:.3;cursor:default">${eyeOn}</span>`;
-        return `<div class="vn-btn-mgr-row${isHidden ? ' is-hidden-btn' : ''}"><span class="vn-btn-mgr-handle" data-action="toolbar-move-up:${esc(id)}">☰</span><span class="vn-btn-mgr-label">${esc(label)}</span>${eyeBtn}<button type="button" class="vn-btn-mgr-icon${isPinned ? ' is-on' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" title="常驻">${pinIcon}</button></div>`;
+            ? `<button type="button" class="igs-btn-mgr-icon${isHidden ? '' : ' is-on'}" data-action="toolbar-toggle-visible:${esc(id)}" title="显示/隐藏">${isHidden ? eyeOff : eyeOn}</button>`
+            : `<span class="igs-btn-mgr-icon" title="此按钮不可隐藏" style="opacity:.3;cursor:default">${eyeOn}</span>`;
+        return `<div class="igs-btn-mgr-row${isHidden ? ' is-hidden-btn' : ''}"><span class="igs-btn-mgr-handle" data-action="toolbar-move-up:${esc(id)}">☰</span><span class="igs-btn-mgr-label">${esc(label)}</span>${eyeBtn}<button type="button" class="igs-btn-mgr-icon${isPinned ? ' is-on' : ''}" data-action="toggle-toolbar-pin:${esc(id)}" title="常驻">${pinIcon}</button></div>`;
     }).join('');
-    return `<div class="vn-settings-field"><span>按钮管理</span><div class="vn-btn-mgr-list">${rows}</div><em>☰ 上移排序 · 眼睛切换显隐 · 星切换常驻。隐藏的按钮自动解除常驻。</em></div>`;
+    return `<div class="igs-settings-field"><span>按钮管理</span><div class="igs-btn-mgr-list">${rows}</div><em>☰ 上移排序 · 眼睛切换显隐 · 星切换常驻。隐藏的按钮自动解除常驻。</em></div>`;
 }

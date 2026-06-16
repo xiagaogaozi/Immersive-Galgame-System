@@ -1,12 +1,12 @@
 export const LEGACY_VN_KEYS = Object.freeze({
-    bridge: 'vn_visual_novel_bridge_config',
-    readerPrefix: 'vn-reader-settings-v9-',
-    displayMode: 'vn-display-mode',
+    bridge: 'igs_bridge_config',
+    readerPrefix: 'igs-reader-settings-v9-',
+    displayMode: 'igs-display-mode',
 });
 
 export const LEGACY_READER_MODES = Object.freeze(['pc', 'mobile', 'web', 'fullscreen']);
 
-export function readLegacyVisualNovelSettings(storageLike, preferredMode) {
+export function readLegacyIgsSettings(storageLike, preferredMode) {
     const result = {
         ok: true,
         bridge: {},
@@ -22,7 +22,7 @@ export function readLegacyVisualNovelSettings(storageLike, preferredMode) {
 
     const bridgeRecord = readJsonStorage(storageLike, LEGACY_VN_KEYS.bridge);
     if (!bridgeRecord.ok) return bridgeRecord;
-    result.bridge = normalizeLegacyVisualNovelSettings(bridgeRecord.value);
+    result.bridge = normalizeLegacyIgsSettings(bridgeRecord.value);
 
     const displayModeRecord = readStringStorage(storageLike, LEGACY_VN_KEYS.displayMode);
     if (!displayModeRecord.ok) return displayModeRecord;
@@ -31,7 +31,7 @@ export function readLegacyVisualNovelSettings(storageLike, preferredMode) {
     for (const mode of LEGACY_READER_MODES) {
         const record = readJsonStorage(storageLike, `${LEGACY_VN_KEYS.readerPrefix}${mode}`);
         if (!record.ok) return record;
-        result.readerSettingsByMode[mode] = normalizeLegacyVisualNovelSettings(record.value);
+        result.readerSettingsByMode[mode] = normalizeLegacyIgsSettings(record.value);
     }
 
     result.readerMode = resolveLegacyReaderMode(preferredMode, result.displayMode, result.bridge);
@@ -39,7 +39,7 @@ export function readLegacyVisualNovelSettings(storageLike, preferredMode) {
     return result;
 }
 
-export function writeLegacyVisualNovelSettings(storageLike, nextState = {}) {
+export function writeLegacyIgsSettings(storageLike, nextState = {}) {
     if (!isStorageLike(storageLike)) {
         return {
             ok: false,
@@ -69,7 +69,7 @@ export function writeLegacyVisualNovelSettings(storageLike, nextState = {}) {
     }
 }
 
-export function normalizeLegacyVisualNovelSettings(raw) {
+export function normalizeLegacyIgsSettings(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
     return cloneData(raw);
 }
@@ -110,7 +110,7 @@ function readStringStorage(storageLike, key) {
 }
 
 function normalizeLegacySnapshot(raw) {
-    const bridge = normalizeLegacyVisualNovelSettings(raw.bridge);
+    const bridge = normalizeLegacyIgsSettings(raw.bridge);
     const displayMode = resolveLegacyReaderMode(raw.displayMode, raw.displayMode, bridge);
     const readerMode = resolveLegacyReaderMode(raw.readerMode, displayMode, bridge);
     const readerSettingsByMode = {};
@@ -120,7 +120,7 @@ function normalizeLegacySnapshot(raw) {
         const source = mode === readerMode
             ? firstDefined(raw.readerSettings, sourceByMode, {})
             : firstDefined(sourceByMode, {});
-        readerSettingsByMode[mode] = normalizeLegacyVisualNovelSettings(source);
+        readerSettingsByMode[mode] = normalizeLegacyIgsSettings(source);
     }
 
     return {

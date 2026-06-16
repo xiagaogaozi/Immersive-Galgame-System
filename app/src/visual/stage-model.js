@@ -1,15 +1,15 @@
 const STAGE_SLOTS = Object.freeze([
-    '.vn-stage',
-    '.vn-background-layer',
-    '.vn-generated-layer',
-    '.vn-effect-layer',
-    '.vn-character-layer',
-    '.vn-avatar-layer',
-    '.vn-dialogue-layer',
-    '.vn-hud-layer',
-    '.vn-toolbar',
-    '.vn-choice-layer',
-    '.vn-system-layer',
+    '.igs-stage',
+    '.igs-background-layer',
+    '.igs-generated-layer',
+    '.igs-effect-layer',
+    '.igs-character-layer',
+    '.igs-avatar-layer',
+    '.igs-dialogue-layer',
+    '.igs-hud-layer',
+    '.igs-toolbar',
+    '.igs-choice-layer',
+    '.igs-system-layer',
 ]);
 
 export function createStageModel(scene = {}, readerState, options = {}) {
@@ -26,7 +26,7 @@ export function createStageModel(scene = {}, readerState, options = {}) {
     const cssVars = cloneData(safeReaderState.cssVars || {});
 
     return Object.freeze({
-        type: 'vn-stage-model',
+        type: 'igs-stage-model',
         layout: safeReaderState.layout || 'desktop',
         visualMode,
         scene: safeScene,
@@ -37,35 +37,35 @@ export function createStageModel(scene = {}, readerState, options = {}) {
         cssVars,
         layers: {
             background: {
-                slot: '.vn-background-layer',
+                slot: '.igs-background-layer',
                 visible: showBackground,
                 resource: cloneData(safeScene.background) || null,
             },
             generated: {
-                slot: '.vn-generated-layer',
+                slot: '.igs-generated-layer',
                 visible: showGenerated,
                 resource: cloneData(safeScene.generatedImage) || null,
             },
             effect: {
-                slot: '.vn-effect-layer',
+                slot: '.igs-effect-layer',
                 visible: Boolean(safeScene.weather || safeScene.time || safeScene.location),
                 weather: safeScene.weather || '',
                 time: safeScene.time || '',
                 location: safeScene.location || '',
             },
             character: {
-                slot: '.vn-character-layer',
+                slot: '.igs-character-layer',
                 visible: showCharacter,
                 character: cloneData(safeScene.character) || null,
             },
             avatar: {
-                slot: '.vn-avatar-layer',
+                slot: '.igs-avatar-layer',
                 visible: showAvatar,
                 speaker: safeScene.speaker || '',
                 emotion: safeScene.emotion || '',
             },
             dialogue: {
-                slot: '.vn-dialogue-layer',
+                slot: '.igs-dialogue-layer',
                 visible: showDialogue,
                 style: safeReaderState.dialogueStyle || 'panel',
                 speaker: safeScene.speaker || '',
@@ -74,10 +74,10 @@ export function createStageModel(scene = {}, readerState, options = {}) {
                 avatarVisible: Boolean(safeReaderState.avatarVisible),
             },
             hud: {
-                slot: '.vn-hud-layer',
+                slot: '.igs-hud-layer',
                 visible: showDialogue,
                 toolbar: {
-                    slot: '.vn-toolbar',
+                    slot: '.igs-toolbar',
                     visible: showDialogue,
                     layout: safeReaderState.toolbarLayout || 'horizontal',
                     placement: safeReaderState.toolbarPlacement || 'top-right',
@@ -87,12 +87,12 @@ export function createStageModel(scene = {}, readerState, options = {}) {
                 },
             },
             choice: {
-                slot: '.vn-choice-layer',
+                slot: '.igs-choice-layer',
                 visible: Boolean(options.choiceState && options.choiceState.visible),
                 items: cloneData(options.choiceState && options.choiceState.items) || [],
             },
             system: {
-                slot: '.vn-system-layer',
+                slot: '.igs-system-layer',
                 visible: true,
                 messages: cloneData(options.systemMessages) || [],
             },

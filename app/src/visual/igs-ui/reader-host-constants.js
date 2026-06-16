@@ -70,14 +70,14 @@ export const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
 ]);
 
 export const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
-    '#vn-unified-settings',
-    '.vn-settings-shell',
-    '.vn-settings-head',
-    '.vn-settings-tabs',
-    '.vn-settings-body',
-    '.vn-segmented',
-    '.vn-source-filter',
-    '.vn-settings-preview',
+    '#igs-unified-settings',
+    '.igs-settings-shell',
+    '.igs-settings-head',
+    '.igs-settings-tabs',
+    '.igs-settings-body',
+    '.igs-segmented',
+    '.igs-source-filter',
+    '.igs-settings-preview',
 ]);
 
 export const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
@@ -164,27 +164,27 @@ export const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
 export const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
 当角色产生想法、进行对白、突然的反应或者有莫名的声音、奇怪的低语出现时必须严格使用以下格式（全部在同一行内）：
 
-@vn-scene:角色名|情绪|场景名|[对白]
+@igs-scene:角色名|情绪|场景名|[对白]
 
 格式规则：
-1. @vn-scene: 是固定前缀，不可更改
+1. @igs-scene: 是固定前缀，不可更改
 2. 角色名、情绪、场景名、台词之间用 | 分隔，全部在一行内
 3. 角色名必须输出完整全名，不允许省略（如"城崎诺亚"不能只写"诺亚"）
 4. 角色名是立绘关联的唯一标识，每次输出必须完全一致
 5. 只有名没有姓的角色直接写名字（如"云儿"）
 6. 台词必须用 [ ] 方括号包裹
 7. 旁白和叙述文字正常书写，不加任何标记
-8. 每次角色说话都必须带上 @vn-scene 标记，不可省略
+8. 每次角色说话都必须带上 @igs-scene 标记，不可省略
 9. 多个角色说话时，每个角色分别使用自己的角色名，包括系统声音
-10. 角色内心活动或心理描写也要使用此格式，写法为 @vn-scene:角色名|情绪|场景名|[*内心活动*]
+10. 角色内心活动或心理描写也要使用此格式，写法为 @igs-scene:角色名|情绪|场景名|[*内心活动*]
 11. 心里话只按 *...* 外层结构识别
 12. 台词中不能包含 | 符号和 [ ] 符号
 13. 情绪字段不能省略，必须填写
-14. 场景名表示当前所处地点/环境（如"教室"、"走廊"、"夜晚街道"），场景未变时可留空（保留分隔符），如 @vn-scene:角色名|情绪||[台词]
+14. 场景名表示当前所处地点/环境（如"教室"、"走廊"、"夜晚街道"），场景未变时可留空（保留分隔符），如 @igs-scene:角色名|情绪||[台词]
 15. 场景名是背景图关联的唯一标识，同一地点每次输出必须完全一致
 16. 开头第一句对话前必须写完整的场景名，不可省略
-17. 如果场景内出现路人/同学/同事这类不重要的NPC，则使用 @vn-scene:男/女路人X|情绪|场景名|[对白]
-18. 如果是不知道名字的角色，使用 @vn-scene:？？？|情绪|场景名|[对白]
+17. 如果场景内出现路人/同学/同事这类不重要的NPC，则使用 @igs-scene:男/女路人X|情绪|场景名|[对白]
+18. 如果是不知道名字的角色，使用 @igs-scene:？？？|情绪|场景名|[对白]
 
 [正文标签规则]
 <content> 标签外面必须包一层 <now_plot> 标签。
@@ -201,25 +201,25 @@ export const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
 <content>
 诺亚傻站着愣了半秒，忽闪着大眼睛直勾勾盯着我。
 
-@vn-scene:城崎诺亚|欣喜|教室|[咦？真的吗？]
+@igs-scene:城崎诺亚|欣喜|教室|[咦？真的吗？]
 
-@vn-scene:城崎诺亚|紧张||[*（我真的能做好吗？）*]
+@igs-scene:城崎诺亚|紧张||[*（我真的能做好吗？）*]
 
 她似乎在脑海里搜索着相关的经验，过了一会儿，她居然真的点了点头。
 
-@vn-scene:城崎诺亚|开心||[听起来好像挺简单的。那诺亚试试看好了！]
+@igs-scene:城崎诺亚|开心||[听起来好像挺简单的。那诺亚试试看好了！]
 
 樱在旁边叹了口气，看起来并不想掺和这件事。
 
-@vn-scene:樱|无奈||[别把我拉进去啊。]
+@igs-scene:樱|无奈||[别把我拉进去啊。]
 
-@vn-scene:？？？|兴奋||[喂！你们！]
+@igs-scene:？？？|兴奋||[喂！你们！]
 
-@vn-scene:男同学A|慌张||[是……是清野同学，我们该撤了]
+@igs-scene:男同学A|慌张||[是……是清野同学，我们该撤了]
 
 那两个同学飞快的跑了，几人看到清野飞快的跑了过来
 
-@vn-scene:清野|兴奋|走廊|[刚刚你们在这边干什么呢！]
+@igs-scene:清野|兴奋|走廊|[刚刚你们在这边干什么呢！]
 
 </content>
 </now_plot>`.trim();

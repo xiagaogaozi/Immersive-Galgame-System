@@ -1,18 +1,18 @@
 import { looksLikeHostUiHtml } from '../../scene/message-source.js';
 
-export function vnDebugEnabled() {
+export function igsDebugEnabled() {
     try {
-        const root = (typeof window !== 'undefined' && window.parent && window.parent.VN_DEBUG !== undefined)
+        const root = (typeof window !== 'undefined' && window.parent && window.parent.IGS_DEBUG !== undefined)
             ? window.parent
             : (typeof window !== 'undefined' ? window : globalThis);
-        return Boolean(root && root.VN_DEBUG);
+        return Boolean(root && root.IGS_DEBUG);
     } catch (error) {
-        return Boolean(typeof globalThis !== 'undefined' && globalThis.VN_DEBUG);
+        return Boolean(typeof globalThis !== 'undefined' && globalThis.IGS_DEBUG);
     }
 }
 
-export function vnDebug(tag, payload) {
-    if (!vnDebugEnabled()) return;
+export function igsDebug(tag, payload) {
+    if (!igsDebugEnabled()) return;
     try {
         if (payload === undefined) console.log(tag);
         else console.log(tag, payload);

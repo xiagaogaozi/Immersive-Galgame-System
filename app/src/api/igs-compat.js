@@ -1,20 +1,20 @@
-import { resolveLegacyReaderMode } from '../storage/legacy-visual-novel.js';
+import { resolveLegacyReaderMode } from '../storage/legacy-igs.js';
 import { parseSceneText } from '../scene/text-parser.js';
-import { buildVisualNovelTextPayload } from '../scene/message-source.js';
+import { buildIgsTextPayload } from '../scene/message-source.js';
 
 const READER_MODES = Object.freeze(['pc', 'mobile', 'web', 'fullscreen']);
 
-export function createVisualNovelCompatApi(app) {
+export function createIgsCompatApi(app) {
     return {
         openSettings(options = {}) {
             const payload = cloneData(options);
             if (app.events && typeof app.events.emit === 'function') {
-                app.events.emit('vn:settings-requested', payload);
+                app.events.emit('igs:settings-requested', payload);
             }
-            if (!app.visualNovelUi || typeof app.visualNovelUi.openSettings !== 'function') {
+            if (!app.igsUi || typeof app.igsUi.openSettings !== 'function') {
                 return { ok: false, reason: 'settings-ui-not-mounted', options: payload };
             }
-            return app.visualNovelUi.openSettings(payload);
+            return app.igsUi.openSettings(payload);
         },
 
         getConfig() {
@@ -114,7 +114,7 @@ export function createVisualNovelCompatApi(app) {
 }
 
 function getLegacySettings(app) {
-    if (!app || typeof app.getLegacyVisualNovelSettings !== 'function') {
+    if (!app || typeof app.getLegacyIgsSettings !== 'function') {
         return {
             ok: true,
             bridge: {},
@@ -124,7 +124,7 @@ function getLegacySettings(app) {
             readerSettingsByMode: {},
         };
     }
-    return app.getLegacyVisualNovelSettings();
+    return app.getLegacyIgsSettings();
 }
 
 function resolveReaderMode(options, legacySettings, bridgeConfig) {
@@ -163,7 +163,7 @@ function buildReaderPayload(app, message, messageId, readerMode) {
             ? unifiedSettings.bridge
             : app.getState().config || {},
     );
-    const visualNovelText = buildVisualNovelTextPayload(message, {
+    const visualNovelText = buildIgsTextPayload(message, {
         sourceFilter: bridge.sourceFilter,
         virtualRegex: bridge.virtualRegex,
     });
@@ -218,10 +218,10 @@ async function enrichReaderPayload(app, payload) {
 }
 
 function openReaderUi(app, payload, refreshed) {
-    if (!app.visualNovelUi || typeof app.visualNovelUi.openReader !== 'function') {
+    if (!app.igsUi || typeof app.igsUi.openReader !== 'function') {
         return refreshed;
     }
-    const reader = app.visualNovelUi.openReader(payload, { mode: payload.mode });
+    const reader = app.igsUi.openReader(payload, { mode: payload.mode });
     return {
         ...refreshed,
         ok: refreshed.ok !== false && reader.ok !== false,

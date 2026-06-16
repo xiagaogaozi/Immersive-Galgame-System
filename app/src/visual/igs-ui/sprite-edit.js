@@ -1,9 +1,9 @@
 import { resolveSpriteLayout } from './settings-normalize.js';
-import { vnDebug } from './reader-value-utils.js';
+import { igsDebug } from './reader-value-utils.js';
 
 export function enterSpriteEditMode(overlay, current, ctx = {}) {
     if (current.spriteEditMode) return;
-    const spriteEl = overlay.querySelector('#vn-sprite');
+    const spriteEl = overlay.querySelector('#igs-sprite');
     if (!spriteEl || spriteEl.style.display === 'none') {
         if (typeof ctx.writeToast === 'function') ctx.writeToast('当前无立绘可编辑');
         return;
@@ -15,8 +15,8 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
     const modeLayout = resolveSpriteLayout(rs.spriteLayouts, mode, character);
     const orig = { ...modeLayout };
     let posX = orig.posX, posY = orig.posY, scale = orig.scale;
-    vnDebug('[DEBUG-sprite] enter-edit', { mode, character, layoutKey: character ? `${mode}::${character}` : mode, resolved: { ...orig }, allLayouts: rs.spriteLayouts });
-    const clickLayer = overlay.querySelector('#vn-click-layer');
+    igsDebug('[DEBUG-sprite] enter-edit', { mode, character, layoutKey: character ? `${mode}::${character}` : mode, resolved: { ...orig }, allLayouts: rs.spriteLayouts });
+    const clickLayer = overlay.querySelector('#igs-click-layer');
     if (clickLayer) clickLayer.style.pointerEvents = 'none';
 
     const origSpriteStyle = {
@@ -29,15 +29,15 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
         left: spriteEl.style.left,
     };
     spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
-    spriteEl.classList.add('vn-sprite-editing');
+    spriteEl.classList.add('igs-sprite-editing');
 
     const doc = overlay.ownerDocument;
     const editBar = doc.createElement('div');
-    editBar.id = 'vn-sprite-edit-bar';
-    editBar.innerHTML = '<span class="vn-se-hint">拖动调整，滚轮/双指缩放</span>'
+    editBar.id = 'igs-sprite-edit-bar';
+    editBar.innerHTML = '<span class="igs-se-hint">拖动调整，滚轮/双指缩放</span>'
         + '<button data-se="reset" type="button">还原</button>'
         + '<button data-se="cancel" type="button">取消</button>'
-        + '<button data-se="save" class="vn-se-save" type="button">保存</button>';
+        + '<button data-se="save" class="igs-se-save" type="button">保存</button>';
     overlay.appendChild(editBar);
     current.spriteEditMode = { orig, editBar, clickLayer, mode, character, origSpriteStyle };
 
@@ -78,7 +78,7 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
             const rect = spriteEl.getBoundingClientRect ? spriteEl.getBoundingClientRect() : { width: 400, height: 600 };
             posX = dragStart.posX + (event.clientX - dragStart.x) / rect.width * 100;
             posY = dragStart.posY + (event.clientY - dragStart.y) / rect.height * 100;
-            vnDebug('[DEBUG-sprite] drag', { dx: event.clientX - dragStart.x, dy: event.clientY - dragStart.y, rectW: Math.round(rect.width), rectH: Math.round(rect.height), posX: Math.round(posX), posY: Math.round(posY) });
+            igsDebug('[DEBUG-sprite] drag', { dx: event.clientX - dragStart.x, dy: event.clientY - dragStart.y, rectW: Math.round(rect.width), rectH: Math.round(rect.height), posX: Math.round(posX), posY: Math.round(posY) });
             apply();
         } else if (pointers.size === 2 && pinchStart) {
             const pts = [...pointers.values()];
@@ -109,9 +109,9 @@ export function exitSpriteEditMode(overlay, current, save, ctx = {}) {
     const em = current.spriteEditMode;
     if (!em) return;
     current.spriteEditMode = null;
-    const spriteEl = overlay.querySelector('#vn-sprite');
+    const spriteEl = overlay.querySelector('#igs-sprite');
     if (spriteEl) {
-        spriteEl.classList.remove('vn-sprite-editing', 'is-dragging');
+        spriteEl.classList.remove('igs-sprite-editing', 'is-dragging');
     }
     if (em.clickLayer) em.clickLayer.style.pointerEvents = '';
     if (em.editBar && em.editBar.parentNode) em.editBar.remove();

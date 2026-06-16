@@ -1,6 +1,6 @@
 export function createInputChannel(hostAdapter) {
     if (!hostAdapter || typeof hostAdapter.typeAndSend !== 'function') {
-        throw new Error('VN input channel requires a host adapter with typeAndSend(text).');
+        throw new Error('IGS input channel requires a host adapter with typeAndSend(text).');
     }
 
     return {
