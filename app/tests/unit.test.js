@@ -266,27 +266,6 @@ test('gate:scene:igs-message-source:formats-default-bubble-body', () => {
     assert.equal(payload.virtualRegexChanged, true);
 });
 
-test('gate:scene:igs-message-source:cleans-prefixed-scene-directives', () => {
-    const previousShort = String.fromCharCode(118, 110);
-    const payload = buildImmersiveGalgameSystemTextPayload({
-        text: `<content>@${previousShort}-scene:小林海斗|平静|B班教室|[准备好了。]</content>`,
-    }, {
-        virtualRegex: {
-            enabled: true,
-            pattern: '^@igs-scene:([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
-            flags: 'gm',
-            replacement: '[$1]：$2',
-        },
-        sceneAssets: { enabled: true },
-    });
-
-    assert.equal(payload.formattedText, '[小林海斗]：准备好了。');
-    assert.equal(payload.virtualRegexChanged, true);
-    assert.equal(payload.sceneDirectives.length, 1);
-    assert.equal(payload.sceneDirectives[0].character, '小林海斗');
-    assert.equal(payload.sceneDirectives[0].scene, 'B班教室');
-});
-
 test('gate:host:prompt-injector-registers-scene-rule-as-in-prompt-extension-prompt', () => {
     const extensionPrompts = {};
     const calls = [];

@@ -462,41 +462,6 @@ test('gate:simulation:igs-ui-one-line-or-paragraph-per-page', async () => {
     igs.destroy();
 });
 
-test('gate:simulation:igs-ui-unbound-image-slot-does-not-spin-forever', async () => {
-    const document = createFakeDocument({ innerWidth: 1280, innerHeight: 720 });
-    const globalObject = document.defaultView;
-    const previousShort = String.fromCharCode(118, 110);
-    const latestMessage = {
-        id: 33,
-        text: [
-            `<content>@${previousShort}-scene:小林海斗|平静|B班教室|[准备好了。]</content>`,
-            '<image>[图 1]',
-            'image###slot-1###</image>',
-        ].join('\n'),
-    };
-    const igs = bootstrapIGS({
-        global: globalObject,
-        autoAttachMagicWand: false,
-        hostAdapter: {
-            getCurrentMessage: async () => latestMessage,
-            typeAndSend: async () => ({ ok: true }),
-        },
-    });
-
-    const opened = await igs.openLatestAvailable('pc');
-    const overlay = document.getElementById('igs-overlay');
-    const bg = overlay.querySelector('#igs-bg');
-
-    assert.equal(opened.ok, true);
-    assert.match(opened.reader.snapshot.content.displayText, /\[小林海斗\][：:]\s*准备好了。/);
-    assert.equal(opened.reader.snapshot.content.displayText.includes('-scene:'), false);
-    assert.equal(opened.reader.snapshot.content.imageExpectedCount, 1);
-    assert.equal(opened.reader.snapshot.content.imageBoundCount, 0);
-    assert.equal(bg.querySelector('.igs-image-loading'), null);
-
-    igs.destroy();
-});
-
 test('gate:simulation:igs-ui-inline-modes-keep-original-floating-geometry', async () => {
     const document = createFakeDocument({ innerWidth: 1600, innerHeight: 1200 });
     const globalObject = document.defaultView;
