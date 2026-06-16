@@ -131,7 +131,7 @@ export const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
         requiredPaths: Object.freeze([
             'bridge.sceneAssets.enabled',
             'bridge.sceneAssets.promptRule',
-            'bridge.igsTheme.preset',
+            'bridge.vnTheme.preset',
         ]),
         requiredActions: Object.freeze([
             'reset-prompt-rule',

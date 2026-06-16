@@ -98,7 +98,7 @@ function appendSafeCssBlocks(output, css) {
             }
             continue;
         }
-        if (isSafeIgsSelector(block.prelude)) {
+        if (isSafeVnSelector(block.prelude)) {
             output.push(`${block.prelude}{${block.body}}`);
         }
     }
@@ -155,7 +155,7 @@ function isSafeAtRule(prelude) {
     return text.startsWith('@media ') || text.startsWith('@supports ');
 }
 
-function isSafeIgsSelector(selector) {
+function isSafeVnSelector(selector) {
     const text = String(selector || '').trim();
     if (!text) return false;
     return text.split(',')
