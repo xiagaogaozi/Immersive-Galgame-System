@@ -6317,7 +6317,9 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
         const sceneAssetsEnabled = readerSettings._sceneAssets && readerSettings._sceneAssets.enabled;
         const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
             ? `${scene.speaker}: ${currentText}`
-            : currentText;
+            : (sceneAssetsEnabled && scene.speaker && currentText)
+                ? stripSpeakerPrefix(currentText, scene.speaker)
+                : currentText;
         const backgroundImage = firstNonEmptyString(
             displayImageState.displayUrl,
             displayImageState.currentUrl,
@@ -6540,6 +6542,8 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
             const vnTheme = bridge.vnTheme || {};
             const themeCustom = vnTheme.preset === 'custom';
+            const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
+            const displayTheme = themeCustom ? vnTheme : activePreset;
             return renderTemplate(getSettingsTabTemplate('scene'), {
                 sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
                 sceneGroupClass: `vn-settings-section vn-settings-full${disabled ? ' vn-settings-api-group is-disabled' : ''}`,
@@ -6547,12 +6551,12 @@ const DEFAULT_SCENE_PROMPT_RULE = `[对话与场景渲染格式规范]
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
                 themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'minimal', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
-                nameAlignField: field('bridge.vnTheme.nameAlign', '角色名对齐', selectInput('bridge.vnTheme.nameAlign', vnTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
-                dividerField: field('bridge.vnTheme.dividerSymbol', '分隔线样式', selectInput('bridge.vnTheme.dividerSymbol', vnTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
-                nameColorField: field('bridge.vnTheme.nameColor', '角色名颜色', textInput('bridge.vnTheme.nameColor', vnTheme.nameColor || '#ffeeb8', '#ffeeb8', 'text', disabled || !themeCustom)),
-                textColorField: field('bridge.vnTheme.textColor', '台词颜色', textInput('bridge.vnTheme.textColor', vnTheme.textColor || '#f4f4f6', '#f4f4f6', 'text', disabled || !themeCustom)),
-                thoughtColorField: field('bridge.vnTheme.thoughtColor', '心里话颜色', textInput('bridge.vnTheme.thoughtColor', vnTheme.thoughtColor || 'rgba(200,200,220,.72)', 'rgba(200,200,220,.72)', 'text', disabled || !themeCustom)),
-                dividerColorField: field('bridge.vnTheme.dividerColor', '分隔线颜色', textInput('bridge.vnTheme.dividerColor', vnTheme.dividerColor || 'rgba(255,238,184,.4)', 'rgba(255,238,184,.4)', 'text', disabled || !themeCustom)),
+                nameAlignField: field('bridge.vnTheme.nameAlign', '角色名对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
+                dividerField: field('bridge.vnTheme.dividerSymbol', '分隔线样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
+                nameColorField: field('bridge.vnTheme.nameColor', '角色名颜色', textInput('bridge.vnTheme.nameColor', displayTheme.nameColor || '#ffeeb8', '#ffeeb8', 'text', disabled || !themeCustom)),
+                textColorField: field('bridge.vnTheme.textColor', '台词颜色', textInput('bridge.vnTheme.textColor', displayTheme.textColor || '#f4f4f6', '#f4f4f6', 'text', disabled || !themeCustom)),
+                thoughtColorField: field('bridge.vnTheme.thoughtColor', '心里话颜色', textInput('bridge.vnTheme.thoughtColor', displayTheme.thoughtColor || 'rgba(200,200,220,.72)', 'rgba(200,200,220,.72)', 'text', disabled || !themeCustom)),
+                dividerColorField: field('bridge.vnTheme.dividerColor', '分隔线颜色', textInput('bridge.vnTheme.dividerColor', displayTheme.dividerColor || 'rgba(255,238,184,.4)', 'rgba(255,238,184,.4)', 'text', disabled || !themeCustom)),
                 themeAdvancedClass: themeCustom ? '' : 'vn-settings-api-group is-disabled',
             });
         }
@@ -8671,6 +8675,13 @@ function renderDialogueHtml(text, theme, sceneAssetsEnabled) {
         const styleAttr = styles.length ? ` style="${styles.join(';')}"` : '';
         return `<span class="vn-thought"${styleAttr}>${inner}</span>`;
     });
+}
+
+function stripSpeakerPrefix(text, speaker) {
+    if (!speaker || !text) return text;
+    const escaped = speaker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`^\\[?${escaped}\\]?\\s*[:：]\\s*`);
+    return text.replace(pattern, '');
 }
 
 function escapeRegExp(value) {
