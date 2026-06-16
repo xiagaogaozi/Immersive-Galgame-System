@@ -1151,8 +1151,8 @@ export function createVisualNovelReaderHost(options = {}) {
             : Array.isArray(payload.sceneDirectives) ? payload.sceneDirectives : [];
         let finalBackgroundImage = backgroundImage;
         let spriteImage = null;
-        const segmentImageSlots = Array.isArray(payload.segmentImageSlots) ? payload.segmentImageSlots : [];
-        const rawSegmentSlotValue = segmentImageSlots[normalizedIndex];
+        const extractedSegmentImageSlots = Array.isArray(extracted.segmentImageSlots) ? extracted.segmentImageSlots : [];
+        const rawSegmentSlotValue = extractedSegmentImageSlots[normalizedIndex];
         const segmentHasBoundSlot = rawSegmentSlotValue != null
             && Number.isFinite(Number(rawSegmentSlotValue))
             && Number(rawSegmentSlotValue) >= 0;
@@ -1164,11 +1164,16 @@ export function createVisualNovelReaderHost(options = {}) {
         if (slotBoundUrl) {
             finalBackgroundImage = slotBoundUrl;
             spriteImage = null;
-        } else if (sceneAssets && sceneAssets.enabled && sceneDirectives.length) {
-            const sceneState = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
-            const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
-            finalBackgroundImage = backgroundImage || assetUrls.backgroundUrl || '';
-            spriteImage = assetUrls.spriteUrl || null;
+        } else if (sceneAssets && sceneAssets.enabled) {
+            if (sceneDirectives.length) {
+                const sceneState = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
+                const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
+                finalBackgroundImage = assetUrls.backgroundUrl || '';
+                spriteImage = assetUrls.spriteUrl || null;
+            } else {
+                finalBackgroundImage = '';
+                spriteImage = null;
+            }
         }
         const overlayClasses = ['vn-mode-' + mode];
         if (mode === 'pc' || mode === 'mobile') overlayClasses.push('vn-floating');

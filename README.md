@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Visual Novel 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.6.1`：修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
+- 当前项目版本 `v0.6.2`：修复混合模式数据源错误，从 extracted 读取 segmentImageSlots；场景素材启用时非生图段落主动清空背景。
+- `v0.6.1` 修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
 - `v0.6.0` 图片绑定精确化（移除激进兜底、chatu8 按 DOM 顺序绑定 slot）、混合模式生图与场景素材分区。
 - `v0.5.4` 修复立绘保存后缩回、移除拖拽限制。
 - `v0.3.19` 修复 `<image>` 图位绑定、图片进度、外部重绘按钮和阅读器常驻隐藏按钮。
@@ -131,6 +132,11 @@ projects/Visual Novel/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.6.2 - 2026-06-16
+
+- 修复混合模式数据源：从 `extracted.segmentImageSlots` 读取段落映射而非 `payload.segmentImageSlots`（payload 在实际运行时可能为空）。
+- 场景素材启用时非生图段落主动清空背景：不再继承 `displayImageState.displayUrl` 的生图 URL，确保非生图段落不显示生成图。
 
 ### v0.6.1 - 2026-06-16
 

@@ -382,7 +382,7 @@ test('gate:visual-novel-ui:scene-assets-keeps-sprite-with-existing-background', 
         },
     }, { mode: 'pc' });
 
-    assert.equal(opened.snapshot.content.backgroundImage, 'https://example.com/generated-background.png');
+    assert.equal(opened.snapshot.content.backgroundImage, 'https://example.com/room.png');
     assert.equal(opened.snapshot.content.spriteImage, 'https://example.com/kaito.png');
     assert.match(opened.snapshot.html, /id="vn-sprite"/);
     assert.equal(opened.snapshot.styles['#vn-sprite'].display, 'block');
