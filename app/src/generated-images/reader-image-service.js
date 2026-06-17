@@ -809,6 +809,7 @@ function buildSlottedImageState({
     assignCandidatesToSlots(slots, providerCandidates, {
         preferredIndex,
         fillOnlyEmpty: false,
+        allowOrderedFill: true,
         allowPreferredFallback: preferredFallbackOptions.enabled,
         preferredFallbackUrlBlacklist: preferredFallbackOptions.excludeUrls,
     }, claimedUrls);
@@ -873,6 +874,9 @@ function assignCandidatesToSlots(slots, candidates, options, claimedUrls) {
     applyExactSlotMatches(slots, remaining, options, claimedUrls);
     applyLocationHashMatches(slots, remaining, options, claimedUrls);
     applyImageIdMatches(slots, remaining, options, claimedUrls);
+    if (options && options.allowOrderedFill === true) {
+        applyOrderedSlotFill(slots, remaining, options, claimedUrls);
+    }
     if (options && options.allowPreferredFallback === true) {
         applyPreferredSlotFallback(slots, remaining, options, claimedUrls);
     }
@@ -916,13 +920,13 @@ function applyImageIdMatches(slots, candidates, options, claimedUrls) {
 
 function applyOrderedSlotFill(slots, candidates, options, claimedUrls) {
     if (!candidates.length) return;
-    const ordered = candidates.filter((c) => c && c.order != null);
+    const ordered = candidates.filter((c) => c && c.order != null && c.url);
     if (ordered.length < 2) return;
     ordered.sort((a, b) => a.order - b.order);
     const used = new Set();
     for (const slot of slots) {
         if (!ordered.length) break;
-        if (!canWriteSlot(slot, options)) continue;
+        if (String(slot && slot.url || '').trim()) continue;
         const candidate = ordered.shift();
         if (!candidate || !candidate.url) continue;
         writeSlotImage(slot, candidate);

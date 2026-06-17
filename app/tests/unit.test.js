@@ -780,6 +780,42 @@ test('gate:generated-images:reader-image-service-keeps-single-unnumbered-image-u
     assert.equal(imageState.unboundImages[0].url, 'https://example.com/latest-visible-image.png');
 });
 
+test('gate:generated-images:reader-image-service-orders-multiple-unkeyed-provider-images-into-slots', async () => {
+    const source = readText('fixtures/igs/image-slot-binding-message.txt');
+    const payload = buildIgsTextPayload({ text: source }, {
+        sourceFilter: DEFAULT_SOURCE_FILTER,
+    });
+    const service = createReaderImageService({
+        providers: [
+            {
+                id: 'test.unkeyed-multi-provider',
+                async detect() {
+                    return true;
+                },
+                extractImages() {
+                    return [
+                        { url: 'https://example.com/chami-a.png', order: 1 },
+                        { url: 'https://example.com/chami-b.png', order: 2 },
+                    ];
+                },
+            },
+        ],
+    });
+
+    const imageState = await service.collect({
+        messageId: 81,
+        message: { id: 81, text: source },
+        imageSlots: payload.imageSlots,
+        preferredImageIndex: 0,
+    });
+
+    assert.equal(imageState.ok, true);
+    assert.equal(imageState.boundCount, 2);
+    assert.equal(imageState.slots[0].url, 'https://example.com/chami-a.png');
+    assert.equal(imageState.slots[1].url, 'https://example.com/chami-b.png');
+    assert.equal(imageState.unboundCount, 0);
+});
+
 test('gate:generated-images:reader-image-service-does-not-show-later-slot-on-first-segment', async () => {
     const source = readText('fixtures/igs/image-slot-binding-message.txt');
     const payload = buildIgsTextPayload({ text: source }, {

@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.9.0`：项目品牌从 Visual Novel / VN 重命名为 Immersive Galgame System / IGS，仓库、loader、API 全局名、CSS/DOM 前缀、存储键、事件名全部切到 IGS 体系，不保留向后兼容。
+- 当前项目版本 `v0.9.1`：修复阅读器扫描扩展插图（chami/chatu8）时，图片扫到了却绑不进图位、永久转圈的问题（按 DOM 顺序兜底填充无匹配键的图）；修复正文格式化默认正则因行首/行尾锚点导致带翻译尾巴的 `@igs-scene` 行漏匹配。该问题自 v0.8.1 起即存在，与品牌重命名无关。
+- `v0.9.0`：项目品牌从 Visual Novel / VN 重命名为 Immersive Galgame System / IGS，仓库、loader、API 全局名、CSS/DOM 前缀、存储键、事件名全部切到 IGS 体系，不保留向后兼容。
 - `v0.8.1`：新增调试版 loader（IGS_DEBUG 开关 + [DEBUG-sprite] 探针），移除无效的「调试日志」开关。
 - `v0.7.7` 修复全屏模式点击退出 + 立绘位置按角色独立存储。
 - `v0.6.1` 修复混合模式下生图占据所有段落的问题，生图只绑定 `<image>` 标签前一段正文。
@@ -29,7 +30,7 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-沉浸式Galgame系统（自动更新） v0.9.0.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-沉浸式Galgame系统（自动更新） v0.9.1.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Immersive Galgame System 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Immersive Galgame System 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -134,6 +135,12 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.9.1 - 2026-06-17
+
+- 修复扩展插图模式（chami / chatu8）下，阅读器已扫描到生成图、却因图片不带 `slotIndex / locationHash / imageId` 匹配键而绑不进图位，导致背景层永久转圈（`已绑定 0/N`）的问题。`assignCandidatesToSlots` 现接入 `applyOrderedSlotFill`：当 provider 候选图 ≥ 2 张且精确匹配全落空时，按 DOM 出现顺序把图依次填入仍为空的图位。仅对 provider 候选启用，cached / scene 路径不变；单张图（`< 2`）仍保持不兜底，避免误绑。
+- 修复正文格式化默认正则 `DEFAULT_VIRTUAL_REGEX`：移除行首 `^` 与行尾 `$` 锚点，使带翻译尾巴 `*（…）*`（含跨行）或非行首的 `@igs-scene` 行也能被正确替换。升级后如沿用旧的本地预设，请在设置中点一次「恢复默认正文替换」获取新正则。
+- 以上两个问题自 `v0.8.1` 起即存在，经锁版本对比测试确认与 `v0.9.0` 的品牌重命名无关。
 
 ### v0.9.0 - 2026-06-17
 

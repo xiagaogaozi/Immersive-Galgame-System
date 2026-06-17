@@ -18,7 +18,7 @@ export const DEFAULT_SOURCE_FILTER = Object.freeze({
 
 export const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     enabled: true,
-    pattern: '^@(?:igs-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]$',
+    pattern: '@(?:igs-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]',
     flags: 'gm',
     replacement: '[$1]：$2',
 });
