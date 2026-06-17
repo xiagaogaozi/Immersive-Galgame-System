@@ -816,37 +816,46 @@ export function createIgsReaderHost(options = {}) {
         let segmentBody = currentText;
         let bubbleMood = '';
         if (sceneAssetsEnabled) {
-            const isBubbleSeg = (s) => {
-                const t = String(s || '');
-                return /^\s*\*[\s\S]*\*\s*$/.test(t) || /^\s*\[[^\]]+\]\s*[:：]/.test(t);
-            };
             const charThoughtDirectives = sceneDirectives.filter((d) => d.type === 'char' || d.type === 'thought');
-            let bubbleOrdinal = -1;
-            for (let i = 0; i <= normalizedIndex && i < segments.length; i++) {
-                if (isBubbleSeg(segments[i])) bubbleOrdinal++;
-            }
-            const matchedDirective = bubbleOrdinal >= 0 ? charThoughtDirectives[bubbleOrdinal] : null;
+            // Match this bubble back to its directive by speaker + dialogue/thought text
+            // fingerprint, not by row ordinal. Reformatting (image blocks, italic narration,
+            // merged/stripped lines) desyncs any positional counter, so we look the source
+            // text up directly. normalizeFingerprint strips the translation tail *（…）*,
+            // brackets and whitespace so a substring compare is stable.
+            const normalizeFingerprint = (s) => String(s || '')
+                .replace(/\*（[^）]*）\*/g, '')
+                .replace(/[\[\]\*（）]/g, '')
+                .replace(/\s+/g, '')
+                .trim();
+            const findDirectiveByText = (speaker, body) => {
+                const bodyKey = normalizeFingerprint(body);
+                if (!bodyKey) return null;
+                const probe = bodyKey.slice(0, 12);
+                const pool = charThoughtDirectives.filter((d) => !speaker || d.character === speaker);
+                for (const d of pool) {
+                    const src = normalizeFingerprint(d.type === 'thought' ? d.thought : d.dialogue);
+                    if (src && (src.includes(probe) || probe.includes(src.slice(0, 12)))) return d;
+                }
+                return null;
+            };
             const seg = String(currentText || '');
             const thoughtMatch = seg.match(/^\s*\*\s*(?:\[([^\]]+)\]\s*[:：]\s*)?([\s\S]*?)\s*\*\s*$/);
             const dialogueMatch = seg.match(/^\s*\[([^\]]+)\]\s*[:：]\s*([\s\S]*)$/);
             if (thoughtMatch) {
                 textType = 'thought';
                 segmentBody = seg;
-                bubbleSpeaker = thoughtMatch[1] ? thoughtMatch[1].trim() : (matchedDirective && matchedDirective.character || '');
-                if (matchedDirective) bubbleMood = matchedDirective.mood || '';
+                bubbleSpeaker = thoughtMatch[1] ? thoughtMatch[1].trim() : '';
+                const matched = findDirectiveByText(bubbleSpeaker, thoughtMatch[2]);
+                if (matched) {
+                    if (!bubbleSpeaker) bubbleSpeaker = matched.character || '';
+                    bubbleMood = matched.mood || '';
+                }
             } else if (dialogueMatch) {
                 textType = 'dialogue';
                 bubbleSpeaker = dialogueMatch[1].trim();
                 segmentBody = dialogueMatch[2];
-                if (matchedDirective) bubbleMood = matchedDirective.mood || '';
-            } else if (isBubbleSeg(seg) && matchedDirective && matchedDirective.type === 'char') {
-                textType = 'dialogue';
-                bubbleSpeaker = matchedDirective.character || '';
-                bubbleMood = matchedDirective.mood || '';
-            } else if (isBubbleSeg(seg) && matchedDirective && matchedDirective.type === 'thought') {
-                textType = 'thought';
-                bubbleSpeaker = matchedDirective.character || '';
-                bubbleMood = matchedDirective.mood || '';
+                const matched = findDirectiveByText(bubbleSpeaker, dialogueMatch[2]);
+                if (matched) bubbleMood = matched.mood || '';
             }
             // Single-segment fallback: parseSpeakerPrefix strips the "[名字]：" prefix off
             // a lone segment, so the bubble regex no longer matches. Recover speaker/mood

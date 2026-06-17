@@ -450,6 +450,21 @@ test('gate:scene:settings-action-mood-groups-toggle-and-reset', async () => {
     assert.ok(rerenders >= 3);
 });
 
+test('gate:scene:extracts-directives-with-trailing-translation-tail', () => {
+    // [igs-char] / [igs-thought] lines often carry a translation tail like *（…）*
+    // after the closing bracket; the directive must still be extracted (no end anchor).
+    const { directives } = extractSceneDirectives([
+        '[igs-char:小林海斗|淡然|まさか。]*（怎么可能。）*',
+        '[igs-thought:望月|疑惑|这家伙晚饭？]*（…）*',
+    ].join('\n'));
+    assert.equal(directives.length, 2);
+    assert.equal(directives[0].type, 'char');
+    assert.equal(directives[0].character, '小林海斗');
+    assert.equal(directives[0].mood, '淡然');
+    assert.equal(directives[1].type, 'thought');
+    assert.equal(directives[1].mood, '疑惑');
+});
+
 test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {
     const { directives } = extractSceneDirectives([
         'Opening narration.',

@@ -1,8 +1,8 @@
 import { resolveMoodGroup } from './mood-groups.js';
 
-const SCENE_RE = /^\[igs-scene:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
-const CHAR_RE = /^\[igs-char:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
-const THOUGHT_RE = /^\[igs-thought:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
+const SCENE_RE = /^\[igs-scene:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]/;
+const CHAR_RE = /^\[igs-char:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]/;
+const THOUGHT_RE = /^\[igs-thought:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]/;
 
 export function extractSceneDirectives(text) {
     const source = String(text || '');
