@@ -792,20 +792,19 @@ export function createIgsReaderHost(options = {}) {
             && displayImageState.slots[Math.floor(Number(rawSegmentSlotValue))]
             ? String(displayImageState.slots[Math.floor(Number(rawSegmentSlotValue))].url || '').trim()
             : '';
+        let sceneStateForBg = null;
         if (slotBoundUrl) {
             finalBackgroundImage = slotBoundUrl;
             spriteImage = null;
         } else if (sceneAssets && sceneAssets.enabled) {
             if (sceneDirectives.length) {
-                const sceneState = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
-                const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
-                finalBackgroundImage = assetUrls.backgroundUrl || '';
-                spriteImage = assetUrls.spriteUrl || null;
-                if (sceneState.character) spriteCharacter = sceneState.character;
+                sceneStateForBg = resolveSceneStateAtIndex(sceneDirectives, normalizedIndex);
+                const bgUrls = lookupSceneAssetUrls(sceneStateForBg, sceneAssets);
+                finalBackgroundImage = bgUrls.backgroundUrl || '';
             } else {
                 finalBackgroundImage = '';
-                spriteImage = null;
             }
+            spriteImage = null;
         }
         // Per-segment classification from the formatted segment text itself.
         // Order matters: thought (*...*) is checked before dialogue ([名字]：) because
@@ -815,27 +814,70 @@ export function createIgsReaderHost(options = {}) {
         let textType = 'narration';
         let bubbleSpeaker = '';
         let segmentBody = currentText;
+        let bubbleMood = '';
         if (sceneAssetsEnabled) {
+            const isBubbleSeg = (s) => {
+                const t = String(s || '');
+                return /^\s*\*[\s\S]*\*\s*$/.test(t) || /^\s*\[[^\]]+\]\s*[:：]/.test(t);
+            };
+            const charThoughtDirectives = sceneDirectives.filter((d) => d.type === 'char' || d.type === 'thought');
+            let bubbleOrdinal = -1;
+            for (let i = 0; i <= normalizedIndex && i < segments.length; i++) {
+                if (isBubbleSeg(segments[i])) bubbleOrdinal++;
+            }
+            const matchedDirective = bubbleOrdinal >= 0 ? charThoughtDirectives[bubbleOrdinal] : null;
             const seg = String(currentText || '');
             const thoughtMatch = seg.match(/^\s*\*\s*(?:\[([^\]]+)\]\s*[:：]\s*)?([\s\S]*?)\s*\*\s*$/);
             const dialogueMatch = seg.match(/^\s*\[([^\]]+)\]\s*[:：]\s*([\s\S]*)$/);
             if (thoughtMatch) {
                 textType = 'thought';
                 segmentBody = seg;
+                bubbleSpeaker = thoughtMatch[1] ? thoughtMatch[1].trim() : (matchedDirective && matchedDirective.character || '');
+                if (matchedDirective) bubbleMood = matchedDirective.mood || '';
             } else if (dialogueMatch) {
                 textType = 'dialogue';
                 bubbleSpeaker = dialogueMatch[1].trim();
                 segmentBody = dialogueMatch[2];
-            } else {
-                const segDirective = sceneDirectives.find((d) => Number(d.segmentIndex) === normalizedIndex);
-                if (segDirective && segDirective.type === 'char') {
-                    textType = 'dialogue';
-                    bubbleSpeaker = segDirective.character || '';
-                } else if (segDirective && segDirective.type === 'thought') {
-                    textType = 'thought';
+                if (matchedDirective) bubbleMood = matchedDirective.mood || '';
+            } else if (isBubbleSeg(seg) && matchedDirective && matchedDirective.type === 'char') {
+                textType = 'dialogue';
+                bubbleSpeaker = matchedDirective.character || '';
+                bubbleMood = matchedDirective.mood || '';
+            } else if (isBubbleSeg(seg) && matchedDirective && matchedDirective.type === 'thought') {
+                textType = 'thought';
+                bubbleSpeaker = matchedDirective.character || '';
+                bubbleMood = matchedDirective.mood || '';
+            }
+            // Single-segment fallback: parseSpeakerPrefix strips the "[名字]：" prefix off
+            // a lone segment, so the bubble regex no longer matches. Recover speaker/mood
+            // from the directive that lands on this segment index.
+            if (textType === 'narration' && scene.speaker) {
+                const segDirective = sceneDirectives.find((d) => Number(d.segmentIndex) === normalizedIndex
+                    && (d.type === 'char' || d.type === 'thought'));
+                if (segDirective) {
+                    textType = segDirective.type === 'thought' ? 'thought' : 'dialogue';
+                    bubbleSpeaker = segDirective.character || scene.speaker;
+                    bubbleMood = segDirective.mood || '';
                 }
             }
             resolvedSpeaker = bubbleSpeaker;
+            // Sprite resolves from the bubble's own speaker/mood, not the row-counted
+            // segmentIndex (which desyncs once char/thought tags are reformatted into
+            // visible bubble lines). Background still follows directive accumulation.
+            let spriteChar = bubbleSpeaker;
+            let spriteMood = bubbleMood;
+            if (!spriteChar && sceneStateForBg && sceneStateForBg.character) {
+                // Fallback for untransformed/legacy paths where the bubble text still
+                // carries the raw tag (no reformatted "[名字]：" line to parse).
+                spriteChar = sceneStateForBg.character;
+                spriteMood = sceneStateForBg.mood || '';
+            }
+            if (!slotBoundUrl && sceneAssets && sceneAssets.enabled && spriteChar
+                && sceneAssets.characters && sceneAssets.characters[spriteChar]) {
+                const spriteUrls = lookupSceneAssetUrls({ character: spriteChar, mood: spriteMood }, sceneAssets);
+                spriteImage = spriteUrls.spriteUrl || null;
+                if (spriteImage) spriteCharacter = spriteChar;
+            }
         }
         const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
             ? `${scene.speaker}: ${currentText}`
@@ -1025,7 +1067,7 @@ export function createIgsReaderHost(options = {}) {
             const disabled = !sceneAssets.enabled;
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
-            const moodGroupsHtml = renderMoodGroupsEditor(sceneAssets.moodGroups || []);
+            const moodGroupsHtml = renderMoodGroupsEditor(sceneAssets.moodGroups || [], asyncState.moodGroupsExpanded === true);
             const vnTheme = bridge.vnTheme || {};
             const themeCustom = vnTheme.preset === 'custom';
             const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
@@ -1190,7 +1232,7 @@ export function createIgsReaderHost(options = {}) {
             }
             const sceneBg = target.getAttribute('data-scene-bg');
             if (sceneBg) {
-                controller.invoke('scene-set-bg-url:' + sceneBg + ':' + target.value);
+                controller.invoke('scene-set-bg-url:' + encodeURIComponent(sceneBg) + ':' + target.value);
                 return;
             }
             const sceneTimeBg = target.getAttribute('data-scene-time-bg');
@@ -1198,17 +1240,17 @@ export function createIgsReaderHost(options = {}) {
             const sceneWeatherBg = target.getAttribute('data-scene-weather-bg');
             const sceneWeather = target.getAttribute('data-scene-weather');
             if (sceneWeatherBg && sceneTime && sceneWeather) {
-                controller.invoke('scene-set-weather-url:' + sceneWeatherBg + ':' + sceneTime + ':' + sceneWeather + ':' + target.value);
+                controller.invoke('scene-set-weather-url:' + encodeURIComponent(sceneWeatherBg) + ':' + encodeURIComponent(sceneTime) + ':' + encodeURIComponent(sceneWeather) + ':' + target.value);
                 return;
             }
             if (sceneTimeBg && sceneTime) {
-                controller.invoke('scene-set-time-url:' + sceneTimeBg + ':' + sceneTime + ':' + target.value);
+                controller.invoke('scene-set-time-url:' + encodeURIComponent(sceneTimeBg) + ':' + encodeURIComponent(sceneTime) + ':' + target.value);
                 return;
             }
             const sceneChar = target.getAttribute('data-scene-char');
             const sceneMood = target.getAttribute('data-scene-mood');
             if (sceneChar && sceneMood) {
-                controller.invoke('scene-set-mood-url:' + sceneChar + ':' + sceneMood + ':' + target.value);
+                controller.invoke('scene-set-mood-url:' + encodeURIComponent(sceneChar) + ':' + encodeURIComponent(sceneMood) + ':' + target.value);
             }
         });
         root.addEventListener('change', (event) => {

@@ -46,6 +46,7 @@ import {
     normalizeMoodGroups,
     resolveMoodGroup,
 } from '../src/scene/mood-groups.js';
+import { handleSettingsAction } from '../src/visual/igs-ui/settings-actions.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 
@@ -397,6 +398,56 @@ test('gate:scene:scene-assets-sprite-resolves-by-mood-group-reduction', () => {
         moodGroups: DEFAULT_MOOD_GROUPS,
     });
     assert.equal(fallback.spriteUrl, 'https://example.com/default.png');
+});
+
+test('gate:scene:settings-action-set-time-url-survives-colon-in-time-name', async () => {
+    const draft = {
+        bridge: {
+            sceneAssets: {
+                enabled: true,
+                scenes: { '便利店': { url: '', times: { '19:45': { url: '', weathers: {} } } } },
+                characters: {},
+            },
+        },
+        readerSettings: {},
+    };
+    let persistCount = 0;
+    const ctx = {
+        state: { activeSettings: { draft, readerMode: 'pc', asyncState: {} } },
+        options: { global: {} },
+        closeSettings: () => ({ ok: true }),
+        persistSettingsDraft: () => { persistCount += 1; return { ok: true }; },
+        rerenderSettings: () => ({ ok: true }),
+        buildRegexPreview: () => '',
+    };
+    // time name '19:45' contains a colon; encoded by the input handler before invoke
+    const enc = (s) => encodeURIComponent(s);
+    const action = `scene-set-time-url:${enc('便利店')}:${enc('19:45')}:https://example.com/a.png?x=1:2`;
+    const result = await handleSettingsAction(action, ctx);
+    assert.equal(result.ok, true);
+    assert.equal(draft.bridge.sceneAssets.scenes['便利店'].times['19:45'].url, 'https://example.com/a.png?x=1:2');
+    assert.equal(persistCount, 1);
+});
+
+test('gate:scene:settings-action-mood-groups-toggle-and-reset', async () => {
+    const draft = { bridge: { sceneAssets: { enabled: true, scenes: {}, characters: {}, moodGroups: [{ label: '自定义', words: ['词A'] }] } }, readerSettings: {} };
+    const asyncState = {};
+    let rerenders = 0;
+    const ctx = {
+        state: { activeSettings: { draft, readerMode: 'pc', asyncState } },
+        options: { global: {} },
+        closeSettings: () => ({ ok: true }),
+        persistSettingsDraft: () => ({ ok: true }),
+        rerenderSettings: () => { rerenders += 1; return { ok: true }; },
+        buildRegexPreview: () => '',
+    };
+    await handleSettingsAction('toggle-mood-groups', ctx);
+    assert.equal(asyncState.moodGroupsExpanded, true);
+    await handleSettingsAction('toggle-mood-groups', ctx);
+    assert.equal(asyncState.moodGroupsExpanded, false);
+    await handleSettingsAction('reset-mood-groups', ctx);
+    assert.equal(draft.bridge.sceneAssets.moodGroups.length, DEFAULT_MOOD_GROUPS.length);
+    assert.ok(rerenders >= 3);
 });
 
 test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {

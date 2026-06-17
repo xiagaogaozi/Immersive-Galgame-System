@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.11.0');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.11.1');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -271,7 +271,7 @@ test('gate:simulation:scene-assets-injects-prompt-and-renders-single-configured-
     });
     const message = {
         id: 38,
-        text: '[igs-scene:B班教室|下午|晴天]\n[igs-char:小林海斗|平静|できるもん！]',
+        text: '<now_plot>\n<content>\n[igs-scene:B班教室|下午|晴天]\n[igs-char:小林海斗|平静|できるもん！]\n</content>\n</now_plot>',
     };
     const vn = bootstrapIGS({
         global: {
@@ -316,6 +316,68 @@ test('gate:simulation:scene-assets-injects-prompt-and-renders-single-configured-
 
     vn.destroy();
     assert.equal(Object.hasOwn(extensionPrompts, 'igs-scene-assets-format-rule'), false);
+});
+
+test('gate:simulation:scene-assets-sprite-follows-bubble-speaker-across-mixed-segments', async () => {
+    const timers = [];
+    const storage = createMemoryStorage({
+        igs_bridge_config: JSON.stringify({
+            sceneAssets: {
+                enabled: true,
+                promptRule: '规则',
+                scenes: {},
+                characters: {
+                    '小林海斗': { '喜悦': 'https://example.com/joy.png', '默认': 'https://example.com/default.png' },
+                    '望月': { '默认': 'https://example.com/mochi.png' },
+                },
+            },
+        }),
+    });
+    // narration, thought, narration, dialogue — reformatted tags desync the row-based
+    // segmentIndex; sprite must still resolve from each bubble's own speaker.
+    const message = {
+        id: 7,
+        text: [
+            '<now_plot>',
+            '<content>',
+            '旁白第一段。',
+            '[igs-thought:望月|无语|这家伙的晚饭？]',
+            '旁白第二段。',
+            '[igs-char:小林海斗|欣喜|まさか。]',
+            '</content>',
+            '</now_plot>',
+        ].join('\n'),
+    };
+    const vn = bootstrapIGS({
+        global: {
+            localStorage: storage,
+            setTimeout(cb, delay) { timers.push({ cb, delay }); return timers.length; },
+            clearTimeout() {},
+        },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => message,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    let opened = await vn.openLatestAvailable('pc');
+    assert.equal(opened.ok, true);
+    // walk segments until we reach the 小林海斗 dialogue bubble
+    const ctrl = opened.reader.controller;
+    let snap = vn.getState().igsUi.activeReader.snapshot;
+    let guard = 0;
+    while (snap.content.textType !== 'dialogue' && guard < 30) {
+        await ctrl.invokeAction('next');
+        snap = vn.getState().igsUi.activeReader.snapshot;
+        guard += 1;
+    }
+    assert.equal(snap.content.textType, 'dialogue');
+    assert.equal(snap.content.speaker, '小林海斗');
+    // mood 欣喜 reduces to 喜悦 group → joy.png
+    assert.equal(snap.content.spriteImage, 'https://example.com/joy.png');
+
+    vn.destroy();
 });
 
 test('gate:simulation:igs-ui-settings-save-updates-reader-state', () => {

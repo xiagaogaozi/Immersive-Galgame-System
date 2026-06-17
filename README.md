@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.11.0`：新增情绪词分类系统——内置 8 组情绪词库（喜悦/愤怒/悲伤/紧张/平和/害羞/嫌弃/爱恋），通过 `{{mood_groups}}` 占位符注入约束 AI 只从池里选细分词；立绘差分查表升级为「精确槽 → 归约组名槽 → 默认」三级兜底（AI 写「欣喜」自动归到「喜悦」组取图）；场景 tab 角色立绘卡片内新增可折叠「情绪词库」编辑区（增删改组/词、恢复默认）+ 角色行「一键导入情绪组名」建槽按钮。同步修正注入深度：`setExtensionPrompt` 位置从 `IN_PROMPT(0)` 改为 `IN_CHAT(1)`、depth 0，让格式约束贴在对话末尾不被长上下文淹没；新增 `CHAT_CHANGED` 切聊天自动重注入。
+- 当前项目版本 `v0.11.1`：修复情绪词分类系统的 UI 与立绘问题——情绪词库改为可折叠卡片（默认折叠，点内部按钮不再缩回，用 `asyncState` 记住展开态），加组/一键导入（向上箭头图标，为所有角色按组名补建立绘槽）并排在标题右，恢复默认词库移到卡片底部；修复时间/天气名含冒号（如 `19:45`）时 URL 因分隔符冲突写丢的 bug（所有 action 段改 `encodeURIComponent` 编解码）；修复立绘不显示——根因是 `[igs-char]`/`[igs-thought]` 经正则变换成可见气泡行后，directive 的行计数 segmentIndex 与阅读器分页错位，改为按气泡出现顺序匹配 directive 取角色+情绪，并保留单段前缀剥离与未变换路径的兜底；心里话气泡现在和台词一样显示角色名+分隔线。
+- `v0.11.0`：新增情绪词分类系统——内置 8 组情绪词库（喜悦/愤怒/悲伤/紧张/平和/害羞/嫌弃/爱恋），通过 `{{mood_groups}}` 占位符注入约束 AI 只从池里选细分词；立绘差分查表升级为「精确槽 → 归约组名槽 → 默认」三级兜底（AI 写「欣喜」自动归到「喜悦」组取图）；场景 tab 角色立绘卡片内新增可折叠「情绪词库」编辑区（增删改组/词、恢复默认）+ 角色行「一键导入情绪组名」建槽按钮。同步修正注入深度：`setExtensionPrompt` 位置从 `IN_PROMPT(0)` 改为 `IN_CHAT(1)`、depth 0，让格式约束贴在对话末尾不被长上下文淹没；新增 `CHAT_CHANGED` 切聊天自动重注入。
 - `v0.10.3`：修复台词气泡显示——按段落类型（台词/旁白/心里话）分类渲染；旁白不再误显示名字+分割线；台词去掉 `[名字]：` 前缀（名字独立显示在气泡顶部）；台词与旁白字体颜色可分开设置（新增「旁白」主题子卡片）；修复自定义模式下心里话字体含双引号打断 `style` 属性导致字体颜色不生效的真 bug。
 - `v0.9.1`：修复扩展插图图片扫到却绑不进图位、正文格式化默认正则锚点漏匹配（自 v0.8.1 起存在，与品牌重命名无关）。
 - `v0.9.0`：项目品牌从 Visual Novel / VN 重命名为 Immersive Galgame System / IGS，仓库、loader、API 全局名、CSS/DOM 前缀、存储键、事件名全部切到 IGS 体系，不保留向后兼容。
@@ -137,6 +138,15 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.11.1 - 2026-06-18
+
+- 情绪词库 UI 重做：从 `<details>` 改为标准卡片（`igs-source-filter`），与「背景场景」「角色立绘」一致；展开态存入 `asyncState.moodGroupsExpanded`，点卡片内任意按钮（增删改组/词）后重建 DOM 不再缩回；默认折叠。
+- 「添加组（+）」与「一键导入情绪组名」并排放在情绪词库卡片标题右侧；导入图标换成向上箭头，语义改为「为所有已配置角色按组名补建立绘空槽」（原先在每个角色行、★ 图标，已移除）。
+- 「恢复默认词库」按钮移到情绪词库卡片底部，边距沿用「格式规则注入」的 `igs-settings-row`。
+- 修复时间/天气/角色/情绪名含冒号（如时间名 `19:45`）时，URL 因 action 分隔符 `:` 冲突被解析错位、写入失败的 bug：`settings-fields.js` 拼 action 的每个 name 段改用 `encodeURIComponent`，`settings-actions.js` 与 `reader-host.js` input 处理端对应 `decodeURIComponent`（覆盖 scene/time/weather/char/mood 全部增删改名与 set-url，URL 段保持末段整体切取不编码）。
+- 修复场景素材立绘不显示：根因是 `[igs-char:]`/`[igs-thought:]` 经默认正则变换成可见气泡行（`[名字]：…` / `*…*`）后进入阅读器分页，而 `extractSceneDirectives` 的行计数 `segmentIndex` 仍按变换前原文计算，两套分段错位，导致当前段解析不出角色、立绘永不显示。改为按「气泡段出现顺序」匹配 `char/thought` directive 取角色名与情绪，立绘 character/mood 来源从 `resolveSceneStateAtIndex(segmentIndex)` 切换为当前气泡的 speaker；背景图仍走 directive 状态累积。保留单段前缀被 `parseSpeakerPrefix` 剥离时的 directive 兜底，以及未变换/裸文本路径回退到 `sceneStateForBg` 的兜底。
+- 心里话气泡现在与台词一致显示角色名 + 分隔线（thought 段从文本内嵌名字或顺序匹配 directive 取 speaker 填入）。
 
 ### v0.11.0 - 2026-06-18
 

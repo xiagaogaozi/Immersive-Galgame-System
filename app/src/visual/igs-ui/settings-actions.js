@@ -3,6 +3,11 @@ import { cloneData } from './reader-value-utils.js';
 import { DEFAULT_SCENE_PROMPT_RULE, TOOLBAR_ACTIONS } from './reader-host-constants.js';
 import { DEFAULT_MOOD_GROUPS, normalizeMoodGroups } from '../../scene/mood-groups.js';
 
+function decodeSeg(value) {
+    try { return decodeURIComponent(String(value == null ? '' : value)); }
+    catch (error) { return String(value == null ? '' : value); }
+}
+
 export async function handleSettingsAction(action, ctx) {
     const {
         state,
@@ -158,7 +163,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('scene-remove-bg:')) {
-        const name = normalizedAction.slice('scene-remove-bg:'.length);
+        const name = decodeSeg(normalizedAction.slice('scene-remove-bg:'.length));
         settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
         settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
         delete settingsState.draft.bridge.sceneAssets.scenes[name];
@@ -168,7 +173,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('scene-rename-bg:')) {
-        const oldName = normalizedAction.slice('scene-rename-bg:'.length);
+        const oldName = decodeSeg(normalizedAction.slice('scene-rename-bg:'.length));
         const globalObj = options.global || globalThis;
         const newName = (globalObj.prompt && globalObj.prompt(`重命名场景「${oldName}」为：`, oldName) || '').trim();
         if (newName && newName !== oldName) {
@@ -187,7 +192,7 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-set-bg-url:'.length);
         const colonIdx = rest.indexOf(':');
         if (colonIdx > 0) {
-            const name = rest.slice(0, colonIdx);
+            const name = decodeSeg(rest.slice(0, colonIdx));
             const url = rest.slice(colonIdx + 1);
             settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
             settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
@@ -203,7 +208,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('scene-add-time:')) {
-        const sceneName = normalizedAction.slice('scene-add-time:'.length);
+        const sceneName = decodeSeg(normalizedAction.slice('scene-add-time:'.length));
         const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
         const scene = scenes[sceneName];
         if (scene && typeof scene === 'object') {
@@ -220,8 +225,8 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-remove-time:'.length);
         const colonIdx = rest.indexOf(':');
         if (colonIdx > 0) {
-            const sceneName = rest.slice(0, colonIdx);
-            const timeName = rest.slice(colonIdx + 1);
+            const sceneName = decodeSeg(rest.slice(0, colonIdx));
+            const timeName = decodeSeg(rest.slice(colonIdx + 1));
             const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
             const scene = scenes[sceneName];
             if (scene && scene.times) delete scene.times[timeName];
@@ -235,8 +240,8 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-rename-time:'.length);
         const colonIdx = rest.indexOf(':');
         if (colonIdx > 0) {
-            const sceneName = rest.slice(0, colonIdx);
-            const oldTime = rest.slice(colonIdx + 1);
+            const sceneName = decodeSeg(rest.slice(0, colonIdx));
+            const oldTime = decodeSeg(rest.slice(colonIdx + 1));
             const globalObj = options.global || globalThis;
             const newTime = (globalObj.prompt && globalObj.prompt(`重命名时间「${oldTime}」为：`, oldTime) || '').trim();
             if (newTime && newTime !== oldTime) {
@@ -257,11 +262,11 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-set-time-url:'.length);
         const first = rest.indexOf(':');
         if (first > 0) {
-            const sceneName = rest.slice(0, first);
+            const sceneName = decodeSeg(rest.slice(0, first));
             const after = rest.slice(first + 1);
             const second = after.indexOf(':');
             if (second > 0) {
-                const timeName = after.slice(0, second);
+                const timeName = decodeSeg(after.slice(0, second));
                 const url = after.slice(second + 1);
                 const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
                 const scene = scenes[sceneName];
@@ -280,8 +285,8 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-add-weather:'.length);
         const colonIdx = rest.indexOf(':');
         if (colonIdx > 0) {
-            const sceneName = rest.slice(0, colonIdx);
-            const timeName = rest.slice(colonIdx + 1);
+            const sceneName = decodeSeg(rest.slice(0, colonIdx));
+            const timeName = decodeSeg(rest.slice(colonIdx + 1));
             const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
             const scene = scenes[sceneName];
             if (scene && scene.times && scene.times[timeName]) {
@@ -302,12 +307,12 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-remove-weather:'.length);
         const first = rest.indexOf(':');
         if (first > 0) {
-            const sceneName = rest.slice(0, first);
+            const sceneName = decodeSeg(rest.slice(0, first));
             const after = rest.slice(first + 1);
             const second = after.indexOf(':');
             if (second > 0) {
-                const timeName = after.slice(0, second);
-                const weatherName = after.slice(second + 1);
+                const timeName = decodeSeg(after.slice(0, second));
+                const weatherName = decodeSeg(after.slice(second + 1));
                 const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
                 const scene = scenes[sceneName];
                 if (scene && scene.times && scene.times[timeName]) {
@@ -325,12 +330,12 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-rename-weather:'.length);
         const first = rest.indexOf(':');
         if (first > 0) {
-            const sceneName = rest.slice(0, first);
+            const sceneName = decodeSeg(rest.slice(0, first));
             const after = rest.slice(first + 1);
             const second = after.indexOf(':');
             if (second > 0) {
-                const timeName = after.slice(0, second);
-                const oldWeather = after.slice(second + 1);
+                const timeName = decodeSeg(after.slice(0, second));
+                const oldWeather = decodeSeg(after.slice(second + 1));
                 const globalObj = options.global || globalThis;
                 const newWeather = (globalObj.prompt && globalObj.prompt(`重命名天气「${oldWeather}」为：`, oldWeather) || '').trim();
                 if (newWeather && newWeather !== oldWeather) {
@@ -355,15 +360,15 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-set-weather-url:'.length);
         const first = rest.indexOf(':');
         if (first > 0) {
-            const sceneName = rest.slice(0, first);
+            const sceneName = decodeSeg(rest.slice(0, first));
             const after = rest.slice(first + 1);
             const second = after.indexOf(':');
             if (second > 0) {
-                const timeName = after.slice(0, second);
+                const timeName = decodeSeg(after.slice(0, second));
                 const after2 = after.slice(second + 1);
                 const third = after2.indexOf(':');
                 if (third > 0) {
-                    const weatherName = after2.slice(0, third);
+                    const weatherName = decodeSeg(after2.slice(0, third));
                     const url = after2.slice(third + 1);
                     const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
                     const scene = scenes[sceneName];
@@ -390,7 +395,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('scene-remove-char:')) {
-        const name = normalizedAction.slice('scene-remove-char:'.length);
+        const name = decodeSeg(normalizedAction.slice('scene-remove-char:'.length));
         settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
         settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
         delete settingsState.draft.bridge.sceneAssets.characters[name];
@@ -400,7 +405,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('scene-add-mood:')) {
-        const charName = normalizedAction.slice('scene-add-mood:'.length);
+        const charName = decodeSeg(normalizedAction.slice('scene-add-mood:'.length));
         settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
         settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
         const char = settingsState.draft.bridge.sceneAssets.characters[charName];
@@ -418,8 +423,8 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-remove-mood:'.length);
         const colonIdx = rest.indexOf(':');
         if (colonIdx > 0) {
-            const charName = rest.slice(0, colonIdx);
-            const mood = rest.slice(colonIdx + 1);
+            const charName = decodeSeg(rest.slice(0, colonIdx));
+            const mood = decodeSeg(rest.slice(colonIdx + 1));
             settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
             settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
             const char = settingsState.draft.bridge.sceneAssets.characters[charName];
@@ -434,11 +439,11 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-set-mood-url:'.length);
         const firstColon = rest.indexOf(':');
         if (firstColon > 0) {
-            const charName = rest.slice(0, firstColon);
+            const charName = decodeSeg(rest.slice(0, firstColon));
             const afterChar = rest.slice(firstColon + 1);
             const secondColon = afterChar.indexOf(':');
             if (secondColon > 0) {
-                const mood = afterChar.slice(0, secondColon);
+                const mood = decodeSeg(afterChar.slice(0, secondColon));
                 const url = afterChar.slice(secondColon + 1);
                 settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
                 settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
@@ -453,7 +458,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('scene-rename-char:')) {
-        const oldName = normalizedAction.slice('scene-rename-char:'.length);
+        const oldName = decodeSeg(normalizedAction.slice('scene-rename-char:'.length));
         const globalObj = options.global || globalThis;
         const newName = (globalObj.prompt && globalObj.prompt(`重命名角色「${oldName}」为：`, oldName) || '').trim();
         if (newName && newName !== oldName) {
@@ -472,8 +477,8 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('scene-rename-mood:'.length);
         const colonIdx = rest.indexOf(':');
         if (colonIdx > 0) {
-            const charName = rest.slice(0, colonIdx);
-            const oldMood = rest.slice(colonIdx + 1);
+            const charName = decodeSeg(rest.slice(0, colonIdx));
+            const oldMood = decodeSeg(rest.slice(colonIdx + 1));
             const globalObj = options.global || globalThis;
             const newMood = (globalObj.prompt && globalObj.prompt(`重命名情绪「${oldMood}」为：`, oldMood) || '').trim();
             if (newMood && newMood !== oldMood) {
@@ -511,7 +516,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('mood-remove-group:')) {
-        const label = normalizedAction.slice('mood-remove-group:'.length);
+        const label = decodeSeg(normalizedAction.slice('mood-remove-group:'.length));
         const groups = ensureMoodGroups(settingsState);
         const idx = groups.findIndex((g) => g.label === label);
         if (idx >= 0) groups.splice(idx, 1);
@@ -521,7 +526,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('mood-rename-group:')) {
-        const oldLabel = normalizedAction.slice('mood-rename-group:'.length);
+        const oldLabel = decodeSeg(normalizedAction.slice('mood-rename-group:'.length));
         const globalObj = options.global || globalThis;
         const newLabel = (globalObj.prompt && globalObj.prompt(`重命名情绪组「${oldLabel}」为：`, oldLabel) || '').trim();
         if (newLabel && newLabel !== oldLabel) {
@@ -539,7 +544,7 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction.startsWith('mood-add-word:')) {
-        const label = normalizedAction.slice('mood-add-word:'.length);
+        const label = decodeSeg(normalizedAction.slice('mood-add-word:'.length));
         const globalObj = options.global || globalThis;
         const word = (globalObj.prompt && globalObj.prompt(`向「${label}」组添加情绪词（2-3 个汉字）：`, '') || '').trim();
         if (word) {
@@ -564,8 +569,8 @@ export async function handleSettingsAction(action, ctx) {
         const rest = normalizedAction.slice('mood-remove-word:'.length);
         const colonIdx = rest.indexOf(':');
         if (colonIdx > 0) {
-            const label = rest.slice(0, colonIdx);
-            const word = rest.slice(colonIdx + 1);
+            const label = decodeSeg(rest.slice(0, colonIdx));
+            const word = decodeSeg(rest.slice(colonIdx + 1));
             const groups = ensureMoodGroups(settingsState);
             const group = groups.find((g) => g.label === label);
             if (group) {
@@ -583,16 +588,24 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
-    if (normalizedAction.startsWith('scene-import-mood-slots:')) {
-        const charName = normalizedAction.slice('scene-import-mood-slots:'.length);
+    if (normalizedAction === 'toggle-mood-groups') {
+        settingsState.asyncState.moodGroupsExpanded = !settingsState.asyncState.moodGroupsExpanded;
+        return rerenderSettings();
+    }
+
+    if (normalizedAction === 'scene-import-mood-slots') {
         settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
-        settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
-        const char = settingsState.draft.bridge.sceneAssets.characters[charName];
-        if (char && typeof char === 'object') {
-            const groups = ensureMoodGroups(settingsState);
+        const characters = settingsState.draft.bridge.sceneAssets.characters || {};
+        const groups = ensureMoodGroups(settingsState);
+        let touched = false;
+        for (const charName of Object.keys(characters)) {
+            const char = characters[charName];
+            if (!char || typeof char !== 'object') continue;
             for (const group of groups) {
-                if (!(group.label in char)) char[group.label] = '';
+                if (!(group.label in char)) { char[group.label] = ''; touched = true; }
             }
+        }
+        if (touched) {
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
         }
@@ -602,8 +615,7 @@ export async function handleSettingsAction(action, ctx) {
     return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
 }
 
-function ensureMoodGroups(settingsState) {
-    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+function ensureMoodGroups(settingsState) {    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
     const sa = settingsState.draft.bridge.sceneAssets;
     if (!Array.isArray(sa.moodGroups)) {
         sa.moodGroups = normalizeMoodGroups(sa.moodGroups);
