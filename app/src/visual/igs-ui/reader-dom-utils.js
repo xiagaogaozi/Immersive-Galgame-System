@@ -90,6 +90,29 @@ export function removeImageLoadingSpinner(container) {
     if (existing) existing.remove();
 }
 
+export function ensureImageEmptyPlaceholder(container, text = '图片未生成') {
+    if (!container) return;
+    removeImageLoadingSpinner(container);
+    const existing = container.querySelector('.igs-image-empty');
+    if (existing) {
+        existing.textContent = text;
+        return;
+    }
+    const wrapper = container.ownerDocument
+        ? container.ownerDocument.createElement('div')
+        : document.createElement('div');
+    wrapper.className = 'igs-image-empty';
+    wrapper.setAttribute('aria-label', text);
+    wrapper.textContent = text;
+    container.appendChild(wrapper);
+}
+
+export function removeImageEmptyPlaceholder(container) {
+    if (!container) return;
+    const existing = container.querySelector('.igs-image-empty');
+    if (existing) existing.remove();
+}
+
 export function attachSettingsViewportEvents(domState, root) {
     if (!domState || !root) return;
     detachSettingsViewportEvents(domState);

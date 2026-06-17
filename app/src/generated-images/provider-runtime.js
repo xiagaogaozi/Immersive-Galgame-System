@@ -33,7 +33,7 @@ export async function collectProviderImages(messageContext = {}, providers = BUI
 
         let extracted = [];
         try {
-            extracted = provider.extractImages(messageContext) || [];
+            extracted = await provider.extractImages(messageContext) || [];
         } catch (error) {
             extracted = [];
         }

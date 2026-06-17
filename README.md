@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.9.1`：修复阅读器扫描扩展插图（chami/chatu8）时，图片扫到了却绑不进图位、永久转圈的问题（按 DOM 顺序兜底填充无匹配键的图）；修复正文格式化默认正则因行首/行尾锚点导致带翻译尾巴的 `@igs-scene` 行漏匹配。该问题自 v0.8.1 起即存在，与品牌重命名无关。
+- 当前项目版本 `v0.9.2`：重写 chami 插图扫描——改为直接从 chami 的 IndexedDB（`TavernScenePlugin.db.getImageDataBatch`）按 `data-image-id` 升序批量取图，不再依赖图片是否在可视区、不怕 chami 懒加载卸载、按生成顺序正确绑定图位（修复「第3张图绑到图位1」的错位）。各插图扩展扫描逻辑解耦，选 chami 走 chami 专属取图。阅读器图位仅在真正轮询加载时显示转圈，扫不到则显示「图片未生成」占位，不再永久转圈误导。
+- `v0.9.1`：修复扩展插图图片扫到却绑不进图位、正文格式化默认正则锚点漏匹配（自 v0.8.1 起存在，与品牌重命名无关）。
 - `v0.9.0`：项目品牌从 Visual Novel / VN 重命名为 Immersive Galgame System / IGS，仓库、loader、API 全局名、CSS/DOM 前缀、存储键、事件名全部切到 IGS 体系，不保留向后兼容。
 - `v0.8.1`：新增调试版 loader（IGS_DEBUG 开关 + [DEBUG-sprite] 探针），移除无效的「调试日志」开关。
 - `v0.7.7` 修复全屏模式点击退出 + 立绘位置按角色独立存储。
@@ -30,7 +31,7 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-沉浸式Galgame系统（自动更新） v0.9.1.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-沉浸式Galgame系统（自动更新） v0.9.2.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Immersive Galgame System 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Immersive Galgame System 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -135,6 +136,13 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.9.2 - 2026-06-17
+
+- 重写 chami 插图扫描逻辑（`chami-provider.js`）：扫描时收集楼层内所有 `.tsp-generated-image` 的 `data-image-id`，按 id 升序调用 `window.TavernScenePlugin.db.getImageDataBatch(ids)` 从 chami 的 IndexedDB 批量取出真图 Blob（`URL.createObjectURL` 转 url）。彻底摆脱 chami「滚出可视区即卸载回占位 gif」的懒加载限制——不论图当前在不在可视区都能取到，且按生成顺序（= 正文图位顺序）正确绑定，修复「DOM 乱序导致第3张图绑到图位1」的错位。DB 不可用时回退到原 DOM 扫描。
+- 各插图扩展扫描逻辑解耦：chami 走 DB 专属取图，chatu8 保留自身 DOM 扫描，「图像扩展」设置真正决定走哪条路径。
+- `provider-runtime.js` 的 `extractImages` 调用改为 `await`，支持异步 provider。
+- 阅读器背景图位的转圈动画仅在真正轮询加载（`imageLoading`）时显示；轮询结束仍未取到图时显示「图片未生成」占位（`.igs-image-empty`），不再永久转圈误导用户。
 
 ### v0.9.1 - 2026-06-17
 

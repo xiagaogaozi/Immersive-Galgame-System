@@ -20,7 +20,7 @@ import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
 
-const IGS_VERSION = '0.9.1';
+const IGS_VERSION = '0.9.2';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;

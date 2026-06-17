@@ -691,6 +691,7 @@ export function createIgsReaderHost(options = {}) {
         if (!shouldPollReaderImages(current.snapshot && current.snapshot.content)) return;
         const token = (current.imagePollToken || 0) + 1;
         current.imagePollToken = token;
+        current.imagePolling = true;
         pollReaderImages(current, token);
     }
 
@@ -722,8 +723,15 @@ export function createIgsReaderHost(options = {}) {
                 rerenderActiveReader();
                 previousSignature = nextSignature;
                 previousBoundCount = nextBoundCount;
-                if (!shouldPollReaderImages(current.snapshot && current.snapshot.content)) return;
+                if (!shouldPollReaderImages(current.snapshot && current.snapshot.content)) {
+                    current.imagePolling = false;
+                    return;
+                }
             }
+        }
+        if (state.activeReader === current && current.imagePollToken === token) {
+            current.imagePolling = false;
+            rerenderActiveReader();
         }
     }
 
@@ -857,6 +865,7 @@ export function createIgsReaderHost(options = {}) {
                 activeImageIndex: displayImageState.currentIndex,
                 currentImageUrl: displayImageState.displayUrl || displayImageState.currentUrl,
                 currentSlotImageUrl: displayImageState.slotUrl,
+                imageLoading: Boolean(state.activeReader && state.activeReader.imagePolling),
                 sourceKind: firstDefined(scene.sourceKind, payload.sourceKind, 'raw-text'),
                 warnings: extracted.warnings,
                 errors: extracted.errors,

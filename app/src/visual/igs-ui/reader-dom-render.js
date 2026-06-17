@@ -5,9 +5,11 @@ import {
 import { TOOLBAR_ACTIONS } from './reader-host-constants.js';
 import {
     ensureImageLoadingSpinner,
+    ensureImageEmptyPlaceholder,
     getOwnerWindow,
     readElementHeight,
     readElementWidth,
+    removeImageEmptyPlaceholder,
     removeImageLoadingSpinner,
 } from './reader-dom-utils.js';
 import { computeLineHeight, normalizeOpacity, igsDebug } from './reader-value-utils.js';
@@ -317,12 +319,19 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     if (bg && snapshot.content.backgroundImage) {
         bg.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
         removeImageLoadingSpinner(bg);
+        removeImageEmptyPlaceholder(bg);
     } else if (bg) {
         bg.style.backgroundImage = '';
-        if (snapshot.content.imageExpectedCount > 0 && snapshot.content.imageBoundCount < snapshot.content.imageExpectedCount) {
+        const expectsImage = snapshot.content.imageExpectedCount > 0
+            && snapshot.content.imageBoundCount < snapshot.content.imageExpectedCount;
+        if (expectsImage && snapshot.content.imageLoading) {
+            removeImageEmptyPlaceholder(bg);
             ensureImageLoadingSpinner(bg);
+        } else if (expectsImage) {
+            ensureImageEmptyPlaceholder(bg, '图片未生成');
         } else {
             removeImageLoadingSpinner(bg);
+            removeImageEmptyPlaceholder(bg);
         }
     }
     if (bgBlur && snapshot.content.backgroundImage) {
