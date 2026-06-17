@@ -129,9 +129,11 @@ export function resolveActiveTheme(snapshot) {
             nameFont: vnTheme.nameFont || preset.nameFont,
             textFont: vnTheme.textFont || preset.textFont,
             thoughtFont: vnTheme.thoughtFont || preset.thoughtFont,
+            narrationFont: vnTheme.narrationFont || preset.narrationFont,
             nameColor: vnTheme.nameColor || preset.nameColor,
             textColor: vnTheme.textColor || preset.textColor,
             thoughtColor: vnTheme.thoughtColor || preset.thoughtColor,
+            narrationColor: vnTheme.narrationColor || preset.narrationColor,
             dividerColor: vnTheme.dividerColor || preset.dividerColor,
         };
     }
@@ -143,9 +145,13 @@ export function renderDialogueHtml(text, theme, sceneAssetsEnabled) {
     if (!sceneAssetsEnabled) return escaped;
     return escaped.replace(/\*([^*]+)\*/g, (_, inner) => {
         const styles = [];
-        if (theme.thoughtFont && theme.thoughtFont !== 'inherit') styles.push(`font-family:${theme.thoughtFont}`);
+        if (theme.thoughtFont && theme.thoughtFont !== 'inherit') styles.push(`font-family:${cssFontValue(theme.thoughtFont)}`);
         if (theme.thoughtColor) styles.push(`color:${theme.thoughtColor}`);
         const styleAttr = styles.length ? ` style="${styles.join(';')}"` : '';
         return `<span class="igs-thought"${styleAttr}>${inner}</span>`;
     });
+}
+
+function cssFontValue(font) {
+    return String(font || '').replace(/"/g, "'");
 }

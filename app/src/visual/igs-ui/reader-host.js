@@ -37,7 +37,6 @@ import {
     normalizeFiniteNumber,
     normalizeNullableNumber,
     normalizeOpacity,
-    stripSpeakerPrefix,
     toHex,
 } from './reader-value-utils.js';
 import {
@@ -427,7 +426,7 @@ export function createIgsReaderHost(options = {}) {
         if (path === 'bridge.vnTheme.preset' && value === 'custom') {
             const prevName = draft.bridge.vnTheme._prevPreset || 'genshin';
             const source = VN_THEME_PRESETS[prevName] || VN_THEME_PRESETS.genshin;
-            const fields = ['nameAlign', 'dividerSymbol', 'nameFont', 'textFont', 'thoughtFont', 'nameColor', 'textColor', 'thoughtColor', 'dividerColor'];
+            const fields = ['nameAlign', 'dividerSymbol', 'nameFont', 'textFont', 'thoughtFont', 'narrationFont', 'nameColor', 'textColor', 'thoughtColor', 'narrationColor', 'dividerColor'];
             for (const f of fields) {
                 setPath(draft, `bridge.vnTheme.${f}`, source[f]);
             }
@@ -780,6 +779,7 @@ export function createIgsReaderHost(options = {}) {
         let finalBackgroundImage = backgroundImage;
         let spriteImage = null;
         let resolvedSpeaker = scene.speaker || '';
+        let spriteCharacter = '';
         const extractedSegmentImageSlots = Array.isArray(extracted.segmentImageSlots) ? extracted.segmentImageSlots : [];
         const rawSegmentSlotValue = extractedSegmentImageSlots[normalizedIndex];
         const segmentHasBoundSlot = rawSegmentSlotValue != null
@@ -799,17 +799,45 @@ export function createIgsReaderHost(options = {}) {
                 const assetUrls = lookupSceneAssetUrls(sceneState, sceneAssets);
                 finalBackgroundImage = assetUrls.backgroundUrl || '';
                 spriteImage = assetUrls.spriteUrl || null;
-                if (sceneState.character) resolvedSpeaker = sceneState.character;
+                if (sceneState.character) spriteCharacter = sceneState.character;
             } else {
                 finalBackgroundImage = '';
                 spriteImage = null;
             }
         }
+        // Per-segment classification from the formatted segment text itself.
+        // Order matters: thought (*...*) is checked before dialogue ([名字]：) because
+        // a thought segment looks like *[名字]：...* and would otherwise match dialogue.
+        // Fallback: when the prefix was stripped (single-segment messages), use the
+        // directive that lands on this exact segment index.
+        let textType = 'narration';
+        let bubbleSpeaker = '';
+        let segmentBody = currentText;
+        if (sceneAssetsEnabled) {
+            const seg = String(currentText || '');
+            const thoughtMatch = seg.match(/^\s*\*\s*(?:\[([^\]]+)\]\s*[:：]\s*)?([\s\S]*?)\s*\*\s*$/);
+            const dialogueMatch = seg.match(/^\s*\[([^\]]+)\]\s*[:：]\s*([\s\S]*)$/);
+            if (thoughtMatch) {
+                textType = 'thought';
+                segmentBody = seg;
+            } else if (dialogueMatch) {
+                textType = 'dialogue';
+                bubbleSpeaker = dialogueMatch[1].trim();
+                segmentBody = dialogueMatch[2];
+            } else {
+                const segDirective = sceneDirectives.find((d) => Number(d.segmentIndex) === normalizedIndex);
+                if (segDirective && segDirective.type === 'char') {
+                    textType = 'dialogue';
+                    bubbleSpeaker = segDirective.character || '';
+                } else if (segDirective && segDirective.type === 'thought') {
+                    textType = 'thought';
+                }
+            }
+            resolvedSpeaker = bubbleSpeaker;
+        }
         const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
             ? `${scene.speaker}: ${currentText}`
-            : (sceneAssetsEnabled && resolvedSpeaker && currentText)
-                ? stripSpeakerPrefix(currentText, resolvedSpeaker)
-                : currentText;
+            : (sceneAssetsEnabled ? segmentBody : currentText);
         const overlayClasses = ['igs-mode-' + mode];
         if (mode === 'pc' || mode === 'mobile') overlayClasses.push('igs-floating');
         if (mode === 'mobile') overlayClasses.push('igs-floating-mobile');
@@ -845,6 +873,8 @@ export function createIgsReaderHost(options = {}) {
             },
             content: {
                 speaker: resolvedSpeaker,
+                spriteCharacter,
+                textType,
                 text: currentText,
                 fullText: text,
                 displayText,
@@ -1012,6 +1042,8 @@ export function createIgsReaderHost(options = {}) {
                 nameColorField: field('bridge.vnTheme.nameColor', '颜色', colorInput('bridge.vnTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), disabled || !themeCustom)),
                 textColorField: field('bridge.vnTheme.textColor', '颜色', colorInput('bridge.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
                 thoughtColorField: field('bridge.vnTheme.thoughtColor', '颜色', colorInput('bridge.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
+                narrationFontField: field('bridge.vnTheme.narrationFont', '字体', selectInput('bridge.vnTheme.narrationFont', displayTheme.narrationFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
+                narrationColorField: field('bridge.vnTheme.narrationColor', '颜色', colorInput('bridge.vnTheme.narrationColor', toHex(displayTheme.narrationColor || '#f4f4f6'), disabled || !themeCustom)),
                 dividerColorField: field('bridge.vnTheme.dividerColor', '颜色', colorInput('bridge.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
                 themeAdvancedClass: themeCustom ? '' : 'igs-settings-api-group is-disabled',
             });
@@ -1348,9 +1380,11 @@ export function createIgsReaderHost(options = {}) {
         normalized.nameFont = normalized.nameFont || fallback.nameFont;
         normalized.textFont = normalized.textFont || fallback.textFont;
         normalized.thoughtFont = normalized.thoughtFont || fallback.thoughtFont;
+        normalized.narrationFont = normalized.narrationFont || fallback.narrationFont;
         normalized.nameColor = normalized.nameColor || fallback.nameColor;
         normalized.textColor = normalized.textColor || fallback.textColor;
         normalized.thoughtColor = normalized.thoughtColor || fallback.thoughtColor;
+        normalized.narrationColor = normalized.narrationColor || fallback.narrationColor;
         normalized.dividerColor = normalized.dividerColor || fallback.dividerColor;
         return normalized;
     }

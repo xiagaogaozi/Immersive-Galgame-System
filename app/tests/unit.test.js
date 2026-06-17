@@ -404,6 +404,43 @@ test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
     host.destroy();
 });
 
+test('gate:igs-ui:scene-assets-classifies-dialogue-vs-narration-per-segment', () => {
+    const makeHost = () => createIgsReaderHost({
+        global: {},
+        getUnifiedSettings: () => ({
+            version: '0.4.9',
+            bridge: {
+                openMode: 'pc',
+                sceneAssets: { enabled: true, scenes: {}, characters: {} },
+            },
+            readerMode: 'pc',
+            readerSettings: {},
+        }),
+        saveUnifiedSettings: () => ({ ok: true, legacy: {}, unified: {} }),
+    });
+
+    // dialogue segment: name stripped from body, shown as speaker, textType=dialogue
+    const host1 = makeHost();
+    const dlg = host1.openReader({
+        message: { text: '<content>[igs-char:小林海斗|平静|これは台詞です。]</content>' },
+    }, { mode: 'pc' });
+    assert.equal(dlg.snapshot.content.textType, 'dialogue');
+    assert.equal(dlg.snapshot.content.speaker, '小林海斗');
+    assert.equal(dlg.snapshot.content.displayText, 'これは台詞です。');
+    assert.equal(dlg.snapshot.content.displayText.includes('['), false);
+    host1.destroy();
+
+    // narration segment: no speaker, no name, textType=narration
+    const host2 = makeHost();
+    const narr = host2.openReader({
+        message: { text: '<content>小林海斗静静地看着窗外。</content>' },
+    }, { mode: 'pc' });
+    assert.equal(narr.snapshot.content.textType, 'narration');
+    assert.equal(narr.snapshot.content.speaker, '');
+    assert.equal(narr.snapshot.content.displayText, '小林海斗静静地看着窗外。');
+    host2.destroy();
+});
+
 test('gate:scene:igs-message-source:extracts-scene-directives-from-fallback-text', () => {
     const payload = buildIgsTextPayload({
         text: '[igs-scene:B班教室|下午|晴天]\n[igs-char:小林海斗|平静|できるもん！]',

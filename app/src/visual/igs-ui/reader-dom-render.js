@@ -347,10 +347,11 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         spriteEl.style.display = 'block';
         spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
         if (!current.spriteEditMode) {
-            const layout = resolveSpriteLayout(snapshot.readerSettings.spriteLayouts, snapshot.mode, snapshot.content.speaker);
+            const spriteKey = snapshot.content.spriteCharacter || snapshot.content.speaker;
+            const layout = resolveSpriteLayout(snapshot.readerSettings.spriteLayouts, snapshot.mode, spriteKey);
             spriteEl.style.backgroundSize = `${layout.scale}%`;
             spriteEl.style.backgroundPosition = `${layout.posX}% ${layout.posY}%`;
-            igsDebug('[DEBUG-sprite] apply-layout', { mode: snapshot.mode, speaker: snapshot.content.speaker, index: snapshot.content.currentIndex, layoutKey: snapshot.content.speaker ? `${snapshot.mode}::${snapshot.content.speaker}` : snapshot.mode, layout: { ...layout } });
+            igsDebug('[DEBUG-sprite] apply-layout', { mode: snapshot.mode, speaker: spriteKey, index: snapshot.content.currentIndex, layoutKey: spriteKey ? `${snapshot.mode}::${spriteKey}` : snapshot.mode, layout: { ...layout } });
         }
     } else if (spriteEl) {
         spriteEl.style.backgroundImage = '';
@@ -359,16 +360,20 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     if (textEl) {
         const theme = resolveActiveTheme(snapshot);
         const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
+        const textType = snapshot.content.textType || 'narration';
         textEl.innerHTML = renderDialogueHtml(snapshot.content.displayText, theme, sceneAssetsEnabled);
         textEl.style.fontSize = `${snapshot.readerSettings.fontSize}px`;
         textEl.style.lineHeight = computeLineHeight(snapshot.readerSettings.fontSize);
-        if (sceneAssetsEnabled && theme.textFont && theme.textFont !== 'inherit') {
-            textEl.style.fontFamily = theme.textFont;
+        const isNarration = textType === 'narration';
+        const segFont = isNarration ? theme.narrationFont : theme.textFont;
+        const segColor = isNarration ? theme.narrationColor : theme.textColor;
+        if (sceneAssetsEnabled && segFont && segFont !== 'inherit') {
+            textEl.style.fontFamily = segFont;
         } else {
             textEl.style.fontFamily = '';
         }
-        if (sceneAssetsEnabled && theme.textColor) {
-            textEl.style.color = theme.textColor;
+        if (sceneAssetsEnabled && segColor) {
+            textEl.style.color = segColor;
         } else {
             textEl.style.color = '';
         }

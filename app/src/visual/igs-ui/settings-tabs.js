@@ -135,6 +135,10 @@ const SCENE_TAB_TEMPLATE = `
           <div class="igs-settings-row">{{textFontField}}{{textColorField}}</div>
         </div>
         <div class="igs-source-filter">
+          <div class="igs-source-filter-title">旁白</div>
+          <div class="igs-settings-row">{{narrationFontField}}{{narrationColorField}}</div>
+        </div>
+        <div class="igs-source-filter">
           <div class="igs-source-filter-title">心里话</div>
           <div class="igs-settings-row">{{thoughtFontField}}{{thoughtColorField}}</div>
         </div>

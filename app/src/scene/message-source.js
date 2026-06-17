@@ -183,7 +183,7 @@ export function applyImmersiveGalgameSystemBodyFormat(raw, rule) {
     try {
         const regex = new RegExp(cfg.pattern, cfg.flags);
         result.formattedRaw = source.replace(regex, cfg.replacement);
-        result.formattedRaw = result.formattedRaw.replace(THOUGHT_RE_GLOBAL, '*[$1]：$2*');
+        result.formattedRaw = result.formattedRaw.replace(THOUGHT_RE_GLOBAL, '*$2*');
         result.virtualRegexChanged = result.formattedRaw !== source;
         if (!result.virtualRegexChanged) result.formatSourceKind = 'raw';
     } catch (error) {
