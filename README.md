@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.10.3`：修复台词气泡显示——按段落类型（台词/旁白/心里话）分类渲染；旁白不再误显示名字+分割线；台词去掉 `[名字]：` 前缀（名字独立显示在气泡顶部）；台词与旁白字体颜色可分开设置（新增「旁白」主题子卡片）；修复自定义模式下心里话字体含双引号打断 `style` 属性导致字体颜色不生效的真 bug。
+- 当前项目版本 `v0.11.0`：新增情绪词分类系统——内置 8 组情绪词库（喜悦/愤怒/悲伤/紧张/平和/害羞/嫌弃/爱恋），通过 `{{mood_groups}}` 占位符注入约束 AI 只从池里选细分词；立绘差分查表升级为「精确槽 → 归约组名槽 → 默认」三级兜底（AI 写「欣喜」自动归到「喜悦」组取图）；场景 tab 角色立绘卡片内新增可折叠「情绪词库」编辑区（增删改组/词、恢复默认）+ 角色行「一键导入情绪组名」建槽按钮。同步修正注入深度：`setExtensionPrompt` 位置从 `IN_PROMPT(0)` 改为 `IN_CHAT(1)`、depth 0，让格式约束贴在对话末尾不被长上下文淹没；新增 `CHAT_CHANGED` 切聊天自动重注入。
+- `v0.10.3`：修复台词气泡显示——按段落类型（台词/旁白/心里话）分类渲染；旁白不再误显示名字+分割线；台词去掉 `[名字]：` 前缀（名字独立显示在气泡顶部）；台词与旁白字体颜色可分开设置（新增「旁白」主题子卡片）；修复自定义模式下心里话字体含双引号打断 `style` 属性导致字体颜色不生效的真 bug。
 - `v0.9.1`：修复扩展插图图片扫到却绑不进图位、正文格式化默认正则锚点漏匹配（自 v0.8.1 起存在，与品牌重命名无关）。
 - `v0.9.0`：项目品牌从 Visual Novel / VN 重命名为 Immersive Galgame System / IGS，仓库、loader、API 全局名、CSS/DOM 前缀、存储键、事件名全部切到 IGS 体系，不保留向后兼容。
 - `v0.8.1`：新增调试版 loader（IGS_DEBUG 开关 + [DEBUG-sprite] 探针），移除无效的「调试日志」开关。
@@ -136,6 +137,17 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.11.0 - 2026-06-18
+
+- 新增情绪词分类系统（`app/src/scene/mood-groups.js`）：内置 8 组情绪词库 `DEFAULT_MOOD_GROUPS`（喜悦/愤怒/悲伤/紧张/平和/害羞/嫌弃/爱恋，共 108 词），参考 `_inbox/酒馆助手脚本-对话渲染系统 v7.1`。`resolveMoodGroup` 把细分词归约到组名，`buildMoodGroupsText` 渲染成注入文本。
+- 注入提示词占位符：`DEFAULT_SCENE_PROMPT_RULE` 新增 `[情绪词约束]` 段 + `{{mood_groups}}` 占位符；注入前用当前词库文本替换（用户删除占位符则不替换不报错），约束 AI 情绪字段只从池里选词。
+- 立绘差分查表三级兜底（`lookupAssetValue`）：精确槽（兼容旧自由命名）→ `resolveMoodGroup` 归约组名槽 → `默认`。AI 写「欣喜」自动归到「喜悦」组取图，立绘按 8 组配置即可覆盖全部细分词。
+- 存储：`bridge.sceneAssets.moodGroups` 新增字段，`normalizeSceneAssets` 默认填入 8 组。
+- 设置面板：场景 tab 角色立绘卡片内新增可折叠「情绪词库（全局）」编辑区（默认折叠），支持增删改组、增删改词（2-3 汉字校验、跨组去重、每组至少留 1 词）、恢复默认词库；每个角色行新增「一键导入情绪组名」（★）按钮，按当前组名在该角色下批量建立绘槽。
+- 注入深度修正（`prompt-injector.js`）：`setExtensionPrompt` 位置从 `IN_PROMPT(0)` 改为 `IN_CHAT(1)`、depth 0，让格式约束贴在对话末尾，不再被长上下文（用户预设+角色卡）淹没导致 AI 忽视。复盘 git 历史确认：v0.4.0 起注入失效的真因是 IGS 作为远程 bundle 拿不到 JS-Slash-Runner 注入到脚本作用域的裸 `injectPrompts`，而非参数错误；`setExtensionPrompt` 走 `SillyTavern.getContext()` 才是 IGS 的可靠路径，本版只改其 position 语义对齐对话渲染系统的 in_chat 效果。
+- 新增 `CHAT_CHANGED` 事件监听，切聊天后自动重注入（in_chat 注入只对当前聊天有效），`destroy` 时解绑。
+- 测试：新增情绪归约/词库渲染/归一化兜底/立绘三级兜底/占位符替换端到端覆盖；注入 position 断言同步改为 `IN_CHAT(1)`。
 
 ### v0.10.3 - 2026-06-17
 

@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.10.3');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.11.0');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -257,7 +257,7 @@ test('gate:simulation:scene-assets-injects-prompt-and-renders-single-configured-
         igs_bridge_config: JSON.stringify({
             sceneAssets: {
                 enabled: true,
-                promptRule: '请严格输出 [igs-scene:场景|时间|天气] [igs-char:角色|情绪|对白]',
+                promptRule: '请严格输出 [igs-scene:场景|时间|天气] [igs-char:角色|情绪|对白]\n情绪池：\n{{mood_groups}}',
                 scenes: {
                     'B班教室': { url: 'https://example.com/classroom.png', times: {} },
                 },
@@ -303,9 +303,11 @@ test('gate:simulation:scene-assets-injects-prompt-and-renders-single-configured-
     timers[0].callback();
 
     const injected = extensionPrompts['igs-scene-assets-format-rule'];
-    assert.equal(injected.position, 0);
+    assert.equal(injected.position, 1);
     assert.equal(injected.role, 0);
     assert.match(injected.value, /\[igs-scene:/);
+    assert.doesNotMatch(injected.value, /\{\{mood_groups\}\}/);
+    assert.match(injected.value, /喜悦组：/);
 
     const opened = await vn.openLatestAvailable('pc');
     assert.equal(opened.ok, true);

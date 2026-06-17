@@ -1,3 +1,5 @@
+import { resolveMoodGroup } from './mood-groups.js';
+
 const SCENE_RE = /^\[igs-scene:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
 const CHAR_RE = /^\[igs-char:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
 const THOUGHT_RE = /^\[igs-thought:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
@@ -70,7 +72,7 @@ export function lookupSceneAssetUrls(sceneState, sceneAssets) {
     let spriteUrl = null;
     const characters = sceneAssets.characters || {};
     if (sceneState.character && characters[sceneState.character]) {
-        spriteUrl = lookupAssetValue(characters[sceneState.character], sceneState.mood);
+        spriteUrl = lookupAssetValue(characters[sceneState.character], sceneState.mood, sceneAssets.moodGroups);
     }
 
     return { backgroundUrl, spriteUrl };
@@ -92,9 +94,11 @@ function lookupSceneUrl(scenes, sceneName, time, weather) {
     return entry.url || null;
 }
 
-function lookupAssetValue(record, requestedKey) {
+function lookupAssetValue(record, requestedKey, moodGroups) {
     if (!record || typeof record !== 'object') return null;
     if (requestedKey && record[requestedKey]) return record[requestedKey];
+    const groupLabel = resolveMoodGroup(requestedKey, moodGroups);
+    if (groupLabel && record[groupLabel]) return record[groupLabel];
     return record['默认'] || null;
 }
 

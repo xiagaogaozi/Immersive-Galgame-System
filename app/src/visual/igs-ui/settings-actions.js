@@ -1,6 +1,7 @@
 import { DEFAULT_VIRTUAL_REGEX } from '../../scene/message-source.js';
 import { cloneData } from './reader-value-utils.js';
 import { DEFAULT_SCENE_PROMPT_RULE, TOOLBAR_ACTIONS } from './reader-host-constants.js';
+import { DEFAULT_MOOD_GROUPS, normalizeMoodGroups } from '../../scene/mood-groups.js';
 
 export async function handleSettingsAction(action, ctx) {
     const {
@@ -489,5 +490,123 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
+    if (normalizedAction === 'reset-mood-groups') {
+        settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+        settingsState.draft.bridge.sceneAssets.moodGroups = cloneData(DEFAULT_MOOD_GROUPS);
+        const persisted = persistSettingsDraft();
+        if (persisted.ok === false) return persisted;
+        return rerenderSettings();
+    }
+
+    if (normalizedAction === 'mood-add-group') {
+        const groups = ensureMoodGroups(settingsState);
+        const existing = new Set(groups.map((g) => g.label));
+        let i = groups.length + 1;
+        let name = '情绪组' + i;
+        while (existing.has(name)) { i++; name = '情绪组' + i; }
+        groups.push({ label: name, words: [] });
+        const persisted = persistSettingsDraft();
+        if (persisted.ok === false) return persisted;
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('mood-remove-group:')) {
+        const label = normalizedAction.slice('mood-remove-group:'.length);
+        const groups = ensureMoodGroups(settingsState);
+        const idx = groups.findIndex((g) => g.label === label);
+        if (idx >= 0) groups.splice(idx, 1);
+        const persisted = persistSettingsDraft();
+        if (persisted.ok === false) return persisted;
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('mood-rename-group:')) {
+        const oldLabel = normalizedAction.slice('mood-rename-group:'.length);
+        const globalObj = options.global || globalThis;
+        const newLabel = (globalObj.prompt && globalObj.prompt(`重命名情绪组「${oldLabel}」为：`, oldLabel) || '').trim();
+        if (newLabel && newLabel !== oldLabel) {
+            const groups = ensureMoodGroups(settingsState);
+            if (groups.some((g) => g.label === newLabel)) {
+                if (globalObj.alert) globalObj.alert(`情绪组「${newLabel}」已存在`);
+                return rerenderSettings();
+            }
+            const group = groups.find((g) => g.label === oldLabel);
+            if (group) group.label = newLabel;
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('mood-add-word:')) {
+        const label = normalizedAction.slice('mood-add-word:'.length);
+        const globalObj = options.global || globalThis;
+        const word = (globalObj.prompt && globalObj.prompt(`向「${label}」组添加情绪词（2-3 个汉字）：`, '') || '').trim();
+        if (word) {
+            const groups = ensureMoodGroups(settingsState);
+            if (!/^[一-龥]{2,3}$/.test(word)) {
+                if (globalObj.alert) globalObj.alert('情绪词必须是 2-3 个汉字');
+                return rerenderSettings();
+            }
+            if (groups.some((g) => g.words.includes(word))) {
+                if (globalObj.alert) globalObj.alert(`「${word}」已存在于某个情绪组`);
+                return rerenderSettings();
+            }
+            const group = groups.find((g) => g.label === label);
+            if (group) group.words.push(word);
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('mood-remove-word:')) {
+        const rest = normalizedAction.slice('mood-remove-word:'.length);
+        const colonIdx = rest.indexOf(':');
+        if (colonIdx > 0) {
+            const label = rest.slice(0, colonIdx);
+            const word = rest.slice(colonIdx + 1);
+            const groups = ensureMoodGroups(settingsState);
+            const group = groups.find((g) => g.label === label);
+            if (group) {
+                if (group.words.length <= 1) {
+                    const globalObj = options.global || globalThis;
+                    if (globalObj.alert) globalObj.alert('每个情绪组至少保留 1 个词');
+                    return rerenderSettings();
+                }
+                const wi = group.words.indexOf(word);
+                if (wi >= 0) group.words.splice(wi, 1);
+            }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-import-mood-slots:')) {
+        const charName = normalizedAction.slice('scene-import-mood-slots:'.length);
+        settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+        settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
+        const char = settingsState.draft.bridge.sceneAssets.characters[charName];
+        if (char && typeof char === 'object') {
+            const groups = ensureMoodGroups(settingsState);
+            for (const group of groups) {
+                if (!(group.label in char)) char[group.label] = '';
+            }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
     return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
+}
+
+function ensureMoodGroups(settingsState) {
+    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+    const sa = settingsState.draft.bridge.sceneAssets;
+    if (!Array.isArray(sa.moodGroups)) {
+        sa.moodGroups = normalizeMoodGroups(sa.moodGroups);
+    }
+    return sa.moodGroups;
 }

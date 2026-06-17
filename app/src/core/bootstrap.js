@@ -19,8 +19,9 @@ import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
+import { buildMoodGroupsText, MOOD_GROUPS_PLACEHOLDER } from '../scene/mood-groups.js';
 
-const IGS_VERSION = '0.10.3';
+const IGS_VERSION = '0.11.0';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
@@ -140,6 +141,7 @@ export function bootstrapIGS(options = {}) {
     }
     state.status = 'ready';
     scheduleSceneAssetsInjection(SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS, 1);
+    attachChatChangedReinjection();
     events.emit('igs:ready', publicApi);
 
     return publicApi;
@@ -306,10 +308,17 @@ export function bootstrapIGS(options = {}) {
         const unified = getUnifiedSettingsSnapshot();
         const sceneAssets = unified.bridge && unified.bridge.sceneAssets;
         if (sceneAssets && sceneAssets.enabled && sceneAssets.promptRule) {
-            return promptInjector.inject(sceneAssets.promptRule);
+            return promptInjector.inject(resolvePromptRuleContent(sceneAssets));
         }
         promptInjector.clear();
         return { ok: true, reason: 'scene-assets-disabled' };
+    }
+
+    function resolvePromptRuleContent(sceneAssets) {
+        const rule = String(sceneAssets.promptRule || '');
+        if (!rule.includes(MOOD_GROUPS_PLACEHOLDER)) return rule;
+        const groupsText = buildMoodGroupsText(sceneAssets.moodGroups);
+        return rule.split(MOOD_GROUPS_PLACEHOLDER).join(groupsText);
     }
 
     function syncSceneAssetsInjectionWithRetry(attempt) {
@@ -346,11 +355,52 @@ export function bootstrapIGS(options = {}) {
         return result.reason !== 'empty-content';
     }
 
+    function resolveTavernContext() {
+        try {
+            const candidates = [globalObject, globalThis, typeof window !== 'undefined' ? window : null];
+            for (const root of candidates) {
+                if (root && root.SillyTavern && typeof root.SillyTavern.getContext === 'function') {
+                    return root.SillyTavern.getContext();
+                }
+            }
+        } catch (error) { /* */ }
+        return null;
+    }
+
+    function attachChatChangedReinjection() {
+        const context = resolveTavernContext();
+        const eventSource = context && context.eventSource;
+        const eventTypes = context && (context.event_types || context.eventTypes);
+        const eventName = eventTypes && eventTypes.CHAT_CHANGED;
+        if (!eventSource || !eventName || typeof eventSource.on !== 'function') return;
+        const handler = () => {
+            if (state.destroyed) return;
+            syncSceneAssetsInjectionWithRetry(1);
+        };
+        try {
+            eventSource.on(eventName, handler);
+        } catch (error) { return; }
+        state.chatChangedCleanup = () => {
+            try {
+                if (typeof eventSource.removeListener === 'function') eventSource.removeListener(eventName, handler);
+                else if (typeof eventSource.off === 'function') eventSource.off(eventName, handler);
+            } catch (error) { /* */ }
+        };
+    }
+
+    function detachChatChangedReinjection() {
+        if (typeof state.chatChangedCleanup === 'function') {
+            state.chatChangedCleanup();
+            state.chatChangedCleanup = null;
+        }
+    }
+
     function destroy() {
         if (state.destroyed) return { ok: true, reason: 'already-destroyed' };
         state.destroyed = true;
         state.status = 'destroyed';
         clearSceneAssetsInjectionTimer();
+        detachChatChangedReinjection();
         promptInjector.clear();
         if (app.igsUi && typeof app.igsUi.destroy === 'function') {
             app.igsUi.destroy();

@@ -5,6 +5,7 @@ import {
     normalizeVirtualRegex,
 } from '../../scene/message-source.js';
 import { resolveSceneStateAtIndex, lookupSceneAssetUrls } from '../../scene/scene-directives.js';
+import { normalizeMoodGroups } from '../../scene/mood-groups.js';
 import {
     getOriginalReaderHtml,
     getOriginalReaderSource,
@@ -44,6 +45,7 @@ import {
     colorInput,
     field,
     renderCharacterAssetList,
+    renderMoodGroupsEditor,
     renderPinnedButtons,
     renderSceneAssetList,
     renderTemplate,
@@ -1023,6 +1025,7 @@ export function createIgsReaderHost(options = {}) {
             const disabled = !sceneAssets.enabled;
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
+            const moodGroupsHtml = renderMoodGroupsEditor(sceneAssets.moodGroups || []);
             const vnTheme = bridge.vnTheme || {};
             const themeCustom = vnTheme.preset === 'custom';
             const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
@@ -1033,6 +1036,7 @@ export function createIgsReaderHost(options = {}) {
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
+                moodGroupsEditor: moodGroupsHtml,
                 themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
                 nameAlignField: field('bridge.vnTheme.nameAlign', '对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
                 dividerField: field('bridge.vnTheme.dividerSymbol', '样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
@@ -1367,6 +1371,7 @@ export function createIgsReaderHost(options = {}) {
         if (!normalized.characters || typeof normalized.characters !== 'object' || Array.isArray(normalized.characters)) {
             normalized.characters = {};
         }
+        normalized.moodGroups = normalizeMoodGroups(normalized.moodGroups);
         return normalized;
     }
 

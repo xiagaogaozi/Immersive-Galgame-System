@@ -116,6 +116,7 @@ const SCENE_TAB_TEMPLATE = `
         </div>
         <div class="igs-source-filter-note">角色名 → 情绪 → 立绘 URL。情绪名为「默认」的条目在无匹配时兜底。</div>
         {{charactersEditor}}
+        {{moodGroupsEditor}}
       </div>
     </div>
     <div class="igs-source-filter igs-settings-full">

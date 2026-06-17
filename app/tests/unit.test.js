@@ -40,6 +40,12 @@ import {
     lookupSceneAssetUrls,
     resolveSceneStateAtIndex,
 } from '../src/scene/scene-directives.js';
+import {
+    DEFAULT_MOOD_GROUPS,
+    buildMoodGroupsText,
+    normalizeMoodGroups,
+    resolveMoodGroup,
+} from '../src/scene/mood-groups.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 
@@ -267,7 +273,7 @@ test('gate:scene:igs-message-source:formats-default-bubble-body', () => {
     assert.equal(payload.virtualRegexChanged, true);
 });
 
-test('gate:host:prompt-injector-registers-scene-rule-as-in-prompt-extension-prompt', () => {
+test('gate:host:prompt-injector-registers-scene-rule-as-in-chat-extension-prompt', () => {
     const extensionPrompts = {};
     const calls = [];
     const globalObject = {
@@ -293,10 +299,10 @@ test('gate:host:prompt-injector-registers-scene-rule-as-in-prompt-extension-prom
 
     assert.deepEqual(result, { ok: true, method: 'extension-prompt', verified: true });
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].position, 0);
+    assert.equal(calls[0].position, 1);
     assert.equal(calls[0].role, 0);
     assert.equal(extensionPrompts['igs-scene-assets-format-rule'].value, 'rule: @igs-scene');
-    assert.equal(extensionPrompts['igs-scene-assets-format-rule'].position, 0);
+    assert.equal(extensionPrompts['igs-scene-assets-format-rule'].position, 1);
     assert.equal(injector.isActive(), true);
 
     injector.clear();
@@ -334,6 +340,63 @@ test('gate:scene:scene-assets-resolves-by-exact-match-and-default-key-only', () 
         characters: { '小林海斗': { '随和': 'https://example.com/kaito.png' } },
     });
     assert.deepEqual(assets3, { backgroundUrl: null, spriteUrl: 'https://example.com/kaito.png' });
+});
+
+test('gate:scene:mood-groups-resolve-fine-word-to-group-label', () => {
+    assert.equal(resolveMoodGroup('欣喜', DEFAULT_MOOD_GROUPS), '喜悦');
+    assert.equal(resolveMoodGroup('喜悦', DEFAULT_MOOD_GROUPS), '喜悦');
+    assert.equal(resolveMoodGroup('慌张', DEFAULT_MOOD_GROUPS), '紧张');
+    assert.equal(resolveMoodGroup('不存在的词', DEFAULT_MOOD_GROUPS), null);
+    assert.equal(resolveMoodGroup('', DEFAULT_MOOD_GROUPS), null);
+});
+
+test('gate:scene:mood-groups-build-text-renders-label-and-words', () => {
+    const text = buildMoodGroupsText([
+        { label: '喜悦', words: ['开心', '欣喜'] },
+        { label: '愤怒', words: ['生气'] },
+    ]);
+    assert.equal(text, '喜悦组：开心、欣喜\n愤怒组：生气');
+});
+
+test('gate:scene:mood-groups-normalize-falls-back-to-default', () => {
+    assert.deepEqual(normalizeMoodGroups(null), DEFAULT_MOOD_GROUPS.map((g) => ({ label: g.label, words: g.words.slice() })));
+    assert.deepEqual(normalizeMoodGroups([]), DEFAULT_MOOD_GROUPS.map((g) => ({ label: g.label, words: g.words.slice() })));
+    assert.deepEqual(
+        normalizeMoodGroups([{ label: ' 自定义 ', words: ['词A', '', '词B'] }, { label: '', words: [] }]),
+        [{ label: '自定义', words: ['词A', '词B'] }],
+    );
+});
+
+test('gate:scene:scene-assets-sprite-resolves-by-mood-group-reduction', () => {
+    // AI 写细分词「欣喜」，立绘只配了组名槽「喜悦」→ 归约命中
+    const reduced = lookupSceneAssetUrls({
+        scene: '', time: '', weather: '',
+        character: '小林海斗', mood: '欣喜',
+    }, {
+        characters: { '小林海斗': { '喜悦': 'https://example.com/joy.png', '默认': 'https://example.com/default.png' } },
+        moodGroups: DEFAULT_MOOD_GROUPS,
+    });
+    assert.equal(reduced.spriteUrl, 'https://example.com/joy.png');
+
+    // 自定义细分词槽精确命中优先于归约
+    const exact = lookupSceneAssetUrls({
+        scene: '', time: '', weather: '',
+        character: '小林海斗', mood: '欣喜',
+    }, {
+        characters: { '小林海斗': { '欣喜': 'https://example.com/exact.png', '喜悦': 'https://example.com/joy.png' } },
+        moodGroups: DEFAULT_MOOD_GROUPS,
+    });
+    assert.equal(exact.spriteUrl, 'https://example.com/exact.png');
+
+    // 归约不到 + 无精确槽 → 默认兜底
+    const fallback = lookupSceneAssetUrls({
+        scene: '', time: '', weather: '',
+        character: '小林海斗', mood: '生造词',
+    }, {
+        characters: { '小林海斗': { '喜悦': 'https://example.com/joy.png', '默认': 'https://example.com/default.png' } },
+        moodGroups: DEFAULT_MOOD_GROUPS,
+    });
+    assert.equal(fallback.spriteUrl, 'https://example.com/default.png');
 });
 
 test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {

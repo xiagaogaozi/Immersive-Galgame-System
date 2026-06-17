@@ -1,5 +1,6 @@
 const INJECTION_ID = 'igs-scene-assets-format-rule';
 const EXTENSION_PROMPT_IN_PROMPT = 0;
+const EXTENSION_PROMPT_IN_CHAT = 1;
 const EXTENSION_PROMPT_NONE = -1;
 const EXTENSION_PROMPT_SYSTEM = 0;
 
@@ -43,7 +44,7 @@ export function createPromptInjector(globalObject) {
                 context.setExtensionPrompt(
                     INJECTION_ID,
                     content,
-                    EXTENSION_PROMPT_IN_PROMPT,
+                    EXTENSION_PROMPT_IN_CHAT,
                     0,
                     false,
                     EXTENSION_PROMPT_SYSTEM,
@@ -134,7 +135,7 @@ function verifyContextPrompt(context, content) {
     if (String(record.value || '') !== String(content || '')) {
         return { ok: false, reason: 'extension-prompt-content-mismatch' };
     }
-    if (Number(record.position) !== EXTENSION_PROMPT_IN_PROMPT) {
+    if (Number(record.position) !== EXTENSION_PROMPT_IN_CHAT) {
         return { ok: false, reason: 'extension-prompt-position-mismatch' };
     }
     return { ok: true };
