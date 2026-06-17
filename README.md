@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.10.1`：优化场景素材配置——背景场景升级为三层结构（场景→时间→天气，子层优先级最高）；移除单条目自动兜底（仅「默认」键名生效）；正文格式化默认正则改为仅匹配 `[igs-char:]`，`[igs-thought:]` 自动转为 `*...*` 触发已有心里话 CSS；排除标签加入 `image`。
+- 当前项目版本 `v0.10.2`：优化场景素材配置——背景场景升级为三层结构（场景→时间→天气，子层优先级最高）；移除单条目自动兜底（仅「默认」键名生效）；正文格式化默认正则改为仅匹配 `[igs-char:]`，`[igs-thought:]` 自动转为 `*...*` 触发已有心里话 CSS；排除标签加入 `image`。
 - `v0.9.1`：修复扩展插图图片扫到却绑不进图位、正文格式化默认正则锚点漏匹配（自 v0.8.1 起存在，与品牌重命名无关）。
 - `v0.9.0`：项目品牌从 Visual Novel / VN 重命名为 Immersive Galgame System / IGS，仓库、loader、API 全局名、CSS/DOM 前缀、存储键、事件名全部切到 IGS 体系，不保留向后兼容。
 - `v0.8.1`：新增调试版 loader（IGS_DEBUG 开关 + [DEBUG-sprite] 探针），移除无效的「调试日志」开关。
@@ -31,7 +31,7 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 - `v0.3.13` 已把“只扫当前楼层 + 占位绑定 + 楼层外图片隔离”固定为回归闸门；`v0.3.12` 已把 commit-first 自动更新固定为回归闸门；`v0.3.10` 已把 dist bundle 自包含固定为回归闸门。
 - 当前不保留奶龙工具箱发布壳，不走奶龙工具箱流程校验。
 - 保留独立 `loader/` 目录，用于后续 GitHub 远程 bundle 自动更新入口。
-- 最终酒馆导入形态：`loader/酒馆助手脚本-沉浸式Galgame系统（自动更新） v0.10.1.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
+- 最终酒馆导入形态：`loader/酒馆助手脚本-沉浸式Galgame系统（自动更新） v0.10.2.json`；`loader/igs-loader.json` 保留为固定内部入口和自动化校验基准。
 - 原版 Immersive Galgame System 脚本来源：`D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Immersive Galgame System 原版备份`。
 - 策划书版本归档目录：`plan/`
 - 项目级 AI 工作流入口：`AGENTS.md`
@@ -137,7 +137,7 @@ projects/Immersive Galgame System/
 
 ## 更新日志
 
-### v0.10.1 - 2026-06-17
+### v0.10.2 - 2026-06-17
 
 - 背景场景配置升级为三层结构：场景 → 时间 → 天气，子层优先级最高（天气 > 时间 > 场景 > 默认）。UI 内联显示嵌套子项，各层独立增删改名。
 - 移除单条目自动兜底逻辑：只有真正命名「默认」的条目才会在无精确匹配时兜底，不再对唯一条目自动回退。
