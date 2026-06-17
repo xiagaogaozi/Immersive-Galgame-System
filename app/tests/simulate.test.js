@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.10.0');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.10.1');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -259,11 +259,11 @@ test('gate:simulation:scene-assets-injects-prompt-and-renders-single-configured-
                 enabled: true,
                 promptRule: '请严格输出 [igs-scene:场景|时间|天气] [igs-char:角色|情绪|对白]',
                 scenes: {
-                    '场景1': 'https://example.com/classroom.png',
+                    'B班教室': { url: 'https://example.com/classroom.png', times: {} },
                 },
                 characters: {
                     '小林海斗': {
-                        '随和': 'https://example.com/kaito.png',
+                        '平静': 'https://example.com/kaito.png',
                     },
                 },
             },

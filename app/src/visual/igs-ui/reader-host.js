@@ -1157,6 +1157,18 @@ export function createIgsReaderHost(options = {}) {
                 controller.invoke('scene-set-bg-url:' + sceneBg + ':' + target.value);
                 return;
             }
+            const sceneTimeBg = target.getAttribute('data-scene-time-bg');
+            const sceneTime = target.getAttribute('data-scene-time');
+            const sceneWeatherBg = target.getAttribute('data-scene-weather-bg');
+            const sceneWeather = target.getAttribute('data-scene-weather');
+            if (sceneWeatherBg && sceneTime && sceneWeather) {
+                controller.invoke('scene-set-weather-url:' + sceneWeatherBg + ':' + sceneTime + ':' + sceneWeather + ':' + target.value);
+                return;
+            }
+            if (sceneTimeBg && sceneTime) {
+                controller.invoke('scene-set-time-url:' + sceneTimeBg + ':' + sceneTime + ':' + target.value);
+                return;
+            }
             const sceneChar = target.getAttribute('data-scene-char');
             const sceneMood = target.getAttribute('data-scene-mood');
             if (sceneChar && sceneMood) {
@@ -1313,6 +1325,12 @@ export function createIgsReaderHost(options = {}) {
         normalized.promptRule = String(normalized.promptRule || DEFAULT_SCENE_PROMPT_RULE);
         if (!normalized.scenes || typeof normalized.scenes !== 'object' || Array.isArray(normalized.scenes)) {
             normalized.scenes = {};
+        }
+        // migrate old string-value scenes to object format
+        for (const key of Object.keys(normalized.scenes)) {
+            const v = normalized.scenes[key];
+            if (typeof v === 'string') normalized.scenes[key] = { url: v, times: {} };
+            else if (v && typeof v === 'object' && !v.times) normalized.scenes[key].times = {};
         }
         if (!normalized.characters || typeof normalized.characters !== 'object' || Array.isArray(normalized.characters)) {
             normalized.characters = {};

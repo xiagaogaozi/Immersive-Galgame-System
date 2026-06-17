@@ -67,11 +67,22 @@ export function modelPicker(path, value, models, action, placeholder, disabled) 
 
 export function renderSceneAssetList(scenes) {
     const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    const trash = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
     const entries = Object.entries(scenes || {});
     if (!entries.length) return '<div class="igs-scene-empty">暂无背景图配置</div>';
-    return `<div class="igs-btn-mgr-list">${entries.map(([name, url]) => {
-        return `<div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label">${esc(name)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-bg:${esc(name)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-bg="${esc(name)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-bg:${esc(name)}" title="删除"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`;
-    }).join('')}</div>`;
+    return entries.map(([sceneName, sceneVal]) => {
+        const sceneObj = typeof sceneVal === 'string' ? { url: sceneVal, times: {} } : (sceneVal || { url: '', times: {} });
+        const timeEntries = Object.entries(sceneObj.times || {});
+        const timeRows = timeEntries.map(([timeName, timeVal]) => {
+            const timeObj = typeof timeVal === 'string' ? { url: timeVal, weathers: {} } : (timeVal || { url: '', weathers: {} });
+            const weatherEntries = Object.entries(timeObj.weathers || {});
+            const weatherRows = weatherEntries.map(([weatherName, weatherUrl]) => {
+                return `<div class="igs-btn-mgr-row igs-scene-mood-row" style="margin-left:32px"><span class="igs-btn-mgr-label">${esc(weatherName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-weather:${esc(sceneName)}:${esc(timeName)}:${esc(weatherName)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-weather-bg="${esc(sceneName)}" data-scene-time="${esc(timeName)}" data-scene-weather="${esc(weatherName)}" value="${esc(weatherUrl || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-weather:${esc(sceneName)}:${esc(timeName)}:${esc(weatherName)}" title="删除">${trash}</button></div>`;
+            }).join('');
+            return `<div class="igs-scene-char-group" style="margin-left:16px"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label">${esc(timeName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-time:${esc(sceneName)}:${esc(timeName)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-time-bg="${esc(sceneName)}" data-scene-time="${esc(timeName)}" value="${esc(timeObj.url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-add-weather:${esc(sceneName)}:${esc(timeName)}" title="添加天气">+</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-time:${esc(sceneName)}:${esc(timeName)}" title="删除">${trash}</button></div>${weatherRows}</div>`;
+        }).join('');
+        return `<div class="igs-scene-char-group"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label" style="font-weight:600">${esc(sceneName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-bg:${esc(sceneName)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-bg="${esc(sceneName)}" value="${esc(sceneObj.url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-add-time:${esc(sceneName)}" title="添加时间">+时</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-bg:${esc(sceneName)}" title="删除场景">${trash}</button></div>${timeRows}</div>`;
+    }).join('');
 }
 
 export function renderCharacterAssetList(characters) {

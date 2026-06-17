@@ -99,7 +99,8 @@ const SCENE_TAB_TEMPLATE = `
     <div class="igs-source-filter igs-settings-full">
       <div>
         <div class="igs-source-filter-title">背景场景</div>
-        <div class="igs-source-filter-note">场景名 → 背景图 URL。名为「默认」的条目在无匹配时兜底。</div>
+        <div class="igs-source-filter-note">场景名 → 背景图 URL。名为「默认」的条目在无匹配时兜底。子层级（时间→天气）优先级依次升高。</div>
+        <div class="igs-source-filter-note">提示：使用 [igs-scene:场景|时间|天气] 切换场景，[igs-char:角色|情绪|对白] 标记对白，[igs-thought:角色|情绪|心里话] 标记心理描写。扫描图优先显示。</div>
       </div>
       {{scenesEditor}}
       <div class="igs-settings-row"><button class="igs-settings-action" data-action="scene-add-bg" type="button">+ 添加背景图</button></div>
@@ -112,7 +113,6 @@ const SCENE_TAB_TEMPLATE = `
       {{charactersEditor}}
       <div class="igs-settings-row"><button class="igs-settings-action" data-action="scene-add-char" type="button">+ 添加角色</button></div>
     </div>
-    <div class="igs-settings-full"><em class="igs-settings-field">提示：使用 [igs-scene:场景|时间|天气] 切换场景，[igs-char:角色|情绪|对白] 标记对白，[igs-thought:角色|情绪|心里话] 标记心理描写。扫描图优先显示。</em></div>
     <div class="igs-source-filter igs-settings-full">
       <div>
         <div class="igs-source-filter-title">对话主题</div>

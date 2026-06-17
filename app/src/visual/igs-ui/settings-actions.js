@@ -150,7 +150,7 @@ export async function handleSettingsAction(action, ctx) {
         settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
         const existingKeys = Object.keys(settingsState.draft.bridge.sceneAssets.scenes);
         const newName = '场景' + (existingKeys.length + 1);
-        settingsState.draft.bridge.sceneAssets.scenes[newName] = '';
+        settingsState.draft.bridge.sceneAssets.scenes[newName] = { url: '', times: {} };
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
         return rerenderSettings();
@@ -164,6 +164,217 @@ export async function handleSettingsAction(action, ctx) {
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
         return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-rename-bg:')) {
+        const oldName = normalizedAction.slice('scene-rename-bg:'.length);
+        const globalObj = options.global || globalThis;
+        const newName = (globalObj.prompt && globalObj.prompt(`重命名场景「${oldName}」为：`, oldName) || '').trim();
+        if (newName && newName !== oldName) {
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            const scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+            scenes[newName] = scenes[oldName] || { url: '', times: {} };
+            delete scenes[oldName];
+            settingsState.draft.bridge.sceneAssets.scenes = scenes;
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-set-bg-url:')) {
+        const rest = normalizedAction.slice('scene-set-bg-url:'.length);
+        const colonIdx = rest.indexOf(':');
+        if (colonIdx > 0) {
+            const name = rest.slice(0, colonIdx);
+            const url = rest.slice(colonIdx + 1);
+            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+            settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+            const scene = settingsState.draft.bridge.sceneAssets.scenes[name];
+            if (scene && typeof scene === 'object') {
+                scene.url = url;
+            } else {
+                settingsState.draft.bridge.sceneAssets.scenes[name] = { url, times: {} };
+            }
+            persistSettingsDraft();
+        }
+        return { ok: true };
+    }
+
+    if (normalizedAction.startsWith('scene-add-time:')) {
+        const sceneName = normalizedAction.slice('scene-add-time:'.length);
+        const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+        const scene = scenes[sceneName];
+        if (scene && typeof scene === 'object') {
+            scene.times = scene.times || {};
+            const existingKeys = Object.keys(scene.times);
+            scene.times['时间' + (existingKeys.length + 1)] = { url: '', weathers: {} };
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-remove-time:')) {
+        const rest = normalizedAction.slice('scene-remove-time:'.length);
+        const colonIdx = rest.indexOf(':');
+        if (colonIdx > 0) {
+            const sceneName = rest.slice(0, colonIdx);
+            const timeName = rest.slice(colonIdx + 1);
+            const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+            const scene = scenes[sceneName];
+            if (scene && scene.times) delete scene.times[timeName];
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-rename-time:')) {
+        const rest = normalizedAction.slice('scene-rename-time:'.length);
+        const colonIdx = rest.indexOf(':');
+        if (colonIdx > 0) {
+            const sceneName = rest.slice(0, colonIdx);
+            const oldTime = rest.slice(colonIdx + 1);
+            const globalObj = options.global || globalThis;
+            const newTime = (globalObj.prompt && globalObj.prompt(`重命名时间「${oldTime}」为：`, oldTime) || '').trim();
+            if (newTime && newTime !== oldTime) {
+                const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+                const scene = scenes[sceneName];
+                if (scene && scene.times) {
+                    scene.times[newTime] = scene.times[oldTime] || { url: '', weathers: {} };
+                    delete scene.times[oldTime];
+                    const persisted = persistSettingsDraft();
+                    if (persisted.ok === false) return persisted;
+                }
+            }
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-set-time-url:')) {
+        const rest = normalizedAction.slice('scene-set-time-url:'.length);
+        const first = rest.indexOf(':');
+        if (first > 0) {
+            const sceneName = rest.slice(0, first);
+            const after = rest.slice(first + 1);
+            const second = after.indexOf(':');
+            if (second > 0) {
+                const timeName = after.slice(0, second);
+                const url = after.slice(second + 1);
+                const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+                const scene = scenes[sceneName];
+                if (scene && scene.times && scene.times[timeName] != null) {
+                    const t = scene.times[timeName];
+                    if (typeof t === 'object') t.url = url;
+                    else scene.times[timeName] = { url, weathers: {} };
+                }
+                persistSettingsDraft();
+            }
+        }
+        return { ok: true };
+    }
+
+    if (normalizedAction.startsWith('scene-add-weather:')) {
+        const rest = normalizedAction.slice('scene-add-weather:'.length);
+        const colonIdx = rest.indexOf(':');
+        if (colonIdx > 0) {
+            const sceneName = rest.slice(0, colonIdx);
+            const timeName = rest.slice(colonIdx + 1);
+            const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+            const scene = scenes[sceneName];
+            if (scene && scene.times && scene.times[timeName]) {
+                const timeEntry = scene.times[timeName];
+                if (typeof timeEntry === 'object') {
+                    timeEntry.weathers = timeEntry.weathers || {};
+                    const existingKeys = Object.keys(timeEntry.weathers);
+                    timeEntry.weathers['天气' + (existingKeys.length + 1)] = '';
+                    const persisted = persistSettingsDraft();
+                    if (persisted.ok === false) return persisted;
+                }
+            }
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-remove-weather:')) {
+        const rest = normalizedAction.slice('scene-remove-weather:'.length);
+        const first = rest.indexOf(':');
+        if (first > 0) {
+            const sceneName = rest.slice(0, first);
+            const after = rest.slice(first + 1);
+            const second = after.indexOf(':');
+            if (second > 0) {
+                const timeName = after.slice(0, second);
+                const weatherName = after.slice(second + 1);
+                const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+                const scene = scenes[sceneName];
+                if (scene && scene.times && scene.times[timeName]) {
+                    const t = scene.times[timeName];
+                    if (t && t.weathers) delete t.weathers[weatherName];
+                }
+                const persisted = persistSettingsDraft();
+                if (persisted.ok === false) return persisted;
+            }
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-rename-weather:')) {
+        const rest = normalizedAction.slice('scene-rename-weather:'.length);
+        const first = rest.indexOf(':');
+        if (first > 0) {
+            const sceneName = rest.slice(0, first);
+            const after = rest.slice(first + 1);
+            const second = after.indexOf(':');
+            if (second > 0) {
+                const timeName = after.slice(0, second);
+                const oldWeather = after.slice(second + 1);
+                const globalObj = options.global || globalThis;
+                const newWeather = (globalObj.prompt && globalObj.prompt(`重命名天气「${oldWeather}」为：`, oldWeather) || '').trim();
+                if (newWeather && newWeather !== oldWeather) {
+                    const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+                    const scene = scenes[sceneName];
+                    if (scene && scene.times && scene.times[timeName]) {
+                        const t = scene.times[timeName];
+                        if (t && t.weathers) {
+                            t.weathers[newWeather] = t.weathers[oldWeather] || '';
+                            delete t.weathers[oldWeather];
+                            const persisted = persistSettingsDraft();
+                            if (persisted.ok === false) return persisted;
+                        }
+                    }
+                }
+            }
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-set-weather-url:')) {
+        const rest = normalizedAction.slice('scene-set-weather-url:'.length);
+        const first = rest.indexOf(':');
+        if (first > 0) {
+            const sceneName = rest.slice(0, first);
+            const after = rest.slice(first + 1);
+            const second = after.indexOf(':');
+            if (second > 0) {
+                const timeName = after.slice(0, second);
+                const after2 = after.slice(second + 1);
+                const third = after2.indexOf(':');
+                if (third > 0) {
+                    const weatherName = after2.slice(0, third);
+                    const url = after2.slice(third + 1);
+                    const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+                    const scene = scenes[sceneName];
+                    if (scene && scene.times && scene.times[timeName]) {
+                        const t = scene.times[timeName];
+                        if (t && t.weathers) t.weathers[weatherName] = url;
+                    }
+                    persistSettingsDraft();
+                }
+            }
+        }
+        return { ok: true };
     }
 
     if (normalizedAction === 'scene-add-char') {
@@ -218,20 +429,6 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
-    if (normalizedAction.startsWith('scene-set-bg-url:')) {
-        const rest = normalizedAction.slice('scene-set-bg-url:'.length);
-        const colonIdx = rest.indexOf(':');
-        if (colonIdx > 0) {
-            const name = rest.slice(0, colonIdx);
-            const url = rest.slice(colonIdx + 1);
-            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
-            settingsState.draft.bridge.sceneAssets.scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
-            settingsState.draft.bridge.sceneAssets.scenes[name] = url;
-            persistSettingsDraft();
-        }
-        return { ok: true };
-    }
-
     if (normalizedAction.startsWith('scene-set-mood-url:')) {
         const rest = normalizedAction.slice('scene-set-mood-url:'.length);
         const firstColon = rest.indexOf(':');
@@ -252,22 +449,6 @@ export async function handleSettingsAction(action, ctx) {
             }
         }
         return { ok: true };
-    }
-
-    if (normalizedAction.startsWith('scene-rename-bg:')) {
-        const oldName = normalizedAction.slice('scene-rename-bg:'.length);
-        const globalObj = options.global || globalThis;
-        const newName = (globalObj.prompt && globalObj.prompt(`重命名场景「${oldName}」为：`, oldName) || '').trim();
-        if (newName && newName !== oldName) {
-            settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
-            const scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
-            scenes[newName] = scenes[oldName] || '';
-            delete scenes[oldName];
-            settingsState.draft.bridge.sceneAssets.scenes = scenes;
-            const persisted = persistSettingsDraft();
-            if (persisted.ok === false) return persisted;
-        }
-        return rerenderSettings();
     }
 
     if (normalizedAction.startsWith('scene-rename-char:')) {

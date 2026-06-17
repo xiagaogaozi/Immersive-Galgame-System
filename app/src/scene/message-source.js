@@ -11,17 +11,19 @@ export const DEFAULT_SOURCE_FILTER = Object.freeze({
     stripHtmlComments: true,
     allowUntaggedFallback: false,
     textIncludeTags: 'content',
-    textExcludeTags: 'thinking\nSubtext_think\nStatus_block\ntext_to_image\nparallel_world\naftertalk',
+    textExcludeTags: 'thinking\nSubtext_think\nStatus_block\ntext_to_image\nparallel_world\naftertalk\nimage',
     imageIncludeTags: 'image\ntext_to_image',
     imageExcludeTags: '',
 });
 
 export const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     enabled: true,
-    pattern: '@(?:igs-scene|bubble):([^|\\n]+)\\|[^|\\n]*\\|(?:[^|\\n]*\\|)?\\[([^\\]]*)\\]',
+    pattern: '\\[igs-char:([^|\\]]+)\\|[^|\\]]+\\|([^\\]]+)\\]',
     flags: 'gm',
     replacement: '[$1]：$2',
 });
+
+const THOUGHT_RE_GLOBAL = /\[igs-thought:([^|\]]+)\|[^|\]]+\|([^\]]+)\]/gm;
 
 const HOST_UI_HTML_MARKERS = Object.freeze([
     'api connections',
@@ -181,6 +183,7 @@ export function applyImmersiveGalgameSystemBodyFormat(raw, rule) {
     try {
         const regex = new RegExp(cfg.pattern, cfg.flags);
         result.formattedRaw = source.replace(regex, cfg.replacement);
+        result.formattedRaw = result.formattedRaw.replace(THOUGHT_RE_GLOBAL, '*[$1]：$2*');
         result.virtualRegexChanged = result.formattedRaw !== source;
         if (!result.virtualRegexChanged) result.formatSourceKind = 'raw';
     } catch (error) {

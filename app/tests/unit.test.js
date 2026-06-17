@@ -258,7 +258,7 @@ test('gate:scene:image-slots:maps-reader-segments-to-slot-indexes', () => {
 
 test('gate:scene:igs-message-source:formats-default-bubble-body', () => {
     const payload = buildIgsTextPayload({
-        text: '<content>@bubble:玉子|开心|[欢迎来到图书馆。]</content>',
+        text: '<content>[igs-char:玉子|开心|欢迎来到图书馆。]</content>',
     }, {
         virtualRegex: DEFAULT_VIRTUAL_REGEX,
     });
@@ -304,26 +304,36 @@ test('gate:host:prompt-injector-registers-scene-rule-as-in-prompt-extension-prom
     assert.equal(injector.isActive(), false);
 });
 
-test('gate:scene:scene-assets-falls-back-to-single-configured-background-and-mood', () => {
-    const assets = lookupSceneAssetUrls({
-        scene: 'B班教室',
-        character: '小林海斗',
-        mood: '平静',
+test('gate:scene:scene-assets-resolves-by-exact-match-and-default-key-only', () => {
+    // exact match: scene key = 'B班教室', mood = '平静'
+    const assets1 = lookupSceneAssetUrls({
+        scene: 'B班教室', time: '', weather: '',
+        character: '小林海斗', mood: '平静',
     }, {
-        scenes: {
-            '场景1': 'https://example.com/classroom.png',
-        },
-        characters: {
-            '小林海斗': {
-                '随和': 'https://example.com/kaito.png',
-            },
-        },
+        scenes: { 'B班教室': { url: 'https://example.com/classroom.png', times: {} } },
+        characters: { '小林海斗': { '平静': 'https://example.com/kaito.png' } },
     });
+    assert.deepEqual(assets1, { backgroundUrl: 'https://example.com/classroom.png', spriteUrl: 'https://example.com/kaito.png' });
 
-    assert.deepEqual(assets, {
-        backgroundUrl: 'https://example.com/classroom.png',
-        spriteUrl: 'https://example.com/kaito.png',
+    // '默认' fallback when scene name doesn't match
+    const assets2 = lookupSceneAssetUrls({
+        scene: '走廊', time: '', weather: '',
+        character: '小林海斗', mood: '随和',
+    }, {
+        scenes: { '默认': { url: 'https://example.com/default.png', times: {} } },
+        characters: { '小林海斗': { '默认': 'https://example.com/kaito.png' } },
     });
+    assert.deepEqual(assets2, { backgroundUrl: 'https://example.com/default.png', spriteUrl: 'https://example.com/kaito.png' });
+
+    // no scene fallback when only non-matching named key exists, but character still matches exactly
+    const assets3 = lookupSceneAssetUrls({
+        scene: '走廊', time: '', weather: '',
+        character: '小林海斗', mood: '随和',
+    }, {
+        scenes: { '场景1': { url: 'https://example.com/classroom.png', times: {} } },
+        characters: { '小林海斗': { '随和': 'https://example.com/kaito.png' } },
+    });
+    assert.deepEqual(assets3, { backgroundUrl: null, spriteUrl: 'https://example.com/kaito.png' });
 });
 
 test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {
@@ -338,10 +348,10 @@ test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {
 
     // directive lines don't count toward segmentIndex — only non-directive lines do
     assert.deepEqual(directives.map((d) => d.segmentIndex), [1, 1, 2]);
-    const empty = { scene: '', time: '', weather: '', character: '', mood: '', dialogue: '', thought: '' };
+    const empty = { scene: '', time: '', weather: '', character: '', mood: '', dialogue: '', thought: '', lastDirectiveType: '' };
     assert.deepEqual(resolveSceneStateAtIndex(directives, 0), empty);
-    assert.deepEqual(resolveSceneStateAtIndex(directives, 1), { scene: 'Room', time: 'morning', weather: 'sunny', character: 'Alice', mood: 'calm', dialogue: 'Hello.', thought: '' });
-    assert.deepEqual(resolveSceneStateAtIndex(directives, 2), { scene: 'Room', time: 'morning', weather: 'sunny', character: 'Bob', mood: 'annoyed', dialogue: 'Move faster.', thought: '' });
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 1), { scene: 'Room', time: 'morning', weather: 'sunny', character: 'Alice', mood: 'calm', dialogue: 'Hello.', thought: '', lastDirectiveType: 'char' });
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 2), { scene: 'Room', time: 'morning', weather: 'sunny', character: 'Bob', mood: 'annoyed', dialogue: 'Move faster.', thought: '', lastDirectiveType: 'char' });
 });
 
 test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {

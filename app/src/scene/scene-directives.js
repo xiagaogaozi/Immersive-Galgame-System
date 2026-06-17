@@ -33,7 +33,7 @@ export function extractSceneDirectives(text) {
 }
 
 export function resolveSceneStateAtIndex(directives, segmentIndex) {
-    const state = { scene: '', time: '', weather: '', character: '', mood: '', dialogue: '', thought: '' };
+    const state = { scene: '', time: '', weather: '', character: '', mood: '', dialogue: '', thought: '', lastDirectiveType: '' };
     if (!Array.isArray(directives) || !directives.length) return state;
     const targetIndex = normalizeSegmentIndex(segmentIndex);
 
@@ -44,14 +44,17 @@ export function resolveSceneStateAtIndex(directives, segmentIndex) {
             if (directive.scene) state.scene = directive.scene;
             if (directive.time) state.time = directive.time;
             if (directive.weather) state.weather = directive.weather;
+            state.lastDirectiveType = 'scene';
         } else if (directive.type === 'char') {
             if (directive.character) state.character = directive.character;
             if (directive.mood) state.mood = directive.mood;
             if (directive.dialogue) state.dialogue = directive.dialogue;
+            state.lastDirectiveType = 'char';
         } else if (directive.type === 'thought') {
             if (directive.character) state.character = directive.character;
             if (directive.mood) state.mood = directive.mood;
             if (directive.thought) state.thought = directive.thought;
+            state.lastDirectiveType = 'thought';
         }
     }
 
@@ -62,26 +65,37 @@ export function lookupSceneAssetUrls(sceneState, sceneAssets) {
     if (!sceneAssets || !sceneState) return { backgroundUrl: null, spriteUrl: null };
 
     const scenes = sceneAssets.scenes || {};
-    const backgroundUrl = lookupAssetValue(scenes, sceneState.scene);
+    const backgroundUrl = lookupSceneUrl(scenes, sceneState.scene, sceneState.time, sceneState.weather);
 
     let spriteUrl = null;
     const characters = sceneAssets.characters || {};
     if (sceneState.character && characters[sceneState.character]) {
-        const charMoods = characters[sceneState.character];
-        spriteUrl = lookupAssetValue(charMoods, sceneState.mood);
+        spriteUrl = lookupAssetValue(characters[sceneState.character], sceneState.mood);
     }
 
     return { backgroundUrl, spriteUrl };
 }
 
+function lookupSceneUrl(scenes, sceneName, time, weather) {
+    const raw = (sceneName && scenes[sceneName] != null) ? scenes[sceneName]
+        : (scenes['默认'] != null ? scenes['默认'] : null);
+    if (!raw) return null;
+    const entry = typeof raw === 'string' ? { url: raw } : raw;
+    if (time && entry.times && entry.times[time] != null) {
+        const timeRaw = entry.times[time];
+        const timeEntry = typeof timeRaw === 'string' ? { url: timeRaw } : timeRaw;
+        if (weather && timeEntry.weathers && timeEntry.weathers[weather]) {
+            return timeEntry.weathers[weather] || null;
+        }
+        return timeEntry.url || null;
+    }
+    return entry.url || null;
+}
+
 function lookupAssetValue(record, requestedKey) {
     if (!record || typeof record !== 'object') return null;
     if (requestedKey && record[requestedKey]) return record[requestedKey];
-    if (record['默认']) return record['默认'];
-
-    const filledEntries = Object.entries(record)
-        .filter(([, value]) => typeof value === 'string' && value.trim());
-    return filledEntries.length === 1 ? filledEntries[0][1] : null;
+    return record['默认'] || null;
 }
 
 function normalizeSegmentIndex(value) {
