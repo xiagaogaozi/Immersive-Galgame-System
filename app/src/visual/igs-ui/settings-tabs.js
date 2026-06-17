@@ -89,7 +89,7 @@ const SCENE_TAB_TEMPLATE = `
     <div class="igs-source-filter igs-settings-full">
       <div>
         <div class="igs-source-filter-title">格式规则注入</div>
-        <div class="igs-source-filter-note">开启后将通过酒馆 API 向 AI 注入以下系统提示，让 AI 输出 @igs-scene: 标签。</div>
+        <div class="igs-source-filter-note">开启后将通过酒馆 API 向 AI 注入以下系统提示，让 AI 输出 [igs-scene:] 等标签。</div>
       </div>
       {{promptRuleField}}
       <div class="igs-settings-row">
@@ -112,7 +112,7 @@ const SCENE_TAB_TEMPLATE = `
       {{charactersEditor}}
       <div class="igs-settings-row"><button class="igs-settings-action" data-action="scene-add-char" type="button">+ 添加角色</button></div>
     </div>
-    <div class="igs-settings-full"><em class="igs-settings-field">提示：在正文中使用 @igs-scene:场景|角色|情绪 来切换画面。省略的字段继承上一次的值。扫描图优先显示。</em></div>
+    <div class="igs-settings-full"><em class="igs-settings-field">提示：使用 [igs-scene:场景|时间|天气] 切换场景，[igs-char:角色|情绪|对白] 标记对白，[igs-thought:角色|情绪|心里话] 标记心理描写。扫描图优先显示。</em></div>
     <div class="igs-source-filter igs-settings-full">
       <div>
         <div class="igs-source-filter-title">对话主题</div>

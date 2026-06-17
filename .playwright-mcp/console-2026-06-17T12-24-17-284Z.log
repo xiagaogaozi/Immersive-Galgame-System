@@ -1,0 +1,60 @@
+[     682ms] [INFO] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113 @ https://claude.en.uptodown.com/windows/versions:3835
+[    1080ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www3.doubleclick.net/:0
+[    1081ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://securepubads.g.doubleclick.net/tag/js/gpt.js:0
+[    1526ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://stats.g.doubleclick.net/g/collect?v=2&tid=G-DW5XRK7GYT&cid=1865856823.1781699059&gtm=45je66f1h1v888089788za200zd888089788&rcb=8&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=115616986~115938466~115938469~119392696~119392704~119456239~119456247:0
+[    2250ms] [ERROR] Access to fetch at 'https://id5-sync.com/g/v2/492.json' from origin 'https://claude.en.uptodown.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://claude.en.uptodown.com/windows/versions:0
+[    2250ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://id5-sync.com/g/v2/492.json:0
+[    3015ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://pubads.g.doubleclick.net/activity;dc_iu=/78011819/DFPAudiencePixel;ord=1347058879165290;dc_seg=7386413202?:0
+[    3026ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://match.adsrvr.org/track/rid?ttd_pid=zdsq63q&fmt=json:0
+[    3211ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://id.crwdcntrl.net/id?c=17274:0
+[    3281ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://direct.adsrvr.org/bid/bidder/ssmas:0
+[    3287ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ib.adnxs.com/ut/v3/prebid:0
+[    3824ms] [ERROR] Access to fetch at 'https://id5-sync.com/api/config/prebid' from origin 'https://claude.en.uptodown.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://claude.en.uptodown.com/windows/versions:0
+[    3824ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://id5-sync.com/api/config/prebid:0
+[    4838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ssbsync.smartadserver.com/api/sync?callerId=146&gdpr=0&gdpr_consent=:0
+[    4839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cms.quantserve.com/pixel/p-CXt61zNBpKUt1.gif?idmatch=0&gdpr=0&gdpr_consent=:0
+[    5056ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cm.g.doubleclick.net/pixel?google_nid=lijit_dbm&google_hm=TTJmSTRUWkhrVEUyY3ZrclN5RzVQNmkw&gdpr=0:0
+[    5060ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cm.g.doubleclick.net/pixel?google_nid=sovrn&google_hm=TTJmSTRUWkhrVEUyY3ZrclN5RzVQNmkw&gdpr=0:0
+[    5199ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://match.adsrvr.org/track/usersync?us_privacy=&gdpr=0&gdpr_consent=undefined&ust=image:0
+[    6077ms] [ERROR] Access to fetch at 'https://cs.amx1.net/getuid?ts=1781699063172' from origin 'https://prebid.a-mo.net' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://prebid.a-mo.net/isyn?gdpr=&gdpr_consent=&us_privacy=&cb=https%3A%2F%2Fprebid.admatic.de%2Fsetuid%3Fbidder%3Damx%26gdpr%3D%26gdpr_consent%3D%26f%3Di%26uid%3D:0
+[    6078ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://cs.amx1.net/getuid?ts=1781699063172:0
+[    6096ms] [ERROR] Access to fetch at 'https://cs.amx1.net/getuid?ts=1781699063049' from origin 'https://prebid.a-mo.net' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://prebid.a-mo.net/isyn?gdpr=0&gdpr_consent=&us_privacy=&gpp=&gpp_sid=&cb=https%3A%2F%2Fsync.adkernel.com%2Fuser-sync%3Fzone%3D308936%26dsp%3D970235%26t%3Diframe%26uid%3D%24UID:0
+[    6097ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://cs.amx1.net/getuid?ts=1781699063049:0
+[    6118ms] [ERROR] Access to fetch at 'https://cs.amx1.net/getuid?ts=1781699063302' from origin 'https://prebid.a-mo.net' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://prebid.a-mo.net/isyn?gdpr=0&gdpr_consent=&us_privacy=&cb=https%3A%2F%2Fprebid.monetixads.com%2Fsetuid%3Fbidder%3Damx%26gdpr%3D0%26gdpr_consent%3D%26f%3Di%26uid%3D:0
+[    6118ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://cs.amx1.net/getuid?ts=1781699063302:0
+[    6215ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ib.adnxs.com/getuid?https://ms-cookie-sync.presage.io/user-sync?xandr_id=$UID&gdpr=0&gdpr_consent=:0
+[    6230ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://match.adsrvr.org/track/cmf/generic?ttd_pid=agyie4r&ttd_tpi=1&gdpr=0&gdpr_consent=:0
+[    6233ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://b1sync.zemanta.com/usersync/ogury/?gdpr=0&gdpr_consent=&cb=https%3A%2F%2Fms-cookie-sync.presage.io%2Fuser-sync%3Foutbrain_id%3D__ZUID__:0
+[    6240ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ads.pubmatic.com/AdServer/js/userSync.js:0
+[    6313ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://c1.adform.net/serving/cookie/match/?party=24&bidswitch_ssp_id=ogury:0
+[    6404ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ https://sync.adkernel.com/user-sync?zone=308936&dsp=970235&t=iframe&uid=&:0
+[    6426ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ib.adnxs.com/getuid?https%3A%2F%2Fsea1-cs.amx1.net%2Fsetuid%3Fbidder%3Dappnexus%26A%3D36403ef8-c775-498a-b57a-6515fecf345a%26uid%3D%24UID:0
+[    6434ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ib.adnxs.com/getuid?https%3A%2F%2Fsea1-cs.amx1.net%2Fsetuid%3Fbidder%3Dappnexus%26A%3Db1bbdddf-7f13-4929-aa79-56fdd14fb316%26uid%3D%24UID:0
+[    6532ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://secure.adnxs.com/getuid?https%3A%2F%2Fsync.kueezrtb.com%2Fapi%2Fcookie%3FpartnerId%3Dkueez-xandr%26userId%3D%24UID%26gdpr%3D%26gdpr_consent%3D%26us_privacy%3D&gdpr=&gdpr_consent=:0
+[    6533ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://secure.adnxs.com/getuid?https%3A%2F%2Fsync.cootlogix.com%2Fapi%2Fcookie%3FpartnerId%3Dappnexus%26userId%3D%24UID%26gdpr%3D%26gdpr_consent%3D%26us_privacy%3D&gdpr=&gdpr_consent=:0
+[    6533ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://secure.adnxs.com/getuid?https%3A%2F%2Fsync.kueezrtb.com%2Fapi%2Fcookie%3FpartnerId%3Dappnexus%26userId%3D%24UID%26gdpr%3D%26gdpr_consent%3D%26us_privacy%3D&gdpr=&gdpr_consent=:0
+[    6533ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://image8.pubmatic.com/AdServer/ImgSync?p=162110&gdpr=&gdpr_consent=&pu=https%3A%2F%2Fsync.kueezrtb.com%2Fapi%2Fcookie%3FpartnerId%3Dkueez-pubmatic%26gdpr%3D%26gdpr_consent%3D%26us_privacy%3D%26userId%3D%23PMUID:0
+[    6548ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ib.adnxs.com/getuid?https%3A%2F%2Fsea1-cs.amx1.net%2Fsetuid%3Fbidder%3Dappnexus%26A%3D2dd92a97-5c62-4436-99ed-72c396e9d3c5%26uid%3D%24UID:0
+[    6601ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ad.turn.com/r/cs?pid=45&id=RX-dcc29924-d912-40ec-a5ce-ef7f10c0e8d6-004&rndcb=5295623850:0
+[    6856ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://u.openx.net/w/1.0/cm?id=3cc4b2f6-c7e1-439a-8174-b6dbb96bcabf&r=https%3A%2F%2Fu-ams.4dex.io%2Fsetuid%3Fbidder%3Dopenx%26it%3Dortb%26uid%3D%7BOPENX_ID%7D:0
+[    7043ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ssbsync-global.smartadserver.com/api/sync?callerId=5&gdpr=0&gdpr_consent=&us_privacy=&redirectUri=https%3A%2F%2Fsync.sparteo.com%2Fsetuid%3Fpslabel%3Dnull%26bidder%3Dsmartadserver%26gdpr%3D0%26gdpr_consent%3D%26us_privacy%3D%26gpp%3D%26gpp_sid%3D%26f%3Di%26uid%3D%5Bssb_sync_pid%5D:0
+[    7046ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ib.adnxs.com/getuid?https%3A%2F%2Fsync.sparteo.com%2Fsetuid%3Fpslabel%3Dnull%26bidder%3Dadnxs%26gdpr%3D0%26gdpr_consent%3D%26us_privacy%3D%26gpp%3D%26gpp_sid%3D%26f%3Di%26uid%3D%24UID&gdpr=0&gdpr_consent=&us_privacy=&gpp=&gpp_sid=:0
+[    7124ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ad.turn.com/r/cs?pid=45&id=RX-dcc29924-d912-40ec-a5ce-ef7f10c0e8d6-004&rndcb=8476010976:0
+[    7205ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://match.adsrvr.org/track/cmf/generic?ttd_pid=svx9t50&ttd_tpi=1&gdpr=0&gdpr_consent=&gpp=&gpp_sid=:0
+[    7210ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cm.g.doubleclick.net/pixel?google_nid=triplelift&google_cm&google_sc&gdpr=0&gdpr_consent=:0
+[    4838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ssbsync.smartadserver.com/api/sync?callerId=146&gdpr=0&gdpr_consent=:0
+[    4839ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cms.quantserve.com/pixel/p-CXt61zNBpKUt1.gif?idmatch=0&gdpr=0&gdpr_consent=:0
+[    5056ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cm.g.doubleclick.net/pixel?google_nid=lijit_dbm&google_hm=TTJmSTRUWkhrVEUyY3ZrclN5RzVQNmkw&gdpr=0:0
+[    5060ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cm.g.doubleclick.net/pixel?google_nid=sovrn&google_hm=TTJmSTRUWkhrVEUyY3ZrclN5RzVQNmkw&gdpr=0:0
+[    7295ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cm.g.doubleclick.net/pixel?google_nid=tl&gdpr=0&gdpr_consent=&us_privacy=&google_hm=MzU0ODk4NzM2Mjg4ODY1ODkwNDA0MA%3D%3D:0
+[    7298ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cm.g.doubleclick.net/pixel?google_nid=triplelift&gdpr=0&gdpr_consent=&us_privacy=&google_hm=MzU0ODk4NzM2Mjg4ODY1ODkwNDA0MA%3D%3D:0
+[    7312ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://visitor-iqzone.omnitagjs.com/visitor/bsync?uid=9ad5ea74eb6daacb66ec769f76978abc&name=GEN1&url=https%3A%2F%2Fsync.iqzonertb.live%2Fpsync%3Ft%3Dd%26e%3D466%26u%3D%5BUID%5D:0
+[    7315ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://data.adsrvr.org/track/cmf/generic?ttd_pid=federatedmedia&gdpr=0&gdpr_consent=:0
+[    7318ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://pixel-us-east.rubiconproject.com/exchange/sync.php?p=sovrn&gdpr=0&gdpr_consent=:0
+[    7322ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://pixel-sync.sitescout.com/dmp/pixelSync?nid=23&gdpr=0&gdpr_consent=:0
+[   31062ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[   61066ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)

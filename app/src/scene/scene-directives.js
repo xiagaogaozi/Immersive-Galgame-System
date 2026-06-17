@@ -1,3 +1,7 @@
+const SCENE_RE = /^\[igs-scene:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
+const CHAR_RE = /^\[igs-char:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
+const THOUGHT_RE = /^\[igs-thought:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\]$/;
+
 export function extractSceneDirectives(text) {
     const source = String(text || '');
     if (!source.trim()) return { directives: [], strippedText: source };
@@ -9,18 +13,19 @@ export function extractSceneDirectives(text) {
 
     for (let i = 0; i < lines.length; i++) {
         const trimmed = lines[i].trim();
-        const match = trimmed.match(/^@igs-scene:([^|\n]*?)\|([^|\n]*?)\|([^|\n]*?)\|(.*)$/);
-        if (match) {
-            directives.push({
-                lineIndex: lineCount,
-                character: (match[1] || '').trim() || null,
-                mood: (match[2] || '').trim() || null,
-                scene: (match[3] || '').trim() || null,
-                dialogue: (match[4] || '').trim(),
-                segmentIndex: segmentCount,
-            });
+        let m;
+        let isDirective = false;
+        if ((m = trimmed.match(SCENE_RE))) {
+            isDirective = true;
+            directives.push({ type: 'scene', scene: m[1].trim(), time: m[2].trim(), weather: m[3].trim(), segmentIndex: segmentCount, lineIndex: lineCount });
+        } else if ((m = trimmed.match(CHAR_RE))) {
+            isDirective = true;
+            directives.push({ type: 'char', character: m[1].trim(), mood: m[2].trim(), dialogue: m[3].trim(), segmentIndex: segmentCount, lineIndex: lineCount });
+        } else if ((m = trimmed.match(THOUGHT_RE))) {
+            isDirective = true;
+            directives.push({ type: 'thought', character: m[1].trim(), mood: m[2].trim(), thought: m[3].trim(), segmentIndex: segmentCount, lineIndex: lineCount });
         }
-        if (trimmed) segmentCount++;
+        if (trimmed && !isDirective) segmentCount++;
         lineCount++;
     }
 
@@ -28,18 +33,26 @@ export function extractSceneDirectives(text) {
 }
 
 export function resolveSceneStateAtIndex(directives, segmentIndex) {
-    const state = { scene: '', character: '', mood: '' };
+    const state = { scene: '', time: '', weather: '', character: '', mood: '', dialogue: '', thought: '' };
     if (!Array.isArray(directives) || !directives.length) return state;
     const targetIndex = normalizeSegmentIndex(segmentIndex);
 
     for (const directive of directives) {
         const directiveIndex = normalizeSegmentIndex(directive && directive.segmentIndex);
-        if (directiveIndex != null && targetIndex != null && directiveIndex > targetIndex) {
-            break;
+        if (directiveIndex != null && targetIndex != null && directiveIndex > targetIndex) break;
+        if (directive.type === 'scene') {
+            if (directive.scene) state.scene = directive.scene;
+            if (directive.time) state.time = directive.time;
+            if (directive.weather) state.weather = directive.weather;
+        } else if (directive.type === 'char') {
+            if (directive.character) state.character = directive.character;
+            if (directive.mood) state.mood = directive.mood;
+            if (directive.dialogue) state.dialogue = directive.dialogue;
+        } else if (directive.type === 'thought') {
+            if (directive.character) state.character = directive.character;
+            if (directive.mood) state.mood = directive.mood;
+            if (directive.thought) state.thought = directive.thought;
         }
-        if (directive.scene) state.scene = directive.scene;
-        if (directive.character) state.character = directive.character;
-        if (directive.mood) state.mood = directive.mood;
     }
 
     return state;

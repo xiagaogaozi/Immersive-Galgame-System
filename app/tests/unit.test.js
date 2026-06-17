@@ -329,16 +329,19 @@ test('gate:scene:scene-assets-falls-back-to-single-configured-background-and-moo
 test('gate:scene:scene-assets-state-follows-current-reader-segment', () => {
     const { directives } = extractSceneDirectives([
         'Opening narration.',
-        '@igs-scene:Alice|calm|Room|[Hello.]',
+        '[igs-scene:Room|morning|sunny]',
+        '[igs-char:Alice|calm|Hello.]',
         'Alice keeps working.',
-        '@igs-scene:Bob|annoyed||[Move faster.]',
+        '[igs-char:Bob|annoyed|Move faster.]',
         'Bob leaves later.',
     ].join('\n'));
 
-    assert.deepEqual(directives.map((directive) => directive.segmentIndex), [1, 3]);
-    assert.deepEqual(resolveSceneStateAtIndex(directives, 0), { scene: '', character: '', mood: '' });
-    assert.deepEqual(resolveSceneStateAtIndex(directives, 2), { scene: 'Room', character: 'Alice', mood: 'calm' });
-    assert.deepEqual(resolveSceneStateAtIndex(directives, 3), { scene: 'Room', character: 'Bob', mood: 'annoyed' });
+    // directive lines don't count toward segmentIndex — only non-directive lines do
+    assert.deepEqual(directives.map((d) => d.segmentIndex), [1, 1, 2]);
+    const empty = { scene: '', time: '', weather: '', character: '', mood: '', dialogue: '', thought: '' };
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 0), empty);
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 1), { scene: 'Room', time: 'morning', weather: 'sunny', character: 'Alice', mood: 'calm', dialogue: 'Hello.', thought: '' });
+    assert.deepEqual(resolveSceneStateAtIndex(directives, 2), { scene: 'Room', time: 'morning', weather: 'sunny', character: 'Bob', mood: 'annoyed', dialogue: 'Move faster.', thought: '' });
 });
 
 test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
@@ -368,7 +371,7 @@ test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
 
     const opened = host.openReader({
         message: {
-            text: '@igs-scene:Kaito|calm|Room|[Ready.]\nKaito keeps working.',
+            text: '[igs-scene:Room|morning|sunny]\n[igs-char:Kaito|calm|Ready.]\nKaito keeps working.',
         },
         render: {
             stage: {
@@ -393,15 +396,17 @@ test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
 
 test('gate:scene:igs-message-source:extracts-scene-directives-from-fallback-text', () => {
     const payload = buildIgsTextPayload({
-        text: '@igs-scene:小林海斗|平静|B班教室|[できるもん！]',
+        text: '[igs-scene:B班教室|下午|晴天]\n[igs-char:小林海斗|平静|できるもん！]',
     }, {
         sceneAssets: { enabled: true },
     });
 
-    assert.equal(payload.sceneDirectives.length, 1);
-    assert.equal(payload.sceneDirectives[0].character, '小林海斗');
-    assert.equal(payload.sceneDirectives[0].mood, '平静');
+    assert.equal(payload.sceneDirectives.length, 2);
+    assert.equal(payload.sceneDirectives[0].type, 'scene');
     assert.equal(payload.sceneDirectives[0].scene, 'B班教室');
+    assert.equal(payload.sceneDirectives[1].type, 'char');
+    assert.equal(payload.sceneDirectives[1].character, '小林海斗');
+    assert.equal(payload.sceneDirectives[1].mood, '平静');
 });
 
 test('gate:igs-ui:reader-host-skips-empty-scene-text-and-falls-back-to-readable-text', () => {

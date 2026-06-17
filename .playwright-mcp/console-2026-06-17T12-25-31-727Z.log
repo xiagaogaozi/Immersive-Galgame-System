@@ -1,0 +1,39 @@
+[    1225ms] [INFO] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113 @ https://claude.en.uptodown.com/windows/download/1180272326:4829
+[    1251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://securepubads.g.doubleclick.net/tag/js/gpt.js:0
+[    1252ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www3.doubleclick.net/:0
+[    2104ms] [ERROR] Access to fetch at 'https://id5-sync.com/g/v2/492.json' from origin 'https://claude.en.uptodown.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://claude.en.uptodown.com/windows/download/1180272326:0
+[    2104ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://id5-sync.com/g/v2/492.json:0
+[    2935ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://pubads.g.doubleclick.net/activity;dc_iu=/78011819/DFPAudiencePixel;ord=1586150353477542;dc_seg=7386413202?:0
+[   31216ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[   61212ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[   91215ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  121206ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  151206ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  181210ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  211208ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  241206ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  271202ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  301203ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
+[  331211ms] Uncaught TypeError: window.googletag.pubads is not a function
+    at ssmDfpRefresh (https://scripts.ssm.codes/uptodown.js:11:97569)
+    at <anonymous> (https://scripts.ssm.codes/uptodown.js:11:156410)
