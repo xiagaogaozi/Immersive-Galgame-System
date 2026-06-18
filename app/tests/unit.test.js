@@ -493,7 +493,7 @@ test('gate:scene:settings-action-set-time-url-survives-colon-in-time-name', asyn
 });
 
 test('gate:scene:settings-action-mood-groups-toggle-and-reset', async () => {
-    const draft = { bridge: { sceneAssets: { enabled: true, scenes: {}, characters: {}, moodGroups: [{ label: '自定义', words: ['词A'] }] } }, readerSettings: {} };
+    const draft = { bridge: { sceneAssets: { enabled: true, scenes: {}, characters: { '小林': { '喜悦': '' } }, moodGroups: [{ label: '自定义', words: ['词A'] }] } }, readerSettings: {} };
     const asyncState = {};
     let rerenders = 0;
     const ctx = {
@@ -504,13 +504,56 @@ test('gate:scene:settings-action-mood-groups-toggle-and-reset', async () => {
         rerenderSettings: () => { rerenders += 1; return { ok: true }; },
         buildRegexPreview: () => '',
     };
-    await handleSettingsAction('toggle-mood-groups', ctx);
-    assert.equal(asyncState.moodGroupsExpanded, true);
-    await handleSettingsAction('toggle-mood-groups', ctx);
-    assert.equal(asyncState.moodGroupsExpanded, false);
+    await handleSettingsAction(`scene-toggle-mood:${encodeURIComponent('小林')}:${encodeURIComponent('喜悦')}`, ctx);
+    assert.ok(asyncState.expandedSpriteSlots instanceof Set);
+    assert.equal(asyncState.expandedSpriteSlots.size, 1);
+    await handleSettingsAction(`scene-toggle-mood:${encodeURIComponent('小林')}:${encodeURIComponent('喜悦')}`, ctx);
+    assert.equal(asyncState.expandedSpriteSlots.size, 0);
     await handleSettingsAction('reset-mood-groups', ctx);
     assert.equal(draft.bridge.sceneAssets.moodGroups.length, DEFAULT_MOOD_GROUPS.length);
     assert.ok(rerenders >= 3);
+});
+
+test('gate:scene:mood-create-group-auto-first-word-and-blocks-dup', async () => {
+    const draft = { bridge: { sceneAssets: { enabled: true, scenes: {}, characters: {}, moodGroups: [{ label: '喜悦', words: ['开心'] }] } }, readerSettings: {} };
+    let alerts = 0;
+    const ctx = {
+        state: { activeSettings: { draft, readerMode: 'pc', asyncState: {} } },
+        options: { global: { alert: () => { alerts += 1; } } },
+        closeSettings: () => ({ ok: true }),
+        persistSettingsDraft: () => ({ ok: true }),
+        rerenderSettings: () => ({ ok: true }),
+        buildRegexPreview: () => '',
+    };
+    // 新建组：组名自动作为第一个词
+    await handleSettingsAction(`mood-create-group:${encodeURIComponent('愤怒')}`, ctx);
+    const created = draft.bridge.sceneAssets.moodGroups.find((g) => g.label === '愤怒');
+    assert.ok(created);
+    assert.deepEqual(created.words, ['愤怒']);
+    // 组名撞名：阻止 + alert
+    const before = draft.bridge.sceneAssets.moodGroups.length;
+    await handleSettingsAction(`mood-create-group:${encodeURIComponent('喜悦')}`, ctx);
+    assert.equal(draft.bridge.sceneAssets.moodGroups.length, before);
+    assert.equal(alerts, 1);
+});
+
+test('gate:scene:mood-add-word-dup-confirm-moves-word', async () => {
+    const draft = { bridge: { sceneAssets: { enabled: true, scenes: {}, characters: {}, moodGroups: [{ label: '喜悦', words: ['开心', '愉悦'] }, { label: '平和', words: ['平静'] }] } }, readerSettings: {} };
+    let confirmed = true;
+    const ctx = {
+        state: { activeSettings: { draft, readerMode: 'pc', asyncState: {} } },
+        options: { global: { prompt: () => '开心', confirm: () => confirmed } },
+        closeSettings: () => ({ ok: true }),
+        persistSettingsDraft: () => ({ ok: true }),
+        rerenderSettings: () => ({ ok: true }),
+        buildRegexPreview: () => '',
+    };
+    // 向「平和」加「开心」（已在喜悦组）→ confirm 后从喜悦删、加到平和
+    await handleSettingsAction(`mood-add-word:${encodeURIComponent('平和')}`, ctx);
+    const joy = draft.bridge.sceneAssets.moodGroups.find((g) => g.label === '喜悦');
+    const calm = draft.bridge.sceneAssets.moodGroups.find((g) => g.label === '平和');
+    assert.equal(joy.words.includes('开心'), false);
+    assert.equal(calm.words.includes('开心'), true);
 });
 
 test('gate:scene:extracts-directives-with-trailing-translation-tail', () => {

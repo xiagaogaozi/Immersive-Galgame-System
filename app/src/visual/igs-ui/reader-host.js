@@ -45,7 +45,6 @@ import {
     colorInput,
     field,
     renderCharacterAssetList,
-    renderMoodGroupsEditor,
     renderPinnedButtons,
     renderSceneAssetList,
     renderScenePresetBar,
@@ -1143,8 +1142,10 @@ export function createIgsReaderHost(options = {}) {
             const disabled = !sceneAssets.enabled;
             const subTab = asyncState.sceneSubTab === 'characters' ? 'characters' : 'scenes';
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
-            const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
-            const moodGroupsHtml = renderMoodGroupsEditor(sceneAssets.moodGroups || [], asyncState.moodGroupsExpanded === true);
+            const charsHtml = renderCharacterAssetList(sceneAssets.characters || {}, {
+                moodGroups: sceneAssets.moodGroups || [],
+                expandedSlots: asyncState.expandedSpriteSlots instanceof Set ? asyncState.expandedSpriteSlots : new Set(),
+            });
             const scenePresets = loadScenePresets((options.global || globalThis).localStorage);
             const scenePresetBarHtml = renderScenePresetBar(scenePresets, asyncState.scenePresetName || '');
             const subTabsHtml = `<div class="igs-scene-subtabs" role="tablist">`
@@ -1162,12 +1163,15 @@ export function createIgsReaderHost(options = {}) {
             const charactersPane = `<div class="igs-source-filter">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div class="igs-source-filter-title">角色立绘</div>
-          <button class="igs-btn-mgr-icon" data-action="scene-add-char" type="button" title="添加角色">+</button>
+          <span style="display:flex;gap:4px">
+            <button class="igs-btn-mgr-icon" data-action="scene-import-mood-slots" type="button" title="为所有角色按情绪组名补建立绘槽">↑</button>
+            <button class="igs-btn-mgr-icon" data-action="scene-add-char" type="button" title="添加角色">+</button>
+          </span>
         </div>
-        <div class="igs-source-filter-note">角色名 → 情绪 → 立绘 URL。情绪名为「默认」的条目在无匹配时兜底。</div>
+        <div class="igs-source-filter-note">角色名 → 情绪 → 立绘 URL。展开情绪槽可预览立绘并编辑该情绪组的词（词库全局共享）。</div>
         <div class="igs-settings-row">${checkbox('bridge.sceneAssets.unifiedSpriteLayout', sceneAssets.unifiedSpriteLayout, '统一角色立绘位置（各情绪共用一套位置）')}</div>
         ${charsHtml}
-        ${moodGroupsHtml}
+        <div class="igs-settings-row"><button class="igs-settings-action" data-action="reset-mood-groups" type="button">恢复默认词库</button></div>
       </div>`;
             return renderTemplate(getSettingsTabTemplate('scene'), {
                 sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
@@ -1317,7 +1321,8 @@ export function createIgsReaderHost(options = {}) {
             }
             const action = event.target.closest('[data-action]');
             if (action) {
-                if (action.getAttribute('data-action') === 'toggle-secret') {
+                const actName = action.getAttribute('data-action');
+                if (actName === 'toggle-secret') {
                     const wrap = action.closest('.igs-settings-secret');
                     const input = wrap ? wrap.querySelector('input') : null;
                     if (input) {
@@ -1328,8 +1333,14 @@ export function createIgsReaderHost(options = {}) {
                     }
                     return;
                 }
+                if (actName.startsWith('sprite-preview:')) {
+                    event.preventDefault();
+                    const url = decodeURIComponent(actName.slice('sprite-preview:'.length));
+                    showSpritePreviewOverlay(root.ownerDocument || getRootDocument(options.global), url);
+                    return;
+                }
                 event.preventDefault();
-                await controller.invoke(action.getAttribute('data-action'));
+                await controller.invoke(actName);
                 return;
             }
         });
@@ -1672,6 +1683,21 @@ export function createIgsReaderHost(options = {}) {
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, mode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
     }
+}
+
+function showSpritePreviewOverlay(doc, url) {
+    if (!doc || !url) return;
+    const existing = doc.getElementById('igs-sprite-preview-overlay');
+    if (existing) existing.remove();
+    const overlay = doc.createElement('div');
+    overlay.id = 'igs-sprite-preview-overlay';
+    overlay.className = 'igs-sprite-preview-overlay';
+    const img = doc.createElement('img');
+    img.className = 'igs-sprite-preview-img';
+    img.src = url;
+    overlay.appendChild(img);
+    overlay.addEventListener('click', () => overlay.remove());
+    doc.body.appendChild(overlay);
 }
 
 function applyToastToReader(current, allowed, message) {

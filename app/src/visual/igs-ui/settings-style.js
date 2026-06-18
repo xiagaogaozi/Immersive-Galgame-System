@@ -92,6 +92,16 @@ const SETTINGS_STYLE_TEXT = `
 .igs-mood-word-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 6px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
 .igs-mood-word-del{border:0;background:transparent;color:rgba(255,255,255,.4);cursor:pointer;font-size:14px;line-height:1;padding:0}
 .igs-mood-word-del:hover{color:rgba(255,120,120,.9)}
+.igs-sprite-slot{border-bottom:1px solid rgba(255,255,255,.05)}
+.igs-sprite-slot:last-child{border-bottom:0}
+.igs-sprite-slot-body{display:flex;gap:10px;padding:6px 4px 10px;align-items:flex-start}
+.igs-sprite-thumb{width:72px;height:72px;flex-shrink:0;object-fit:contain;border-radius:8px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);cursor:zoom-in}
+.igs-sprite-thumb-empty{display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,.32);cursor:default}
+.igs-sprite-thumb-broken{position:relative}
+.igs-sprite-words{flex:1;min-width:0}
+.igs-sprite-words-title{font-size:11px;color:rgba(255,255,255,.5);letter-spacing:1px}
+.igs-sprite-preview-overlay{position:fixed;inset:0;z-index:2147483600;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px}
+.igs-sprite-preview-img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 12px 48px rgba(0,0,0,.6)}
 @media (max-width:640px){#igs-unified-settings{--igs-settings-width:min(760px,calc(var(--igs-settings-vw) - 24px));--igs-settings-height:min(760px,calc(var(--igs-settings-vh) - 24px));padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}.igs-settings-shell{width:var(--igs-settings-width);height:var(--igs-settings-height);border-radius:18px}.igs-settings-grid,.igs-settings-api-group,.igs-source-filter-grid{grid-template-columns:1fr}.igs-segmented{height:40px}.igs-segmented-btn{font-size:11px;padding:0 4px;gap:4px}}
 `.trim();
 

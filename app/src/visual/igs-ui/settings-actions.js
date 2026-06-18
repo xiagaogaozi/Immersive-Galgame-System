@@ -407,13 +407,23 @@ export async function handleSettingsAction(action, ctx) {
 
     if (normalizedAction.startsWith('scene-add-mood:')) {
         const charName = decodeSeg(normalizedAction.slice('scene-add-mood:'.length));
+        const globalObj = options.global || globalThis;
         settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
         settingsState.draft.bridge.sceneAssets.characters = settingsState.draft.bridge.sceneAssets.characters || {};
         const char = settingsState.draft.bridge.sceneAssets.characters[charName];
         if (char && typeof char === 'object') {
-            const existingMoods = Object.keys(char);
-            const newMood = '情绪' + (existingMoods.length + 1);
+            const newMood = (globalObj.prompt && globalObj.prompt('情绪/槽名称（建议与情绪组名一致）：', '') || '').trim();
+            if (!newMood) return rerenderSettings();
+            if (Object.prototype.hasOwnProperty.call(char, newMood)) {
+                if (globalObj.alert) globalObj.alert(`「${charName}」已有「${newMood}」槽（同名）`);
+                return rerenderSettings();
+            }
             char[newMood] = '';
+            // 槽名若在词库中无对应组，自动建组并把组名作为第一个词
+            const groups = ensureMoodGroups(settingsState);
+            if (!groups.some((g) => g.label === newMood)) {
+                groups.unshift({ label: newMood, words: [newMood] });
+            }
         }
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
@@ -505,12 +515,16 @@ export async function handleSettingsAction(action, ctx) {
     }
 
     if (normalizedAction === 'mood-add-group') {
+        const globalObj = options.global || globalThis;
         const groups = ensureMoodGroups(settingsState);
-        const existing = new Set(groups.map((g) => g.label));
-        let i = groups.length + 1;
-        let name = '情绪组' + i;
-        while (existing.has(name)) { i++; name = '情绪组' + i; }
-        groups.push({ label: name, words: [] });
+        const raw = (globalObj.prompt && globalObj.prompt('新情绪组名称：', '') || '').trim();
+        if (!raw) return rerenderSettings();
+        if (groups.some((g) => g.label === raw)) {
+            if (globalObj.alert) globalObj.alert(`情绪组「${raw}」已存在（同名）`);
+            return rerenderSettings();
+        }
+        // 组名自动作为该组第一个词
+        groups.unshift({ label: raw, words: [raw] });
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
         return rerenderSettings();
@@ -550,9 +564,15 @@ export async function handleSettingsAction(action, ctx) {
         const word = (globalObj.prompt && globalObj.prompt(`向「${label}」组添加情绪词：`, '') || '').trim();
         if (word) {
             const groups = ensureMoodGroups(settingsState);
-            if (groups.some((g) => g.words.includes(word))) {
-                if (globalObj.alert) globalObj.alert(`「${word}」已存在于某个情绪组`);
-                return rerenderSettings();
+            const dupGroup = groups.find((g) => Array.isArray(g.words) && g.words.includes(word));
+            if (dupGroup) {
+                // 词撞名：弹窗询问是否删掉重复词再加到当前组
+                const confirmFn = typeof globalObj.confirm === 'function' ? globalObj.confirm.bind(globalObj) : null;
+                const proceed = confirmFn
+                    ? confirmFn(`「${word}」已存在于「${dupGroup.label}」组。是否删除重复词并加入「${label}」组？`)
+                    : true;
+                if (!proceed) return rerenderSettings();
+                dupGroup.words = dupGroup.words.filter((w) => w !== word);
             }
             const group = groups.find((g) => g.label === label);
             if (group) group.words.push(word);
@@ -585,8 +605,34 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
-    if (normalizedAction === 'toggle-mood-groups') {
-        settingsState.asyncState.moodGroupsExpanded = !settingsState.asyncState.moodGroupsExpanded;
+    if (normalizedAction.startsWith('scene-toggle-mood:')) {
+        const rest = normalizedAction.slice('scene-toggle-mood:'.length);
+        const colonIdx = rest.indexOf(':');
+        if (colonIdx > 0) {
+            const charName = decodeSeg(rest.slice(0, colonIdx));
+            const mood = decodeSeg(rest.slice(colonIdx + 1));
+            const key = `${charName} ${mood}`;
+            if (!(settingsState.asyncState.expandedSpriteSlots instanceof Set)) {
+                settingsState.asyncState.expandedSpriteSlots = new Set();
+            }
+            const set = settingsState.asyncState.expandedSpriteSlots;
+            if (set.has(key)) set.delete(key); else set.add(key);
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('mood-create-group:')) {
+        const label = decodeSeg(normalizedAction.slice('mood-create-group:'.length));
+        const globalObj = options.global || globalThis;
+        const groups = ensureMoodGroups(settingsState);
+        if (groups.some((g) => g.label === label)) {
+            if (globalObj.alert) globalObj.alert(`情绪组「${label}」已存在（同名）`);
+            return rerenderSettings();
+        }
+        // 组名自动作为该组第一个词
+        groups.unshift({ label, words: [label] });
+        const persisted = persistSettingsDraft();
+        if (persisted.ok === false) return persisted;
         return rerenderSettings();
     }
 

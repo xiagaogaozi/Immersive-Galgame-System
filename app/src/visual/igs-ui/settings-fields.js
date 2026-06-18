@@ -87,42 +87,52 @@ export function renderSceneAssetList(scenes) {
     }).join('');
 }
 
-export function renderCharacterAssetList(characters) {
+export function renderCharacterAssetList(characters, options = {}) {
+    const moodGroups = Array.isArray(options.moodGroups) ? options.moodGroups : [];
+    const expandedSlots = options.expandedSlots instanceof Set ? options.expandedSlots : new Set();
     const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
     const trash = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+    const chevronDown = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+    const chevronUp = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
     const charEntries = Object.entries(characters || {});
     if (!charEntries.length) return '<div class="igs-scene-empty">暂无角色立绘配置</div>';
     return charEntries.map(([charName, moods]) => {
         const moodEntries = Object.entries(moods || {});
         const moodRows = moodEntries.map(([mood, url]) => {
-            return `<div class="igs-btn-mgr-row igs-scene-mood-row"><span class="igs-btn-mgr-label">${esc(mood)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-mood:${encSeg(charName)}:${encSeg(mood)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-mood:${encSeg(charName)}:${encSeg(mood)}" title="删除">${trash}</button></div>`;
+            const expanded = expandedSlots.has(`${charName} ${mood}`);
+            const collapsedRow = `<div class="igs-btn-mgr-row igs-scene-mood-row">`
+                + `<span class="igs-btn-mgr-label">${esc(mood)}</span>`
+                + `<input class="igs-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/...">`
+                + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-mood:${encSeg(charName)}:${encSeg(mood)}" title="重命名">${pencil}</button>`
+                + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-mood:${encSeg(charName)}:${encSeg(mood)}" title="删除">${trash}</button>`
+                + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-toggle-mood:${encSeg(charName)}:${encSeg(mood)}" title="展开/折叠">${expanded ? chevronUp : chevronDown}</button>`
+                + `</div>`;
+            const expandedBody = expanded ? renderSpriteSlotExpansion(charName, mood, url, moodGroups, { pencil, trash }) : '';
+            return `<div class="igs-sprite-slot">${collapsedRow}${expandedBody}</div>`;
         }).join('');
-        return `<div class="igs-scene-char-group"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-char:${encSeg(charName)}" title="重命名">${pencil}</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-add-mood:${encSeg(charName)}" title="添加表情">+</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-char:${encSeg(charName)}" title="删除角色">${trash}</button></div><div class="igs-btn-mgr-list">${moodRows || '<div class="igs-scene-empty">暂无表情</div>'}</div></div>`;
+        return `<div class="igs-scene-char-group"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label" style="font-weight:600">${esc(charName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-char:${encSeg(charName)}" title="重命名">${pencil}</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-add-mood:${encSeg(charName)}" title="添加情绪">+</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-char:${encSeg(charName)}" title="删除角色">${trash}</button></div><div class="igs-btn-mgr-list">${moodRows || '<div class="igs-scene-empty">暂无情绪</div>'}</div></div>`;
     }).join('');
 }
 
-export function renderMoodGroupsEditor(moodGroups, expanded) {
-    const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-    const trash = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
-    const arrowUp = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
-    const chevron = expanded
-        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'
-        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
-    const groups = Array.isArray(moodGroups) ? moodGroups : [];
-    const header = `<div style="display:flex;align-items:center;justify-content:space-between"><button type="button" class="igs-mood-toggle" data-action="toggle-mood-groups" title="展开/折叠" style="display:flex;align-items:center;gap:6px;background:none;border:0;color:inherit;cursor:pointer;padding:0;font:inherit"><span class="igs-source-filter-title">情绪词库（全局）</span>${chevron}</button><span style="display:flex;gap:4px"><button type="button" class="igs-btn-mgr-icon" data-action="scene-import-mood-slots" title="为所有角色按组名导入立绘槽">${arrowUp}</button><button type="button" class="igs-btn-mgr-icon" data-action="mood-add-group" title="添加情绪组">+</button></span></div>`;
-    if (!expanded) {
-        return `<div class="igs-source-filter">${header}</div>`;
-    }
-    const groupsHtml = groups.map((group) => {
-        const label = String(group && group.label || '');
-        const words = Array.isArray(group && group.words) ? group.words : [];
-        const wordTags = words.map((word) => {
-            return `<span class="igs-mood-word-tag">${esc(word)}<button type="button" class="igs-mood-word-del" data-action="mood-remove-word:${encSeg(label)}:${encSeg(word)}" title="删除词">×</button></span>`;
+function renderSpriteSlotExpansion(charName, mood, url, moodGroups, icons) {
+    const trimmedUrl = String(url || '').trim();
+    const thumb = trimmedUrl
+        ? `<img class="igs-sprite-thumb" src="${esc(trimmedUrl)}" loading="lazy" alt="${esc(mood)}" data-action="sprite-preview:${encSeg(trimmedUrl)}" onerror="this.classList.add('igs-sprite-thumb-broken')">`
+        : `<div class="igs-sprite-thumb igs-sprite-thumb-empty">未配置</div>`;
+    const group = moodGroups.find((g) => g && g.label === mood);
+    let wordsHtml;
+    if (group) {
+        const words = Array.isArray(group.words) ? group.words : [];
+        const tags = words.map((word) => {
+            return `<span class="igs-mood-word-tag">${esc(word)}<button type="button" class="igs-mood-word-del" data-action="mood-remove-word:${encSeg(mood)}:${encSeg(word)}" title="删除词">×</button></span>`;
         }).join('');
-        return `<div class="igs-scene-char-group"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label" style="font-weight:600">${esc(label)}</span><button type="button" class="igs-btn-mgr-icon" data-action="mood-rename-group:${encSeg(label)}" title="重命名组">${pencil}</button><button type="button" class="igs-btn-mgr-icon" data-action="mood-add-word:${encSeg(label)}" title="添加词">+</button><button type="button" class="igs-btn-mgr-icon" data-action="mood-remove-group:${encSeg(label)}" title="删除组">${trash}</button></div><div class="igs-mood-word-list">${wordTags || '<div class="igs-scene-empty">暂无情绪词</div>'}</div></div>`;
-    }).join('');
-    return `<div class="igs-source-filter">${header}<div class="igs-source-filter-note">情绪词分组，注入提示词约束 AI 只能从池里选词。立绘按「组」归约取差分图（如「欣喜」归到「喜悦」组）。↑ 按钮为所有角色按组名补建立绘槽。</div>${groupsHtml || '<div class="igs-scene-empty">暂无情绪组</div>'}<div class="igs-settings-row"><button class="igs-settings-action" data-action="reset-mood-groups" type="button">恢复默认词库</button></div></div>`;
+        wordsHtml = `<div class="igs-sprite-words"><span class="igs-sprite-words-title">${esc(mood)}组词</span><div class="igs-mood-word-list">${tags || '<div class="igs-scene-empty">暂无情绪词</div>'}<button type="button" class="igs-btn-mgr-icon" data-action="mood-add-word:${encSeg(mood)}" title="添加词">+</button></div></div>`;
+    } else {
+        wordsHtml = `<div class="igs-sprite-words"><div class="igs-source-filter-note">「${esc(mood)}」在词库中无对应情绪组。</div><button type="button" class="igs-settings-action" data-action="mood-create-group:${encSeg(mood)}">建为情绪组</button></div>`;
+    }
+    return `<div class="igs-sprite-slot-body">${thumb}${wordsHtml}</div>`;
 }
+
 
 export function renderScenePresetBar(presets, selectedName) {
     const names = Object.keys(presets || {});
