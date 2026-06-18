@@ -17,13 +17,12 @@ import { resolveVisualMode } from '../visual/visual-mode.js';
 import { createIgsReaderHost } from '../visual/igs-ui/reader-host.js';
 import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
-import { createQrEntry } from '../host/qr-entry.js';
 import { createExtensionPanel } from '../host/extension-panel.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
 import { buildMoodGroupsText, MOOD_GROUPS_PLACEHOLDER } from '../scene/mood-groups.js';
 
-const IGS_VERSION = '0.19.1';
+const IGS_VERSION = '0.20.0';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
@@ -75,7 +74,6 @@ export function bootstrapIGS(options = {}) {
         destroy,
         igsUi: null,
         magicWandEntry: null,
-        qrEntry: null,
         extensionPanel: null,
     };
     let publicApi = null;
@@ -140,16 +138,6 @@ export function bootstrapIGS(options = {}) {
             return snapshot && (snapshot.readerMode || snapshot.bridge && snapshot.bridge.openMode) || 'pc';
         },
     });
-    app.qrEntry = options.qrEntry || createQrEntry({
-        global: globalObject,
-        label: '沉浸式Galgame系统',
-        open: (mode) => publicApi.openLatestAvailable(mode),
-        resolveMode: () => {
-            const snapshot = publicApi.getUnifiedSettings({});
-            return snapshot && (snapshot.readerMode || snapshot.bridge && snapshot.bridge.openMode) || 'pc';
-        },
-        notify: (message, type) => emitToast(message, type),
-    });
     app.extensionPanel = options.extensionPanel || createExtensionPanel({
         global: globalObject,
         label: '沉浸式Galgame系统',
@@ -174,22 +162,15 @@ export function bootstrapIGS(options = {}) {
         const entry = cfg || resolveEntryConfig();
         if (entry.magic) app.magicWandEntry.attach();
         else if (typeof app.magicWandEntry.destroy === 'function') app.magicWandEntry.destroy();
-        if (entry.qr) {
-            const result = app.qrEntry.attach();
-            if (result && result.ok === false && entry.magic === false) {
-                // QR 不可用且没开魔法棒时，回退挂魔法棒，避免无入口可用。
-                app.magicWandEntry.attach();
-                emitToast('QR 入口不可用，已回退到魔法棒入口。', 'error');
-            }
-        } else if (typeof app.qrEntry.destroy === 'function') {
-            app.qrEntry.destroy();
-        }
+        // QR 脚本按钮由 loader content（脚本上下文）按 localStorage['igs:entry:qr'] 标志显隐，
+        // 这里只负责写标志：'1' 显示、'0' 隐藏。loader 轮询读取后切按钮 visible。
+        writeQrFlag(entry.qr);
     }
-    function emitToast(message, type) {
+    function writeQrFlag(enabled) {
         try {
-            const root = globalObject;
-            if (root && root.toastr && typeof root.toastr[type === 'error' ? 'error' : 'info'] === 'function') {
-                root.toastr[type === 'error' ? 'error' : 'info'](message, 'IGS');
+            const store = globalObject && globalObject.localStorage;
+            if (store && typeof store.setItem === 'function') {
+                store.setItem('igs:entry:qr', enabled ? '1' : '0');
             }
         } catch (error) { /* ignore */ }
     }
@@ -467,9 +448,6 @@ export function bootstrapIGS(options = {}) {
         }
         if (app.magicWandEntry && typeof app.magicWandEntry.destroy === 'function') {
             app.magicWandEntry.destroy();
-        }
-        if (app.qrEntry && typeof app.qrEntry.destroy === 'function') {
-            app.qrEntry.destroy();
         }
         if (app.extensionPanel && typeof app.extensionPanel.destroy === 'function') {
             app.extensionPanel.destroy();

@@ -27,8 +27,10 @@ const loaderJson = {
         '测试前请确认仓库或发布资产为公开可访问。',
     ].join('\n'),
     button: {
-        enabled: false,
-        buttons: [],
+        enabled: true,
+        buttons: [
+            { name: '沉浸式Galgame系统', visible: false },
+        ],
     },
     data: {},
     export_with: {
