@@ -11,8 +11,6 @@
     const MAGIC_MENU_SELECTORS = ['#extensionsMenu', '#extensions_menu', '.extensions_block .list-group'];
     const LOADER_ENTRY_SELECTOR = '[data-igs-loader-entry="1"]';
     const TRACE_IDS = [CSS_ID, SCRIPT_ID, 'igs-root', 'igs-stage'];
-    const QR_BUTTON_NAME = '沉浸式Galgame系统';
-    const QR_FLAG_KEY = 'igs:entry:qr';
 
     const root = resolveRootWindow();
     const doc = getRootDocument();
@@ -32,7 +30,6 @@
         loadedAt: Date.now(),
     };
     scheduleLoaderMagicWandEntry();
-    try { setupQrEntry(); } catch (qrError) { /* QR 入口在不支持的环境下静默跳过。*/ }
 
     load().catch((error) => {
         console.error('[IGS Loader] 启动失败。', error);
@@ -182,77 +179,6 @@
             seen.add(key);
             return true;
         });
-    }
-
-    function setupQrEntry() {
-        // QR 脚本按钮由 loader JSON 的 button 字段固定声明。loader content 运行在酒馆助手脚本
-        // 上下文，可直接用全局 getButtonEvent/eventOn/replaceScriptButtons。这里轮询 localStorage
-        // 的开关标志切按钮显隐，并在每次设置按钮后重新绑定点击（对齐扩写脚本：先 replaceScriptButtons
-        // 再 eventOn(getButtonEvent(...))，否则事件可能绑不上）。
-        const getEvent = typeof getButtonEvent === 'function' ? getButtonEvent : null;
-        const onEvent = typeof eventOn === 'function' ? eventOn : null;
-        let clickHandle = null;
-        const bindClick = () => {
-            if (!getEvent || !onEvent) return;
-            if (clickHandle && typeof clickHandle.stop === 'function') {
-                try { clickHandle.stop(); } catch (error) { /* ignore */ }
-            }
-            try {
-                clickHandle = onEvent(getEvent(QR_BUTTON_NAME), () => {
-                    const api = root.IGS || root.ImmersiveGalgameSystem;
-                    if (api && typeof api.openLatestAvailable === 'function') {
-                        Promise.resolve(api.openLatestAvailable()).catch(() => {});
-                    } else {
-                        notifyLoaderPending();
-                    }
-                });
-            } catch (error) {
-                // 不在脚本上下文或 API 不可用时静默跳过。
-            }
-        };
-        let lastFlag = null;
-        const syncVisible = () => {
-            if (typeof replaceScriptButtons !== 'function' || typeof getScriptButtons !== 'function') {
-                // 无脚本按钮 API（例如未在脚本上下文运行）：至少尝试绑定一次点击事件。
-                if (lastFlag === null) { lastFlag = '0'; bindClick(); }
-                return;
-            }
-            let flag = '0';
-            try { flag = String(readQrFlag() || '0'); } catch (error) { flag = '0'; }
-            if (flag === lastFlag) return;
-            lastFlag = flag;
-            try {
-                const buttons = getScriptButtons().map((button) => {
-                    if (button && button.name === QR_BUTTON_NAME) {
-                        return { name: button.name, visible: flag === '1' };
-                    }
-                    return button;
-                });
-                replaceScriptButtons(buttons);
-            } catch (error) {
-                // Ignore script-button API failures.
-            }
-            // replace 之后重新绑定点击事件，确保事件落在最新按钮上。
-            bindClick();
-        };
-        syncVisible();
-        setHostInterval(syncVisible, 1500);
-    }
-
-    function readQrFlag() {
-        try {
-            const store = root.localStorage || (typeof localStorage !== 'undefined' ? localStorage : null);
-            return store ? store.getItem(QR_FLAG_KEY) : null;
-        } catch (error) {
-            return null;
-        }
-    }
-
-    function setHostInterval(callback, ms) {
-        const setter = root && typeof root.setInterval === 'function'
-            ? root.setInterval.bind(root)
-            : (typeof setInterval === 'function' ? setInterval : null);
-        return setter ? setter(callback, ms) : null;
     }
 
     function scheduleLoaderMagicWandEntry() {

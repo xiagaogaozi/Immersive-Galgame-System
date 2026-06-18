@@ -1,5 +1,5 @@
 // 扩展菜单注册入口：在 SillyTavern 扩展设置面板挂一个 inline-drawer 抽屉。
-// 抽屉内含：启用魔法棒入口、启用 QR 入口（可同时勾选）+ 打开设置 / 打开阅读器 快捷按钮。
+// 抽屉内含：启用魔法棒入口 + 打开设置 / 打开阅读器 快捷按钮。
 // 依据：扩展设置面板锚点 #extensions_settings2 等，inline-drawer 结构。
 const PANEL_ID = 'igs-extension-panel';
 const MOUNT_SELECTORS = Object.freeze([
@@ -15,7 +15,7 @@ export function createExtensionPanel(options = {}) {
     const label = options.label || '沉浸式Galgame系统';
     const openSettings = typeof options.openSettings === 'function' ? options.openSettings : null;
     const openReader = typeof options.openReader === 'function' ? options.openReader : null;
-    const getEntryConfig = typeof options.getEntryConfig === 'function' ? options.getEntryConfig : () => ({ magic: true, qr: false });
+    const getEntryConfig = typeof options.getEntryConfig === 'function' ? options.getEntryConfig : () => ({ magic: true });
     const setEntryConfig = typeof options.setEntryConfig === 'function' ? options.setEntryConfig : () => {};
 
     let retryTimer = null;
@@ -72,7 +72,6 @@ export function createExtensionPanel(options = {}) {
               </div>
               <div class="inline-drawer-content">
                 <label class="checkbox_label"><input type="checkbox" data-igs-entry="magic"${cfg.magic ? ' checked' : ''}> 启用魔法棒入口</label>
-                <label class="checkbox_label"><input type="checkbox" data-igs-entry="qr"${cfg.qr ? ' checked' : ''}> 启用 QR 入口</label>
                 <div class="igs-ext-actions" style="display:flex;gap:8px;margin-top:8px">
                   <button type="button" class="menu_button" data-igs-ext-act="open-settings" style="flex:1;white-space:nowrap">打开设置</button>
                   <button type="button" class="menu_button" data-igs-ext-act="open-reader" style="flex:1;white-space:nowrap">打开阅读器</button>
@@ -89,7 +88,7 @@ export function createExtensionPanel(options = {}) {
             input.addEventListener('change', () => {
                 const cfg = safeEntryConfig();
                 cfg[input.getAttribute('data-igs-entry')] = !!input.checked;
-                setEntryConfig({ magic: !!cfg.magic, qr: !!cfg.qr });
+                setEntryConfig({ magic: !!cfg.magic });
             });
         });
         const buttons = panel.querySelectorAll('[data-igs-ext-act]');
@@ -106,9 +105,9 @@ export function createExtensionPanel(options = {}) {
     function safeEntryConfig() {
         try {
             const cfg = getEntryConfig() || {};
-            return { magic: cfg.magic !== false, qr: !!cfg.qr };
+            return { magic: cfg.magic !== false };
         } catch (error) {
-            return { magic: true, qr: false };
+            return { magic: true };
         }
     }
 

@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.20.1');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.20.2');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -203,23 +203,6 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     vn.destroy();
     assert.equal(menu.querySelector('[data-igs-magic-entry="1"]'), null);
-});
-
-test('gate:simulation:qr-entry-flag-written-from-bridge-entry-config', async () => {
-    const storage = createMemoryStorage();
-    // 预置 bridge.entry.qr=true，bootstrap 启动时应把 QR 标志写进 localStorage 给 loader 读
-    storage.setItem('igs_bridge_config', JSON.stringify({ openMode: 'pc', entry: { magic: true, qr: true } }));
-    const vn = bootstrapIGS({
-        global: { localStorage: storage },
-        autoAttachMagicWand: true,
-        magicWandEntryOptions: { retryIntervalMs: false },
-        hostAdapter: {
-            getCurrentMessage: async () => ({ id: 1, text: '旁白。' }),
-            typeAndSend: async () => ({ ok: true }),
-        },
-    });
-    assert.equal(storage.getItem('igs:entry:qr'), '1');
-    vn.destroy();
 });
 
 test('gate:simulation:igs-reader-falls-back-to-visible-text-when-raw-message-is-host-ui-html', async () => {

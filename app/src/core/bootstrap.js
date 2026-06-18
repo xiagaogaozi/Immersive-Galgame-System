@@ -22,7 +22,7 @@ import { createReaderImageService } from '../generated-images/reader-image-servi
 import { createPromptInjector } from '../host/prompt-injector.js';
 import { buildMoodGroupsText, MOOD_GROUPS_PLACEHOLDER } from '../scene/mood-groups.js';
 
-const IGS_VERSION = '0.20.1';
+const IGS_VERSION = '0.20.2';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
@@ -149,10 +149,10 @@ export function bootstrapIGS(options = {}) {
     function resolveEntryConfig() {
         const snapshot = publicApi.getUnifiedSettings({});
         const entry = snapshot && snapshot.bridge && snapshot.bridge.entry;
-        return { magic: !entry || entry.magic !== false, qr: !!(entry && entry.qr) };
+        return { magic: !entry || entry.magic !== false };
     }
     function saveEntryConfig(next) {
-        const cfg = { magic: next.magic !== false, qr: !!next.qr };
+        const cfg = { magic: next.magic !== false };
         if (typeof saveUnifiedSettings === 'function') {
             saveUnifiedSettings({ bridge: { entry: cfg } });
         }
@@ -162,17 +162,6 @@ export function bootstrapIGS(options = {}) {
         const entry = cfg || resolveEntryConfig();
         if (entry.magic) app.magicWandEntry.attach();
         else if (typeof app.magicWandEntry.destroy === 'function') app.magicWandEntry.destroy();
-        // QR 脚本按钮由 loader content（脚本上下文）按 localStorage['igs:entry:qr'] 标志显隐，
-        // 这里只负责写标志：'1' 显示、'0' 隐藏。loader 轮询读取后切按钮 visible。
-        writeQrFlag(entry.qr);
-    }
-    function writeQrFlag(enabled) {
-        try {
-            const store = globalObject && globalObject.localStorage;
-            if (store && typeof store.setItem === 'function') {
-                store.setItem('igs:entry:qr', enabled ? '1' : '0');
-            }
-        } catch (error) { /* ignore */ }
     }
     if (options.autoAttachMagicWand !== false) {
         applyEntryConfig(resolveEntryConfig());

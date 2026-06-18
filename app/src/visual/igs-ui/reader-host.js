@@ -1554,7 +1554,6 @@ export function createIgsReaderHost(options = {}) {
         const src = value && typeof value === 'object' ? value : {};
         return {
             magic: normalizeBoolean(src.magic, true),
-            qr: normalizeBoolean(src.qr, false),
         };
     }
 

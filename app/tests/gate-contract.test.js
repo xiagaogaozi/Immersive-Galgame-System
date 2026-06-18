@@ -85,9 +85,8 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.match(loaderJson.content, /reconcileExistingRuntime/);
     assert.match(loaderJson.content, /ensureMagicWandEntry/);
     assert.doesNotMatch(loaderJson.content, /yuzi-phone/i);
-    assert.equal(loaderJson.button.enabled, true);
-    assert.deepEqual(loaderJson.button.buttons, [{ name: '沉浸式Galgame系统', visible: false }]);
-    assert.match(loaderJson.content, /setupQrEntry/);
+    assert.equal(loaderJson.button.enabled, false);
+    assert.deepEqual(loaderJson.button.buttons, []);
 
     const pkgVersion = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')).version;
     const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', `酒馆助手脚本-沉浸式Galgame系统（自动更新） v${pkgVersion}.json`), 'utf8'));
@@ -101,11 +100,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0\.20\.1/);
+    assert.match(bundle, /IGS version: 0\.20\.2/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Immersive Galgame System');
-    assert.equal(manifest.version, '0.20.1');
+    assert.equal(manifest.version, '0.20.2');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
