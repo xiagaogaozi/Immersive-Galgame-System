@@ -611,7 +611,7 @@ export async function handleSettingsAction(action, ctx) {
         if (colonIdx > 0) {
             const charName = decodeSeg(rest.slice(0, colonIdx));
             const mood = decodeSeg(rest.slice(colonIdx + 1));
-            const key = `${charName} ${mood}`;
+            const key = charName + "\x00" + mood;
             if (!(settingsState.asyncState.expandedSpriteSlots instanceof Set)) {
                 settingsState.asyncState.expandedSpriteSlots = new Set();
             }

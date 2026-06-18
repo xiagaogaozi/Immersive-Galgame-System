@@ -639,6 +639,43 @@ test('gate:igs-ui:scene-assets-keeps-sprite-with-existing-background', () => {
     host.destroy();
 });
 
+test('gate:igs-ui:sprite-slot-expand-shows-thumbnail-and-words', async () => {
+    const host = createIgsReaderHost({
+        global: {},
+        getUnifiedSettings: () => ({
+            version: '0.4.9',
+            bridge: {
+                openMode: 'pc',
+                sceneAssets: {
+                    enabled: true,
+                    scenes: {},
+                    characters: { Kaito: { 喜悦: 'https://example.com/k.png' } },
+                    moodGroups: [{ label: '喜悦', words: ['开心', '欣喜'] }],
+                },
+            },
+            readerMode: 'pc',
+            readerSettings: {},
+        }),
+        saveUnifiedSettings: () => ({ ok: true, legacy: {}, unified: {} }),
+    });
+    host.openReader({ message: { text: '旁白。' } }, { mode: 'pc' });
+    const opened = host.openSettings({ tab: 'scene' });
+    const controller = opened.controller;
+    controller.switchTab('scene');
+    controller.switchSceneSubTab('characters');
+
+    // 折叠态：不含缩略图
+    const snap = controller.getSnapshot();
+    assert.equal(/igs-sprite-thumb/.test(snap.html), false);
+
+    // 展开后：含缩略图和该情绪组的词
+    const after = await controller.invoke(`scene-toggle-mood:${encodeURIComponent('Kaito')}:${encodeURIComponent('喜悦')}`);
+    assert.match(after.snapshot.html, /igs-sprite-thumb/);
+    assert.match(after.snapshot.html, /开心/);
+
+    host.destroy();
+});
+
 test('gate:igs-ui:scene-assets-classifies-dialogue-vs-narration-per-segment', () => {
     const makeHost = () => createIgsReaderHost({
         global: {},

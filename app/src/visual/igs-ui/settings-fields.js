@@ -99,7 +99,7 @@ export function renderCharacterAssetList(characters, options = {}) {
     return charEntries.map(([charName, moods]) => {
         const moodEntries = Object.entries(moods || {});
         const moodRows = moodEntries.map(([mood, url]) => {
-            const expanded = expandedSlots.has(`${charName} ${mood}`);
+            const expanded = expandedSlots.has(charName + "\x00" + mood);
             const collapsedRow = `<div class="igs-btn-mgr-row igs-scene-mood-row">`
                 + `<span class="igs-btn-mgr-label">${esc(mood)}</span>`
                 + `<input class="igs-scene-url-input" data-scene-char="${esc(charName)}" data-scene-mood="${esc(mood)}" value="${esc(url || '')}" placeholder="URL 或 data:image/...">`
