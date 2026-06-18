@@ -709,6 +709,25 @@ test('gate:igs-ui:sprite-slot-expand-shows-thumbnail-and-words', async () => {
     host.destroy();
 });
 
+test('gate:igs-ui:toolbar-first-last-page-jump', async () => {
+    const host = createIgsReaderHost({
+        global: {},
+        getUnifiedSettings: () => ({ version: '0.4.9', bridge: { openMode: 'pc', sceneAssets: { enabled: false } }, readerMode: 'pc', readerSettings: {} }),
+        saveUnifiedSettings: () => ({ ok: true, legacy: {}, unified: {} }),
+    });
+    const opened = host.openReader({ message: { text: '第一段。\n第二段。\n第三段。' } }, { mode: 'pc' });
+    const controller = opened.controller;
+    assert.equal(opened.snapshot.content.segments.length, 3);
+    assert.equal(opened.snapshot.content.currentIndex, 0);
+
+    await controller.invokeAction('last-page');
+    assert.equal(host.getState().activeReader.index, 2);
+    await controller.invokeAction('first-page');
+    assert.equal(host.getState().activeReader.index, 0);
+
+    host.destroy();
+});
+
 test('gate:igs-ui:scene-assets-classifies-dialogue-vs-narration-per-segment', () => {
     const makeHost = () => createIgsReaderHost({
         global: {},

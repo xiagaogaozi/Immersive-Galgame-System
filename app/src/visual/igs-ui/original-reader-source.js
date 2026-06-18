@@ -9,21 +9,25 @@ export const ORIGINAL_READER_ICONS = Object.freeze({
     prevTurn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polygon points="19 20 9 12 19 4 19 20" fill="currentColor" stroke="none"/><line x1="5" y1="19" x2="5" y2="5"/></svg>',
     nextTurn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor" stroke="none"/><line x1="19" y1="5" x2="19" y2="19"/></svg>',
     toggleBar: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
+    firstPage: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>',
+    lastPage: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>',
     close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
     spriteEdit: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 15 22 12 19 9"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
 });
 
 export const ORIGINAL_READER_TOOLBAR_BUTTONS = Object.freeze([
-    { id: 'prev', title: '上一段', html: ORIGINAL_READER_ICONS.prev },
-    { id: 'next', title: '下一段', html: ORIGINAL_READER_ICONS.next },
-    { id: 'regen', title: '重新生成背景图', html: ORIGINAL_READER_ICONS.regen },
-    { id: 'rescan', title: '刷新图位', html: ORIGINAL_READER_ICONS.rescan },
-    { id: 'save', title: '保存背景图', html: ORIGINAL_READER_ICONS.save },
-    { id: 'settings', title: '设置', html: ORIGINAL_READER_ICONS.settings },
-    { id: 'hide', title: '隐藏/显示对话框', html: ORIGINAL_READER_ICONS.hide },
     { id: 'prev-turn', title: '上一轮', html: ORIGINAL_READER_ICONS.prevTurn },
+    { id: 'first-page', title: '第一页', html: ORIGINAL_READER_ICONS.firstPage },
+    { id: 'prev', title: '上一页', html: ORIGINAL_READER_ICONS.prev },
+    { id: 'next', title: '下一页', html: ORIGINAL_READER_ICONS.next },
+    { id: 'last-page', title: '最后一页', html: ORIGINAL_READER_ICONS.lastPage },
     { id: 'next-turn', title: '下一轮', html: ORIGINAL_READER_ICONS.nextTurn },
-    { id: 'sprite-edit', title: '调整立绘位置/大小', html: ORIGINAL_READER_ICONS.spriteEdit },
+    { id: 'regen', title: '重新生图', html: ORIGINAL_READER_ICONS.regen },
+    { id: 'save', title: '保存图片', html: ORIGINAL_READER_ICONS.save },
+    { id: 'hide', title: '隐藏对话框', html: ORIGINAL_READER_ICONS.hide },
+    { id: 'sprite-edit', title: '调整立绘', html: ORIGINAL_READER_ICONS.spriteEdit },
+    { id: 'rescan', title: '刷新', html: ORIGINAL_READER_ICONS.rescan },
+    { id: 'settings', title: '设置', html: ORIGINAL_READER_ICONS.settings },
 ]);
 
 const ORIGINAL_READER_STYLE_TEXT = `
@@ -55,7 +59,7 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-bar-btns{display:none;gap:6px;align-items:center;}
 #igs-bar-pinned{display:flex;gap:6px;align-items:center;}
 .igs-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:0;letter-spacing:1px;}
-.igs-status-line{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-bottom:6px;display:none;}
+.igs-status-line{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin:2px 0 8px;text-align:center;display:none;}
 .igs-speaker{font-size:14px;font-weight:600;letter-spacing:1px;margin-top:0;margin-bottom:4px;display:none;}
 .igs-divider{font-size:11px;letter-spacing:4px;text-align:center;margin-bottom:4px;opacity:.6;display:none;}
 .igs-thought{font-style:italic;opacity:.72;}
@@ -99,10 +103,10 @@ const ORIGINAL_READER_HTML = `
     <button class="igs-icon-btn" data-act="close" title="退出" type="button">${ORIGINAL_READER_ICONS.close}</button>
   </div>
   <div class="igs-progress" id="igs-progress"></div>
-  <div class="igs-status-line" id="igs-status-line"></div>
   <div class="igs-speaker" id="igs-speaker"></div>
   <div class="igs-divider" id="igs-divider"></div>
   <div class="igs-text" id="igs-text"></div>
+  <div class="igs-status-line" id="igs-status-line"></div>
   <div class="igs-controls">
     <div id="igs-send-status" aria-live="polite"><span class="igs-spinner"></span><span id="igs-send-status-text">已发送，等待 AI 回复…</span></div>
     <input class="igs-input" id="igs-input" type="text" placeholder="输入内容后按 Enter 发送">

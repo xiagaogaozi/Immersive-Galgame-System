@@ -158,16 +158,18 @@ export const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
 });
 
 export const TOOLBAR_ACTIONS = Object.freeze([
-    ['prev', '上一段'],
-    ['next', '下一段'],
-    ['regen', '重新生成背景图'],
-    ['rescan', '刷新图位'],
-    ['save', '保存背景图'],
-    ['settings', '设置'],
-    ['hide', '隐藏'],
     ['prev-turn', '上一轮'],
+    ['first-page', '第一页'],
+    ['prev', '上一页'],
+    ['next', '下一页'],
+    ['last-page', '最后一页'],
     ['next-turn', '下一轮'],
+    ['regen', '重新生图'],
+    ['save', '保存图片'],
+    ['hide', '隐藏对话框'],
     ['sprite-edit', '调整立绘'],
+    ['rescan', '刷新'],
+    ['settings', '设置'],
 ]);
 
 export const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze([]);

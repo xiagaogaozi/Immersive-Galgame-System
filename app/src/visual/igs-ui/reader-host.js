@@ -533,6 +533,12 @@ export function createIgsReaderHost(options = {}) {
         if (normalizedAction === 'next') {
             return moveReaderSegment(1);
         }
+        if (normalizedAction === 'first-page') {
+            return jumpReaderSegment(0);
+        }
+        if (normalizedAction === 'last-page') {
+            return jumpReaderSegment(Number.MAX_SAFE_INTEGER);
+        }
         if (normalizedAction === 'regen') {
             return regenerateCurrentImage();
         }
@@ -580,6 +586,21 @@ export function createIgsReaderHost(options = {}) {
             index: state.activeReader.index,
             progress: state.activeReader.snapshot.content.progress,
         };
+    }
+
+    function jumpReaderSegment(targetIndex) {
+        if (!state.activeReader) return { ok: false, reason: 'reader-not-open' };
+        const segments = state.activeReader.snapshot && state.activeReader.snapshot.content
+            ? state.activeReader.snapshot.content.segments || []
+            : [];
+        const maxIndex = Math.max(0, segments.length - 1);
+        const nextIndex = Math.max(0, Math.min(maxIndex, Number(targetIndex) || 0));
+        if (nextIndex === state.activeReader.index) {
+            return { ok: true, moved: false, index: state.activeReader.index };
+        }
+        state.activeReader.index = nextIndex;
+        rerenderActiveReader();
+        return { ok: true, moved: true, index: state.activeReader.index };
     }
 
     function rerenderActiveReader() {
@@ -680,26 +701,43 @@ export function createIgsReaderHost(options = {}) {
         const bgContainer = overlay && overlay.querySelector('#igs-bg');
         ensureImageLoadingSpinner(bgContainer);
 
-        const context = buildImageActionContext(current, resolveBridgeConfigSnapshot({ mode: current.mode }));
-        const result = await options.collectMessageImages({
-            ...context,
-            messageId: current.snapshot && current.snapshot.messageId,
-            preferredImageIndex: context.imageIndex,
-            skipCache: true,
-            requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
-                && context.imageState.slots.length > 0,
-        });
+        const unified = resolveBridgeConfigSnapshot({ mode: current.mode });
+        const context = buildImageActionContext(current, unified);
+        // 并行：重扫图片 + 重扫正文（用最新 bridge 配置重新解析）。
+        const [imageResult] = await Promise.all([
+            options.collectMessageImages({
+                ...context,
+                messageId: current.snapshot && current.snapshot.messageId,
+                preferredImageIndex: context.imageIndex,
+                skipCache: true,
+                requiresMessageScope: Array.isArray(context.imageState && context.imageState.slots)
+                    && context.imageState.slots.length > 0,
+            }),
+            Promise.resolve().then(() => {
+                // 重扫正文：把最新筛选/格式化配置写回 payload，并清掉缓存的分段，
+                // 让 rerender 时 buildReaderSnapshot 用最新配置重新解析正文。
+                current.payload.sourceFilter = unified.bridge.sourceFilter;
+                current.payload.virtualRegex = unified.bridge.virtualRegex;
+                current.payload.textSegments = null;
+                current.payload.segmentImageSlots = null;
+                current.payload.sceneDirectives = null;
+            }),
+        ]);
 
         removeImageLoadingSpinner(bgContainer);
-        if (!result || result.ok === false) {
-            writeToast('未扫描到图片。');
-            return result || { ok: false, reason: 'rescan-failed' };
+        if (!imageResult || imageResult.ok === false) {
+            // 图片没扫到也要应用正文重扫并回到第一页。
+            current.index = 0;
+            rerenderActiveReader();
+            writeToast('已刷新正文（未扫描到图片）。');
+            return imageResult || { ok: false, reason: 'rescan-failed' };
         }
-        const nextBoundCount = countBoundImageSlots(result);
-        current.payload.imageState = cloneData(result);
+        const nextBoundCount = countBoundImageSlots(imageResult);
+        current.payload.imageState = cloneData(imageResult);
+        current.index = 0;
         rerenderActiveReader();
-        writeToast(`已刷新：绑定 ${nextBoundCount}/${result.expectedCount || result.count || 0} 张图。`);
-        return { ok: true, boundCount: nextBoundCount, imageState: result };
+        writeToast(`已刷新：绑定 ${nextBoundCount}/${imageResult.expectedCount || imageResult.count || 0} 张图。`);
+        return { ok: true, boundCount: nextBoundCount, imageState: imageResult };
     }
 
     async function saveCurrentImage() {

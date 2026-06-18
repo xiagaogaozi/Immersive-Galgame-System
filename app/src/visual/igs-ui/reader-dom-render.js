@@ -86,11 +86,6 @@ export function buildFallbackReaderOverlay(doc) {
     progress.className = 'igs-progress';
     dialog.appendChild(progress);
 
-    const statusLine = doc.createElement('div');
-    statusLine.id = 'igs-status-line';
-    statusLine.className = 'igs-status-line';
-    dialog.appendChild(statusLine);
-
     const speakerEl = doc.createElement('div');
     speakerEl.id = 'igs-speaker';
     speakerEl.className = 'igs-speaker';
@@ -105,6 +100,11 @@ export function buildFallbackReaderOverlay(doc) {
     text.id = 'igs-text';
     text.className = 'igs-text';
     dialog.appendChild(text);
+
+    const statusLine = doc.createElement('div');
+    statusLine.id = 'igs-status-line';
+    statusLine.className = 'igs-status-line';
+    dialog.appendChild(statusLine);
 
     const controls = doc.createElement('div');
     controls.className = 'igs-controls';
@@ -333,6 +333,8 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     const toolbar = root.querySelector('#igs-ctrl-bar');
     const clickLayer = root.querySelector('#igs-click-layer');
     const toast = root.querySelector('#igs-toast');
+    const segmentsLen = snapshot.content && Array.isArray(snapshot.content.segments) ? snapshot.content.segments.length : 0;
+    const isLastPage = segmentsLen <= 0 || (snapshot.content && snapshot.content.currentIndex >= segmentsLen - 1);
 
     if (bg && snapshot.content.backgroundImage) {
         bg.style.backgroundImage = `url("${snapshot.content.backgroundImage.replace(/"/g, '&quot;')}")`;
@@ -439,12 +441,18 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     }
     const statusLine = root.querySelector('#igs-status-line');
     if (statusLine) {
-        if (snapshot.readerSettings.showStatusLine) {
+        // 居中显示在气泡底部；最后一页不显示；仍受「显示状态行」开关控制。
+        if (snapshot.readerSettings.showStatusLine && !isLastPage) {
             statusLine.textContent = snapshot.content.progress;
             statusLine.style.display = 'block';
         } else {
             statusLine.style.display = 'none';
         }
+    }
+    const controls = root.querySelector('.igs-controls');
+    if (controls) {
+        // 输入区（含输入框、发送按钮、上方分割线）只在最后一页显示。
+        controls.style.display = isLastPage ? '' : 'none';
     }
     if (dialog) {
         const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
