@@ -613,6 +613,26 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
+    if (normalizedAction === 'scene-preset-save') {
+        const globalObj = options.global || globalThis;
+        const sa = settingsState.draft.bridge.sceneAssets || {};
+        let name = settingsState.asyncState.scenePresetName || '';
+        if (!name) {
+            name = (globalObj.prompt && globalObj.prompt('预设名称：', '') || '').trim();
+            if (!name) return rerenderSettings();
+        }
+        const storage = globalObj.localStorage;
+        const presets = loadScenePresets(storage);
+        presets[name] = {
+            scenes: cloneData(sa.scenes || {}),
+            characters: cloneData(sa.characters || {}),
+            moodGroups: cloneData(sa.moodGroups || []),
+        };
+        saveScenePresets(storage, presets);
+        settingsState.asyncState.scenePresetName = name;
+        return rerenderSettings();
+    }
+
     if (normalizedAction.startsWith('scene-preset-apply:')) {
         const name = decodeSeg(normalizedAction.slice('scene-preset-apply:'.length));
         settingsState.asyncState.scenePresetName = name;
