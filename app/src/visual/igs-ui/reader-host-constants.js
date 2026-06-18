@@ -173,7 +173,7 @@ export const TOOLBAR_ACTIONS = Object.freeze([
 ]);
 
 export const DEFAULT_PINNED_TOOLBAR_BUTTONS = Object.freeze([]);
-export const READER_SETTINGS_SCHEMA_VERSION = '0.5.1';
+export const READER_SETTINGS_SCHEMA_VERSION = '0.5.2';
 export const INITIAL_IMAGE_POLL_ATTEMPTS = 8;
 export const INITIAL_IMAGE_POLL_INTERVAL_MS = 250;
 

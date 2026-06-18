@@ -17,11 +17,13 @@ import { resolveVisualMode } from '../visual/visual-mode.js';
 import { createIgsReaderHost } from '../visual/igs-ui/reader-host.js';
 import { createEventBus } from './event-bus.js';
 import { createMagicWandEntry } from '../host/magic-wand-entry.js';
+import { createQrEntry } from '../host/qr-entry.js';
+import { createExtensionPanel } from '../host/extension-panel.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
 import { buildMoodGroupsText, MOOD_GROUPS_PLACEHOLDER } from '../scene/mood-groups.js';
 
-const IGS_VERSION = '0.18.0';
+const IGS_VERSION = '0.19.0';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
@@ -73,6 +75,8 @@ export function bootstrapIGS(options = {}) {
         destroy,
         igsUi: null,
         magicWandEntry: null,
+        qrEntry: null,
+        extensionPanel: null,
     };
     let publicApi = null;
     let sceneAssetsInjectionTimer = null;
@@ -136,8 +140,64 @@ export function bootstrapIGS(options = {}) {
             return snapshot && (snapshot.readerMode || snapshot.bridge && snapshot.bridge.openMode) || 'pc';
         },
     });
-    if (options.autoAttachMagicWand !== false && app.magicWandEntry && typeof app.magicWandEntry.attach === 'function') {
-        app.magicWandEntry.attach();
+    app.qrEntry = options.qrEntry || createQrEntry({
+        global: globalObject,
+        label: '沉浸式Galgame系统',
+        open: (mode) => publicApi.openLatestAvailable(mode),
+        resolveMode: () => {
+            const snapshot = publicApi.getUnifiedSettings({});
+            return snapshot && (snapshot.readerMode || snapshot.bridge && snapshot.bridge.openMode) || 'pc';
+        },
+        notify: (message, type) => emitToast(message, type),
+    });
+    app.extensionPanel = options.extensionPanel || createExtensionPanel({
+        global: globalObject,
+        label: '沉浸式Galgame系统',
+        openSettings: () => publicApi.openSettings({}),
+        openReader: () => publicApi.openLatestAvailable(),
+        getEntryConfig: () => resolveEntryConfig(),
+        setEntryConfig: (next) => saveEntryConfig(next),
+    });
+    function resolveEntryConfig() {
+        const snapshot = publicApi.getUnifiedSettings({});
+        const entry = snapshot && snapshot.bridge && snapshot.bridge.entry;
+        return { magic: !entry || entry.magic !== false, qr: !!(entry && entry.qr) };
+    }
+    function saveEntryConfig(next) {
+        const cfg = { magic: next.magic !== false, qr: !!next.qr };
+        if (typeof saveUnifiedSettings === 'function') {
+            saveUnifiedSettings({ bridge: { entry: cfg } });
+        }
+        applyEntryConfig(cfg);
+    }
+    function applyEntryConfig(cfg) {
+        const entry = cfg || resolveEntryConfig();
+        if (entry.magic) app.magicWandEntry.attach();
+        else if (typeof app.magicWandEntry.destroy === 'function') app.magicWandEntry.destroy();
+        if (entry.qr) {
+            const result = app.qrEntry.attach();
+            if (result && result.ok === false && entry.magic === false) {
+                // QR 不可用且没开魔法棒时，回退挂魔法棒，避免无入口可用。
+                app.magicWandEntry.attach();
+                emitToast('QR 入口不可用，已回退到魔法棒入口。', 'error');
+            }
+        } else if (typeof app.qrEntry.destroy === 'function') {
+            app.qrEntry.destroy();
+        }
+    }
+    function emitToast(message, type) {
+        try {
+            const root = globalObject;
+            if (root && root.toastr && typeof root.toastr[type === 'error' ? 'error' : 'info'] === 'function') {
+                root.toastr[type === 'error' ? 'error' : 'info'](message, 'IGS');
+            }
+        } catch (error) { /* ignore */ }
+    }
+    if (options.autoAttachMagicWand !== false) {
+        applyEntryConfig(resolveEntryConfig());
+        if (app.extensionPanel && typeof app.extensionPanel.attach === 'function') {
+            app.extensionPanel.attach();
+        }
     }
     state.status = 'ready';
     scheduleSceneAssetsInjection(SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS, 1);
@@ -407,6 +467,12 @@ export function bootstrapIGS(options = {}) {
         }
         if (app.magicWandEntry && typeof app.magicWandEntry.destroy === 'function') {
             app.magicWandEntry.destroy();
+        }
+        if (app.qrEntry && typeof app.qrEntry.destroy === 'function') {
+            app.qrEntry.destroy();
+        }
+        if (app.extensionPanel && typeof app.extensionPanel.destroy === 'function') {
+            app.extensionPanel.destroy();
         }
         detachPublicApi(globalObject, publicApi);
         events.emit('igs:destroy', publicApi);

@@ -1546,7 +1546,16 @@ export function createIgsReaderHost(options = {}) {
         normalized.imageApi = normalizeImageApi(normalized.imageApi);
         normalized.sceneAssets = normalizeSceneAssets(normalized.sceneAssets);
         normalized.vnTheme = normalizeVnTheme(normalized.vnTheme);
+        normalized.entry = normalizeEntryConfig(normalized.entry);
         return normalized;
+    }
+
+    function normalizeEntryConfig(value) {
+        const src = value && typeof value === 'object' ? value : {};
+        return {
+            magic: normalizeBoolean(src.magic, true),
+            qr: normalizeBoolean(src.qr, false),
+        };
     }
 
     function normalizeImageApi(value) {

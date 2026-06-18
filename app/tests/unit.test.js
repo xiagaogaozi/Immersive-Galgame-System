@@ -37,6 +37,7 @@ import {
 } from '../src/host/tavern-helper-adapter.js';
 import { createIgsReaderHost } from '../src/visual/igs-ui/reader-host.js';
 import { createPromptInjector } from '../src/host/prompt-injector.js';
+import { createQrEntry } from '../src/host/qr-entry.js';
 import {
     extractSceneDirectives,
     lookupSceneAssetUrls,
@@ -1395,6 +1396,43 @@ test('gate:host:tavern-helper-adapter-type-and-send-falls-back-to-host-dom', asy
     assert.equal(result.reason, 'host-dom-send');
     assert.equal(sentValue, '选择：继续调查');
     assert.ok(events.includes('input'));
+});
+
+test('gate:host:qr-entry-registers-script-button-and-opens-reader', async () => {
+    const calls = { append: [], events: [] };
+    let opened = 0;
+    const fakeHelper = {
+        appendInexistentScriptButtons: (buttons) => { calls.append.push(buttons); },
+        getButtonEvent: (name) => `event:${name}`,
+        eventOn: (eventType, handler) => { calls.events.push({ eventType, handler }); return { stop() {} }; },
+        getScriptButtons: () => [{ name: '沉浸式Galgame系统', visible: true }],
+        replaceScriptButtons: (buttons) => { calls.replaced = buttons; },
+    };
+    const entry = createQrEntry({
+        global: { TavernHelper: fakeHelper },
+        label: '沉浸式Galgame系统',
+        open: () => { opened += 1; return { ok: true }; },
+    });
+    assert.equal(entry.isSupported(), true);
+    const result = entry.attach();
+    assert.equal(result.ok, true);
+    assert.equal(calls.append.length, 1);
+    assert.equal(calls.append[0][0].name, '沉浸式Galgame系统');
+    assert.equal(calls.events.length, 1);
+
+    // 触发按钮事件 → 打开阅读器
+    await calls.events[0].handler();
+    assert.equal(opened, 1);
+
+    // destroy 移除自己的脚本按钮
+    entry.destroy();
+    assert.deepEqual(calls.replaced, []);
+});
+
+test('gate:host:qr-entry-unsupported-when-helper-missing-api', () => {
+    const entry = createQrEntry({ global: { TavernHelper: {} }, open: () => ({ ok: true }) });
+    assert.equal(entry.isSupported(), false);
+    assert.equal(entry.attach().ok, false);
 });
 
 function readJson(relativePath) {
