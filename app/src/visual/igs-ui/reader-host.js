@@ -99,6 +99,7 @@ import { clearReaderModeRuntime, exitDocumentFullscreen } from './reader-runtime
 import { enterSpriteEditMode } from './sprite-edit.js';
 import { handleSettingsAction as runSettingsAction } from './settings-actions.js';
 import { loadScenePresets } from '../../scene/scene-preset-store.js';
+import { LEGACY_READER_MODES } from '../../storage/legacy-igs.js';
 import {
     applyReaderSnapshotToDom,
     applyToolbarState,
@@ -152,10 +153,10 @@ export function createIgsReaderHost(options = {}) {
             resolveBridgeConfigSnapshot({ mode: openOptions.mode }).bridge,
         );
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
-        const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
+        const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings, unified.bridge.vnTheme);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
         readerSettings._sentencePaging = Boolean(unified.bridge.sentencePaging);
-        readerSettings._vnTheme = unified.bridge.vnTheme || null;
+        readerSettings._vnTheme = readerSettings.vnTheme || null;
         const snapshot = buildReaderSnapshot(
             payload,
             nextMode,
@@ -366,6 +367,11 @@ export function createIgsReaderHost(options = {}) {
                 state.activeSettings.tab = normalizeSettingsTab(tab);
                 return rerenderSettings();
             },
+            switchSceneSubTab(subTab) {
+                if (!state.activeSettings) return { ok: false, reason: 'settings-not-open' };
+                state.activeSettings.asyncState.sceneSubTab = subTab === 'characters' ? 'characters' : 'scenes';
+                return rerenderSettings();
+            },
             setValue(path, value) {
                 return updateSettingsValue(path, value);
             },
@@ -407,17 +413,14 @@ export function createIgsReaderHost(options = {}) {
         const draft = state.activeSettings.draft;
 
         if (path === 'readerMode') {
-            // 「应用到模式」(readerMode) 与基础页「切换模式」(bridge.openMode) 是同一概念的
-            // 两个入口，保持联动：切 readerMode 同步写 openMode 并持久化，让活动阅读器立即按
-            // 新模式渲染（原 bug：只 rerenderSettings，活动阅读器要等下次交互才切模式）。
-            const nextMode = normalizeReaderMode(value, draft.bridge);
-            setPath(draft, 'bridge.openMode', nextMode);
-            const snapshot = resolveBridgeConfigSnapshot({ mode: nextMode });
+            // 「应用到模式」只切换设置面板的编辑目标，不再联动实际显示模式（openMode）。
+            // value === 'default' 表示编辑所有模式共用的一套阅读设置（持久化时写入四个桶）。
+            const nextMode = value === 'default' ? 'default' : normalizeReaderMode(value, draft.bridge);
+            const displayMode = nextMode === 'default' ? 'pc' : nextMode;
+            const snapshot = resolveBridgeConfigSnapshot({ mode: displayMode });
             state.activeSettings.readerMode = nextMode;
             draft.readerMode = nextMode;
             draft.readerSettings = cloneData(snapshot.readerSettings);
-            const persisted = persistSettingsDraft();
-            if (persisted.ok === false) return persisted;
             return rerenderSettings();
         }
 
@@ -434,19 +437,19 @@ export function createIgsReaderHost(options = {}) {
         }
 
         setPath(draft, path, normalizeSettingsValue(path, value));
-        if (path === 'bridge.vnTheme.preset' && value === 'custom') {
-            const prevName = draft.bridge.vnTheme._prevPreset || 'genshin';
+        if (path === 'readerSettings.vnTheme.preset' && value === 'custom') {
+            const prevName = (draft.readerSettings.vnTheme && draft.readerSettings.vnTheme._prevPreset) || 'genshin';
             const source = VN_THEME_PRESETS[prevName] || VN_THEME_PRESETS.genshin;
             const fields = ['nameAlign', 'textAlign', 'narrationAlign', 'thoughtAlign', 'dividerSymbol', 'nameFont', 'textFont', 'thoughtFont', 'narrationFont', 'nameColor', 'textColor', 'thoughtColor', 'narrationColor', 'dividerColor'];
             for (const f of fields) {
-                setPath(draft, `bridge.vnTheme.${f}`, source[f]);
+                setPath(draft, `readerSettings.vnTheme.${f}`, source[f]);
             }
         }
-        if (path === 'bridge.vnTheme.preset' && value !== 'custom') {
-            setPath(draft, 'bridge.vnTheme._prevPreset', value);
+        if (path === 'readerSettings.vnTheme.preset' && value !== 'custom') {
+            setPath(draft, 'readerSettings.vnTheme._prevPreset', value);
         }
-        if (path.startsWith('bridge.vnTheme.') && path !== 'bridge.vnTheme.preset' && path !== 'bridge.vnTheme._prevPreset') {
-            setPath(draft, 'bridge.vnTheme.preset', 'custom');
+        if (path.startsWith('readerSettings.vnTheme.') && path !== 'readerSettings.vnTheme.preset' && path !== 'readerSettings.vnTheme._prevPreset') {
+            setPath(draft, 'readerSettings.vnTheme.preset', 'custom');
         }
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
@@ -461,19 +464,38 @@ export function createIgsReaderHost(options = {}) {
             : null;
         if (!save) return { ok: false, reason: 'missing-save-handler' };
 
-        const result = save({
-            bridge: draft.bridge,
-            readerMode: state.activeSettings.readerMode,
-            readerSettings: draft.readerSettings,
-        });
-
-        if (!result || result.ok === false) {
-            return result || { ok: false, reason: 'save-failed' };
+        const editMode = state.activeSettings.readerMode;
+        // 「默认」编辑模式：把当前 readerSettings 写进全部四个模式桶（所有模式共用一套阅读设置）。
+        // 选具体模式时只写该模式桶。default 不是真实存储桶，仅作编辑分发开关。
+        let result;
+        if (editMode === 'default') {
+            for (const mode of LEGACY_READER_MODES) {
+                result = save({
+                    bridge: draft.bridge,
+                    readerMode: mode,
+                    readerSettings: draft.readerSettings,
+                });
+                if (!result || result.ok === false) {
+                    return result || { ok: false, reason: 'save-failed' };
+                }
+            }
+        } else {
+            result = save({
+                bridge: draft.bridge,
+                readerMode: editMode,
+                readerSettings: draft.readerSettings,
+            });
+            if (!result || result.ok === false) {
+                return result || { ok: false, reason: 'save-failed' };
+            }
         }
 
-        const snapshot = resolveBridgeConfigSnapshot({ mode: state.activeSettings.readerMode });
+        // 重新加载草稿：default 模式以 pc 桶作展示基准，否则取当前模式桶。
+        const displayMode = editMode === 'default' ? 'pc' : editMode;
+        const snapshot = resolveBridgeConfigSnapshot({ mode: displayMode });
         state.activeSettings.draft = cloneData(snapshot);
-        state.activeSettings.readerMode = snapshot.readerMode;
+        state.activeSettings.draft.readerMode = editMode;
+        state.activeSettings.readerMode = editMode;
         rerenderActiveReader();
         return result;
     }
@@ -574,10 +596,10 @@ export function createIgsReaderHost(options = {}) {
         );
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         state.activeReader.mode = nextMode;
-        const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
+        const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings, unified.bridge.vnTheme);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
         readerSettings._sentencePaging = Boolean(unified.bridge.sentencePaging);
-        readerSettings._vnTheme = unified.bridge.vnTheme || null;
+        readerSettings._vnTheme = readerSettings.vnTheme || null;
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, nextMode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
         return { ok: true };
@@ -1119,45 +1141,52 @@ export function createIgsReaderHost(options = {}) {
         if (tab === 'scene') {
             const sceneAssets = bridge.sceneAssets || {};
             const disabled = !sceneAssets.enabled;
+            const subTab = asyncState.sceneSubTab === 'characters' ? 'characters' : 'scenes';
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
             const moodGroupsHtml = renderMoodGroupsEditor(sceneAssets.moodGroups || [], asyncState.moodGroupsExpanded === true);
             const scenePresets = loadScenePresets((options.global || globalThis).localStorage);
             const scenePresetBarHtml = renderScenePresetBar(scenePresets, asyncState.scenePresetName || '');
-            const vnTheme = bridge.vnTheme || {};
-            const themeCustom = vnTheme.preset === 'custom';
-            const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
-            const displayTheme = themeCustom ? vnTheme : activePreset;
+            const subTabsHtml = `<div class="igs-scene-subtabs" role="tablist">`
+                + `<button type="button" class="igs-scene-subtab${subTab === 'scenes' ? ' is-active' : ''}" data-scene-subtab="scenes">场景素材</button>`
+                + `<button type="button" class="igs-scene-subtab${subTab === 'characters' ? ' is-active' : ''}" data-scene-subtab="characters">角色立绘</button>`
+                + `</div>`;
+            const scenesPane = `<div class="igs-source-filter">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="igs-source-filter-title">背景场景</div>
+          <button class="igs-btn-mgr-icon" data-action="scene-add-bg" type="button" title="添加背景图">+</button>
+        </div>
+        <div class="igs-source-filter-note">场景名 → 背景图 URL。名为「默认」的条目在无匹配时兜底。子层级（时间→天气）优先级依次升高。</div>
+        ${scenesHtml}
+      </div>`;
+            const charactersPane = `<div class="igs-source-filter">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="igs-source-filter-title">角色立绘</div>
+          <button class="igs-btn-mgr-icon" data-action="scene-add-char" type="button" title="添加角色">+</button>
+        </div>
+        <div class="igs-source-filter-note">角色名 → 情绪 → 立绘 URL。情绪名为「默认」的条目在无匹配时兜底。</div>
+        <div class="igs-settings-row">${checkbox('bridge.sceneAssets.unifiedSpriteLayout', sceneAssets.unifiedSpriteLayout, '统一角色立绘位置（各情绪共用一套位置）')}</div>
+        ${charsHtml}
+        ${moodGroupsHtml}
+      </div>`;
             return renderTemplate(getSettingsTabTemplate('scene'), {
                 sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
                 sceneGroupClass: `igs-settings-section igs-settings-full${disabled ? ' igs-settings-api-group is-disabled' : ''}`,
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
                 scenePresetBar: scenePresetBarHtml,
-                unifiedSpriteToggle: checkbox('bridge.sceneAssets.unifiedSpriteLayout', sceneAssets.unifiedSpriteLayout, '统一角色立绘位置（各情绪共用一套位置）'),
-                scenesEditor: scenesHtml,
-                charactersEditor: charsHtml,
-                moodGroupsEditor: moodGroupsHtml,
-                themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
-                nameAlignField: field('bridge.vnTheme.nameAlign', '对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
-                textAlignField: field('bridge.vnTheme.textAlign', '对齐', selectInput('bridge.vnTheme.textAlign', displayTheme.textAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
-                narrationAlignField: field('bridge.vnTheme.narrationAlign', '对齐', selectInput('bridge.vnTheme.narrationAlign', displayTheme.narrationAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
-                thoughtAlignField: field('bridge.vnTheme.thoughtAlign', '对齐', selectInput('bridge.vnTheme.thoughtAlign', displayTheme.thoughtAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
-                dividerField: field('bridge.vnTheme.dividerSymbol', '样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
-                nameFontField: field('bridge.vnTheme.nameFont', '字体', selectInput('bridge.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                textFontField: field('bridge.vnTheme.textFont', '字体', selectInput('bridge.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                thoughtFontField: field('bridge.vnTheme.thoughtFont', '字体', selectInput('bridge.vnTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                nameColorField: field('bridge.vnTheme.nameColor', '颜色', colorInput('bridge.vnTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), disabled || !themeCustom)),
-                textColorField: field('bridge.vnTheme.textColor', '颜色', colorInput('bridge.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), disabled || !themeCustom)),
-                thoughtColorField: field('bridge.vnTheme.thoughtColor', '颜色', colorInput('bridge.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), disabled || !themeCustom)),
-                narrationFontField: field('bridge.vnTheme.narrationFont', '字体', selectInput('bridge.vnTheme.narrationFont', displayTheme.narrationFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
-                narrationColorField: field('bridge.vnTheme.narrationColor', '颜色', colorInput('bridge.vnTheme.narrationColor', toHex(displayTheme.narrationColor || '#f4f4f6'), disabled || !themeCustom)),
-                dividerColorField: field('bridge.vnTheme.dividerColor', '颜色', colorInput('bridge.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), disabled || !themeCustom)),
-                themeAdvancedClass: themeCustom ? '' : 'igs-settings-api-group is-disabled',
+                sceneSubTabs: subTabsHtml,
+                sceneSubPane: subTab === 'characters' ? charactersPane : scenesPane,
             });
         }
 
+        const sceneEnabled = !!(bridge.sceneAssets && bridge.sceneAssets.enabled);
+        const themeDisabled = !sceneEnabled;
+        const vnTheme = reader.vnTheme || {};
+        const themeCustom = vnTheme.preset === 'custom';
+        const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
+        const displayTheme = themeCustom ? vnTheme : activePreset;
         return renderTemplate(getSettingsTabTemplate('reader'), {
-            readerModeField: field('readerMode', '应用到模式', selectInput('readerMode', draft.readerMode, [['pc', '电脑'], ['mobile', '手机'], ['web', '网页全屏'], ['fullscreen', '全屏']])),
+            readerModeField: field('readerMode', '应用到模式', selectInput('readerMode', draft.readerMode, [['default', '默认（所有模式）'], ['pc', '电脑'], ['mobile', '手机'], ['web', '网页全屏'], ['fullscreen', '全屏']])),
             fontSizeField: field('readerSettings.fontSize', '字体大小', selectInput('readerSettings.fontSize', reader.fontSize, [12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30].map((n) => [n, `${n}px`]))),
             dialogWidthField: field('readerSettings.dialogWidth', '对话框宽度', selectInput('readerSettings.dialogWidth', reader.dialogWidth === null ? 'null' : reader.dialogWidth, [['null', '自动'], [200, '200px'], [280, '280px'], [360, '360px'], [440, '440px'], [520, '520px'], [600, '600px'], [680, '680px'], [760, '760px'], [840, '840px'], [920, '920px'], [1000, '1000px'], [1080, '1080px'], [1160, '1160px'], [1280, '1280px']])),
             dialogHeightField: field('readerSettings.dialogHeight', '对话框高度', selectInput('readerSettings.dialogHeight', reader.dialogHeight === null ? 'null' : reader.dialogHeight, [['null', '自适应'], [10, '10px'], [20, '20px'], [40, '40px'], [60, '60px'], [90, '90px'], [130, '130px'], [160, '160px'], [200, '200px'], [250, '250px'], [300, '300px'], [400, '400px'], [500, '500px'], [600, '600px']])),
@@ -1169,6 +1198,23 @@ export function createIgsReaderHost(options = {}) {
             readerToggles: checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行')
                 + checkbox('bridge.sentencePaging', Boolean(bridge.sentencePaging), '按句号自动分页（启用场景素材时仅分旁白）'),
             pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns, reader.btnOrder),
+            themeGroupClass: `igs-source-filter igs-settings-full${themeDisabled ? ' igs-settings-api-group is-disabled' : ''}`,
+            themePresetField: field('readerSettings.vnTheme.preset', '对话主题', selectInput('readerSettings.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], themeDisabled)),
+            nameAlignField: field('readerSettings.vnTheme.nameAlign', '对齐', selectInput('readerSettings.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
+            textAlignField: field('readerSettings.vnTheme.textAlign', '对齐', selectInput('readerSettings.vnTheme.textAlign', displayTheme.textAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
+            narrationAlignField: field('readerSettings.vnTheme.narrationAlign', '对齐', selectInput('readerSettings.vnTheme.narrationAlign', displayTheme.narrationAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
+            thoughtAlignField: field('readerSettings.vnTheme.thoughtAlign', '对齐', selectInput('readerSettings.vnTheme.thoughtAlign', displayTheme.thoughtAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
+            dividerField: field('readerSettings.vnTheme.dividerSymbol', '样式', selectInput('readerSettings.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], themeDisabled || !themeCustom)),
+            nameFontField: field('readerSettings.vnTheme.nameFont', '字体', selectInput('readerSettings.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], themeDisabled || !themeCustom)),
+            textFontField: field('readerSettings.vnTheme.textFont', '字体', selectInput('readerSettings.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], themeDisabled || !themeCustom)),
+            thoughtFontField: field('readerSettings.vnTheme.thoughtFont', '字体', selectInput('readerSettings.vnTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], themeDisabled || !themeCustom)),
+            nameColorField: field('readerSettings.vnTheme.nameColor', '颜色', colorInput('readerSettings.vnTheme.nameColor', toHex(displayTheme.nameColor || '#ffeeb8'), themeDisabled || !themeCustom)),
+            textColorField: field('readerSettings.vnTheme.textColor', '颜色', colorInput('readerSettings.vnTheme.textColor', toHex(displayTheme.textColor || '#f4f4f6'), themeDisabled || !themeCustom)),
+            thoughtColorField: field('readerSettings.vnTheme.thoughtColor', '颜色', colorInput('readerSettings.vnTheme.thoughtColor', toHex(displayTheme.thoughtColor || '#c8c8dc'), themeDisabled || !themeCustom)),
+            narrationFontField: field('readerSettings.vnTheme.narrationFont', '字体', selectInput('readerSettings.vnTheme.narrationFont', displayTheme.narrationFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], themeDisabled || !themeCustom)),
+            narrationColorField: field('readerSettings.vnTheme.narrationColor', '颜色', colorInput('readerSettings.vnTheme.narrationColor', toHex(displayTheme.narrationColor || '#f4f4f6'), themeDisabled || !themeCustom)),
+            dividerColorField: field('readerSettings.vnTheme.dividerColor', '颜色', colorInput('readerSettings.vnTheme.dividerColor', toHex(displayTheme.dividerColor || '#ffeeb8'), themeDisabled || !themeCustom)),
+            themeAdvancedClass: themeCustom ? '' : 'igs-settings-api-group is-disabled',
         });
     }
 
@@ -1252,6 +1298,11 @@ export function createIgsReaderHost(options = {}) {
             const tab = event.target.closest('[data-tab]');
             if (tab) {
                 controller.switchTab(tab.getAttribute('data-tab'));
+                return;
+            }
+            const sceneSubTab = event.target.closest('[data-scene-subtab]');
+            if (sceneSubTab) {
+                controller.switchSceneSubTab(sceneSubTab.getAttribute('data-scene-subtab'));
                 return;
             }
             const sw = event.target.closest('[data-switch]');
@@ -1427,7 +1478,7 @@ export function createIgsReaderHost(options = {}) {
     function normalizeUnifiedSettings(snapshot, preferredMode) {
         const bridge = normalizeBridgeConfig(snapshot.bridge);
         const readerMode = normalizeReaderMode(firstDefined(snapshot.readerMode, preferredMode, bridge.openMode), bridge);
-        const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings);
+        const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings, bridge.vnTheme);
 
         return {
             version: snapshot.version || options.version || '0.5.4',
@@ -1507,7 +1558,7 @@ export function createIgsReaderHost(options = {}) {
         return normalized;
     }
 
-    function normalizeReaderSettings(mode, settings) {
+    function normalizeReaderSettings(mode, settings, legacyTheme) {
         const inlineMode = mode === 'pc' || mode === 'mobile';
         const currentVersion = READER_SETTINGS_SCHEMA_VERSION;
         const src = (settings && settings._v === currentVersion) ? cloneData(settings) : {};
@@ -1541,6 +1592,13 @@ export function createIgsReaderHost(options = {}) {
         normalized.hiddenBtns = normalizeHiddenButtons(normalized.hiddenBtns);
         normalized.btnOrder = normalizeBtnOrder(normalized.btnOrder);
         normalized.spriteLayouts = normalizeSpriteLayouts(normalized.spriteLayouts);
+        // 对话主题（vnTheme）按模式存进 readerSettings。独立于 _v 门控处理，避免 schema 版本
+        // 不符时被清空。settings.vnTheme 缺失时回退到旧的全局 bridge.vnTheme（legacyTheme），
+        // 实现从全局存储到按模式存储的平滑迁移。
+        const rawTheme = (settings && settings.vnTheme && typeof settings.vnTheme === 'object')
+            ? settings.vnTheme
+            : (legacyTheme && typeof legacyTheme === 'object' ? legacyTheme : null);
+        normalized.vnTheme = normalizeVnTheme(rawTheme || {});
         return normalized;
     }
 
@@ -1607,9 +1665,10 @@ export function createIgsReaderHost(options = {}) {
         const result = save({ bridge: unified.bridge, readerMode: unified.readerMode, readerSettings: { ...unified.readerSettings, ...patch } });
         if (!result || result.ok === false) return;
         const refreshed = resolveBridgeConfigSnapshot({ mode });
-        const readerSettings = normalizeReaderSettings(mode, refreshed.readerSettings);
+        const readerSettings = normalizeReaderSettings(mode, refreshed.readerSettings, refreshed.bridge.vnTheme);
         readerSettings._sceneAssets = refreshed.bridge.sceneAssets || null;
         readerSettings._sentencePaging = Boolean(refreshed.bridge.sentencePaging);
+        readerSettings._vnTheme = readerSettings.vnTheme || null;
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, mode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
     }

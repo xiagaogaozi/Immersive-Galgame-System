@@ -79,6 +79,35 @@ const READER_TAB_TEMPLATE = `
   {{imgModeField}}
   <div class="igs-settings-section">{{readerToggles}}</div>
   <div class="igs-settings-section igs-settings-full">{{pinnedButtonsField}}</div>
+  <div class="{{themeGroupClass}}">
+    <div>
+      <div class="igs-source-filter-title">对话主题</div>
+      <div class="igs-source-filter-note">仅在启用场景素材模式时可用；按当前「应用到模式」分别保存。</div>
+    </div>
+    {{themePresetField}}
+    <div class="{{themeAdvancedClass}}" style="display:flex;flex-direction:column;gap:12px">
+      <div class="igs-source-filter">
+        <div class="igs-source-filter-title">角色名</div>
+        <div class="igs-settings-row">{{nameFontField}}{{nameColorField}}{{nameAlignField}}</div>
+      </div>
+      <div class="igs-source-filter">
+        <div class="igs-source-filter-title">台词</div>
+        <div class="igs-settings-row">{{textFontField}}{{textColorField}}{{textAlignField}}</div>
+      </div>
+      <div class="igs-source-filter">
+        <div class="igs-source-filter-title">旁白</div>
+        <div class="igs-settings-row">{{narrationFontField}}{{narrationColorField}}{{narrationAlignField}}</div>
+      </div>
+      <div class="igs-source-filter">
+        <div class="igs-source-filter-title">心里话</div>
+        <div class="igs-settings-row">{{thoughtFontField}}{{thoughtColorField}}{{thoughtAlignField}}</div>
+      </div>
+      <div class="igs-source-filter">
+        <div class="igs-source-filter-title">分隔线</div>
+        <div class="igs-settings-row">{{dividerField}}{{dividerColorField}}</div>
+      </div>
+    </div>
+  </div>
 </div>
 `.trim();
 
@@ -102,53 +131,8 @@ const SCENE_TAB_TEMPLATE = `
         <div class="igs-source-filter-note">使用 [igs-scene:场景|时间|天气] 切换场景，[igs-char:角色|情绪|对白] 标记对白，[igs-thought:角色|情绪|心里话] 标记心理描写。扫描图优先显示。</div>
       </div>
       {{scenePresetBar}}
-      <div class="igs-source-filter">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="igs-source-filter-title">背景场景</div>
-          <button class="igs-btn-mgr-icon" data-action="scene-add-bg" type="button" title="添加背景图">+</button>
-        </div>
-        <div class="igs-source-filter-note">场景名 → 背景图 URL。名为「默认」的条目在无匹配时兜底。子层级（时间→天气）优先级依次升高。</div>
-        {{scenesEditor}}
-      </div>
-      <div class="igs-source-filter">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="igs-source-filter-title">角色立绘</div>
-          <button class="igs-btn-mgr-icon" data-action="scene-add-char" type="button" title="添加角色">+</button>
-        </div>
-        <div class="igs-source-filter-note">角色名 → 情绪 → 立绘 URL。情绪名为「默认」的条目在无匹配时兜底。</div>
-        <div class="igs-settings-row">{{unifiedSpriteToggle}}</div>
-        {{charactersEditor}}
-        {{moodGroupsEditor}}
-      </div>
-    </div>
-    <div class="igs-source-filter igs-settings-full">
-      <div>
-        <div class="igs-source-filter-title">对话主题</div>
-        <div class="igs-source-filter-note">选择预设或切换自定义逐项调整。</div>
-      </div>
-      {{themePresetField}}
-      <div class="{{themeAdvancedClass}}" style="display:flex;flex-direction:column;gap:12px">
-        <div class="igs-source-filter">
-          <div class="igs-source-filter-title">角色名</div>
-          <div class="igs-settings-row">{{nameFontField}}{{nameColorField}}{{nameAlignField}}</div>
-        </div>
-        <div class="igs-source-filter">
-          <div class="igs-source-filter-title">台词</div>
-          <div class="igs-settings-row">{{textFontField}}{{textColorField}}{{textAlignField}}</div>
-        </div>
-        <div class="igs-source-filter">
-          <div class="igs-source-filter-title">旁白</div>
-          <div class="igs-settings-row">{{narrationFontField}}{{narrationColorField}}{{narrationAlignField}}</div>
-        </div>
-        <div class="igs-source-filter">
-          <div class="igs-source-filter-title">心里话</div>
-          <div class="igs-settings-row">{{thoughtFontField}}{{thoughtColorField}}{{thoughtAlignField}}</div>
-        </div>
-        <div class="igs-source-filter">
-          <div class="igs-source-filter-title">分隔线</div>
-          <div class="igs-settings-row">{{dividerField}}{{dividerColorField}}</div>
-        </div>
-      </div>
+      {{sceneSubTabs}}
+      {{sceneSubPane}}
     </div>
   </div>
 </div>

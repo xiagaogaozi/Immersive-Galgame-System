@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.15.0');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.16.0');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -463,10 +463,11 @@ test('gate:simulation:igs-ui-toolbar-actions-open-settings-toggle-and-close', as
     assert.equal(modeResult.ok, true);
     assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
 
-    // 阅读器页「应用到模式」(readerMode) 与基础页 openMode 联动，切换后活动阅读器立即切模式
+    // 切「应用到模式」(readerMode) 只改设置面板的编辑目标，不再联动实际显示模式（保持 mobile）
     const readerModeResult = settingsResult.controller.setValue('readerMode', 'web');
     assert.equal(readerModeResult.ok, true);
-    assert.equal(vn.getState().igsUi.activeReader.mode, 'web');
+    assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
+    assert.equal(vn.getState().igsUi.activeSettings.readerMode, 'web');
 
     const toggleResult = await controller.invokeAction('toggle-bar');
     assert.equal(toggleResult.ok, true);
@@ -490,6 +491,61 @@ test('gate:simulation:igs-ui-toolbar-actions-open-settings-toggle-and-close', as
     assert.equal(closeResult.ok, true);
     assert.equal(finalState.igsUi.activeReader, null);
     assert.equal(finalState.igsUi.activeSettings, null);
+
+    vn.destroy();
+});
+
+test('gate:simulation:reader-default-mode-writes-all-buckets-and-theme-per-mode', async () => {
+    const storage = createMemoryStorage();
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: '旁白一句。' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const controller = opened.reader.controller;
+    const settings = (await controller.invokeAction('settings')).controller;
+
+    // 选「默认」并改字体大小，应写入全部四个模式桶
+    settings.setValue('readerMode', 'default');
+    settings.setValue('readerSettings.fontSize', 24);
+    for (const mode of ['pc', 'mobile', 'web', 'fullscreen']) {
+        const bucket = JSON.parse(storage.getItem('igs-reader-settings-v9-' + mode) || '{}');
+        assert.equal(bucket.fontSize, 24, `mode ${mode} fontSize`);
+    }
+
+    // 对话主题按模式存：切到 pc 改主题色后能在 pc 桶读到
+    settings.setValue('readerMode', 'pc');
+    settings.setValue('readerSettings.vnTheme.preset', 'custom');
+    settings.setValue('readerSettings.vnTheme.nameColor', '#ff0000');
+    const pcBucket = JSON.parse(storage.getItem('igs-reader-settings-v9-pc') || '{}');
+    assert.equal(pcBucket.vnTheme.nameColor, '#ff0000');
+
+    vn.destroy();
+});
+
+test('gate:simulation:scene-sub-tab-switches-pane', async () => {
+    const storage = createMemoryStorage();
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: '旁白。' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+    const opened = await vn.openLatestAvailable('pc');
+    const settings = (await opened.reader.controller.invokeAction('settings')).controller;
+    settings.switchTab('scene');
+
+    const scenesView = settings.switchSceneSubTab('scenes');
+    assert.match(scenesView.snapshot.html, /背景场景/);
+    const charsView = settings.switchSceneSubTab('characters');
+    assert.match(charsView.snapshot.html, /统一角色立绘位置/);
 
     vn.destroy();
 });

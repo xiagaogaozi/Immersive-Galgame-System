@@ -10,6 +10,9 @@ const SETTINGS_STYLE_TEXT = `
 .igs-settings-tabs{display:flex;gap:6px;padding:10px 12px 8px;overflow-x:auto;flex-shrink:0;background:rgba(255,255,255,.025)}
 .igs-settings-tab{border:0;background:transparent;color:rgba(255,255,255,.48);padding:7px 10px;border-radius:10px;font:inherit;font-size:12px;white-space:nowrap;cursor:pointer}
 .igs-settings-tab.is-active{background:rgba(255,255,255,.14);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.22)}
+.igs-scene-subtabs{display:flex;gap:6px;margin:8px 0;padding:4px;background:rgba(255,255,255,.04);border-radius:12px}
+.igs-scene-subtab{flex:1;border:0;background:transparent;color:rgba(255,255,255,.5);padding:7px 10px;border-radius:9px;font:inherit;font-size:12px;white-space:nowrap;cursor:pointer}
+.igs-scene-subtab.is-active{background:rgba(255,255,255,.14);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.22)}
 .igs-settings-body{flex:1;min-height:0;overflow-y:auto;padding:14px 20px 16px}
 .igs-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
 .igs-settings-section{display:flex;flex-direction:column;gap:12px}

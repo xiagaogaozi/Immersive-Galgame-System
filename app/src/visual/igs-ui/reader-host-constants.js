@@ -81,6 +81,7 @@ export const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.hiddenBtns',
     'readerSettings.btnOrder',
     'readerSettings.spriteLayouts',
+    'readerSettings.vnTheme.preset',
 ]);
 
 export const SETTINGS_PANEL_REQUIRED_SELECTORS = Object.freeze([
@@ -145,7 +146,6 @@ export const SETTINGS_PANEL_TAB_CONTRACT = Object.freeze({
         requiredPaths: Object.freeze([
             'bridge.sceneAssets.enabled',
             'bridge.sceneAssets.promptRule',
-            'bridge.vnTheme.preset',
         ]),
         requiredActions: Object.freeze([
             'reset-prompt-rule',

@@ -547,13 +547,9 @@ export async function handleSettingsAction(action, ctx) {
     if (normalizedAction.startsWith('mood-add-word:')) {
         const label = decodeSeg(normalizedAction.slice('mood-add-word:'.length));
         const globalObj = options.global || globalThis;
-        const word = (globalObj.prompt && globalObj.prompt(`向「${label}」组添加情绪词（2-3 个汉字）：`, '') || '').trim();
+        const word = (globalObj.prompt && globalObj.prompt(`向「${label}」组添加情绪词：`, '') || '').trim();
         if (word) {
             const groups = ensureMoodGroups(settingsState);
-            if (!/^[一-龥]{2,3}$/.test(word)) {
-                if (globalObj.alert) globalObj.alert('情绪词必须是 2-3 个汉字');
-                return rerenderSettings();
-            }
             if (groups.some((g) => g.words.includes(word))) {
                 if (globalObj.alert) globalObj.alert(`「${word}」已存在于某个情绪组`);
                 return rerenderSettings();
