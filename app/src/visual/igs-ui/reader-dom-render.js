@@ -302,6 +302,24 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     }
 }
 
+export function applyAlignStyle(element, align) {
+    if (!element) return;
+    // align 取值：left / center / indent（首行缩进2字符）。indent 等价左对齐 + text-indent:2em。
+    if (align === 'center') {
+        element.style.textAlign = 'center';
+        element.style.textIndent = '';
+    } else if (align === 'indent') {
+        element.style.textAlign = 'left';
+        element.style.textIndent = '2em';
+    } else if (align === 'left') {
+        element.style.textAlign = 'left';
+        element.style.textIndent = '';
+    } else {
+        element.style.textAlign = '';
+        element.style.textIndent = '';
+    }
+}
+
 export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     root.className = snapshot.classes.join(' ');
     root.setAttribute('data-igs-igs-ui', 'true');
@@ -365,20 +383,13 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         textEl.innerHTML = renderDialogueHtml(snapshot.content.displayText, theme, sceneAssetsEnabled);
         textEl.style.fontSize = `${snapshot.readerSettings.fontSize}px`;
         textEl.style.lineHeight = computeLineHeight(snapshot.readerSettings.fontSize);
-        // 角色名/分割线在场景素材模式才显示。气泡首行上方有 (line-height-1)*fontSize/2
-        // 的行内留白，靠 margin 压不掉，所以这里按字号算出该留白并用负 margin-top 抵消，
-        // 让「角色名→气泡」贴近「角色名→分割线」的小间距。无角色名时不偏移。
-        if (sceneAssetsEnabled && snapshot.content.speaker) {
-            const fontSize = Number(snapshot.readerSettings.fontSize) || 18;
-            const lineHeight = Number(computeLineHeight(fontSize)) || 1.7;
-            const halfLeading = Math.max(0, (lineHeight - 1) * fontSize / 2);
-            textEl.style.marginTop = `-${halfLeading.toFixed(1)}px`;
-        } else {
-            textEl.style.marginTop = '';
-        }
+        textEl.style.marginTop = '';
         const isNarration = textType === 'narration';
+        const isThought = textType === 'thought';
         const segFont = isNarration ? theme.narrationFont : theme.textFont;
         const segColor = isNarration ? theme.narrationColor : theme.textColor;
+        const segAlign = isThought ? theme.thoughtAlign : isNarration ? theme.narrationAlign : theme.textAlign;
+        applyAlignStyle(textEl, sceneAssetsEnabled ? segAlign : '');
         if (sceneAssetsEnabled && segFont && segFont !== 'inherit') {
             textEl.style.fontFamily = segFont;
         } else {
@@ -397,7 +408,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         if (sceneAssetsEnabled && snapshot.content.speaker) {
             speakerEl.textContent = snapshot.content.speaker;
             speakerEl.style.display = 'block';
-            speakerEl.style.textAlign = theme.nameAlign;
+            applyAlignStyle(speakerEl, theme.nameAlign);
             speakerEl.style.fontFamily = theme.nameFont && theme.nameFont !== 'inherit' ? theme.nameFont : '';
             speakerEl.style.color = theme.nameColor || '';
         } else {
@@ -437,7 +448,7 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     }
     if (dialog) {
         const sceneAssetsEnabled = snapshot.readerSettings._sceneAssets && snapshot.readerSettings._sceneAssets.enabled;
-        dialog.style.paddingTop = (sceneAssetsEnabled && snapshot.content.speaker) ? '10px' : '';
+        dialog.style.paddingTop = (sceneAssetsEnabled && snapshot.content.speaker) ? '4px' : '';
     }
     if (input) {
         input.placeholder = snapshot.input.placeholder;

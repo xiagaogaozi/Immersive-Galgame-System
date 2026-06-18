@@ -18,6 +18,9 @@ export const DEFAULT_IMAGE_API = Object.freeze({
 export const VN_THEME_PRESETS = Object.freeze({
     genshin: Object.freeze({
         nameAlign: 'center',
+        textAlign: 'left',
+        narrationAlign: 'left',
+        thoughtAlign: 'left',
         dividerSymbol: '───◇───',
         nameFont: 'inherit',
         textFont: 'inherit',
@@ -31,6 +34,9 @@ export const VN_THEME_PRESETS = Object.freeze({
     }),
     honkai: Object.freeze({
         nameAlign: 'center',
+        textAlign: 'left',
+        narrationAlign: 'left',
+        thoughtAlign: 'left',
         dividerSymbol: '──✦──',
         nameFont: 'inherit',
         textFont: 'inherit',
@@ -44,6 +50,9 @@ export const VN_THEME_PRESETS = Object.freeze({
     }),
     minimal: Object.freeze({
         nameAlign: 'left',
+        textAlign: 'left',
+        narrationAlign: 'left',
+        thoughtAlign: 'left',
         dividerSymbol: 'none',
         nameFont: 'inherit',
         textFont: 'inherit',

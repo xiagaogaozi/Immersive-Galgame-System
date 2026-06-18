@@ -636,12 +636,18 @@ export async function handleSettingsAction(action, ctx) {
 
     if (normalizedAction.startsWith('scene-preset-apply:')) {
         const name = decodeSeg(normalizedAction.slice('scene-preset-apply:'.length));
-        settingsState.asyncState.scenePresetName = name;
         if (name) {
             const globalObj = options.global || globalThis;
             const presets = loadScenePresets(globalObj.localStorage);
             const preset = presets[name];
             if (preset) {
+                // 切预设会用预设内容整体覆盖当前场景配置与立绘位置。未存进任何预设的改动
+                // 会在覆盖后丢失，所以切换前先确认（取消则保持当前配置不动）。
+                const confirmFn = typeof globalObj.confirm === 'function' ? globalObj.confirm.bind(globalObj) : null;
+                if (confirmFn && !confirmFn(`切换到预设「${name}」会用该预设的场景、角色立绘和位置覆盖当前配置，未保存到预设的改动将丢失。是否继续？`)) {
+                    return rerenderSettings();
+                }
+                settingsState.asyncState.scenePresetName = name;
                 settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
                 settingsState.draft.bridge.sceneAssets.scenes = cloneData(preset.scenes || {});
                 settingsState.draft.bridge.sceneAssets.characters = cloneData(preset.characters || {});
@@ -652,7 +658,11 @@ export async function handleSettingsAction(action, ctx) {
                 }
                 const persisted = persistSettingsDraft();
                 if (persisted.ok === false) return persisted;
+            } else {
+                settingsState.asyncState.scenePresetName = name;
             }
+        } else {
+            settingsState.asyncState.scenePresetName = name;
         }
         return rerenderSettings();
     }

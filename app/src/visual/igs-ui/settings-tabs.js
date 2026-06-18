@@ -130,20 +130,19 @@ const SCENE_TAB_TEMPLATE = `
       <div class="{{themeAdvancedClass}}" style="display:flex;flex-direction:column;gap:12px">
         <div class="igs-source-filter">
           <div class="igs-source-filter-title">角色名</div>
-          <div class="igs-settings-row">{{nameFontField}}{{nameColorField}}</div>
-          {{nameAlignField}}
+          <div class="igs-settings-row">{{nameFontField}}{{nameColorField}}{{nameAlignField}}</div>
         </div>
         <div class="igs-source-filter">
           <div class="igs-source-filter-title">台词</div>
-          <div class="igs-settings-row">{{textFontField}}{{textColorField}}</div>
+          <div class="igs-settings-row">{{textFontField}}{{textColorField}}{{textAlignField}}</div>
         </div>
         <div class="igs-source-filter">
           <div class="igs-source-filter-title">旁白</div>
-          <div class="igs-settings-row">{{narrationFontField}}{{narrationColorField}}</div>
+          <div class="igs-settings-row">{{narrationFontField}}{{narrationColorField}}{{narrationAlignField}}</div>
         </div>
         <div class="igs-source-filter">
           <div class="igs-source-filter-title">心里话</div>
-          <div class="igs-settings-row">{{thoughtFontField}}{{thoughtColorField}}</div>
+          <div class="igs-settings-row">{{thoughtFontField}}{{thoughtColorField}}{{thoughtAlignField}}</div>
         </div>
         <div class="igs-source-filter">
           <div class="igs-source-filter-title">分隔线</div>

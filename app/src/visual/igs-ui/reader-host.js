@@ -407,11 +407,17 @@ export function createIgsReaderHost(options = {}) {
         const draft = state.activeSettings.draft;
 
         if (path === 'readerMode') {
+            // 「应用到模式」(readerMode) 与基础页「切换模式」(bridge.openMode) 是同一概念的
+            // 两个入口，保持联动：切 readerMode 同步写 openMode 并持久化，让活动阅读器立即按
+            // 新模式渲染（原 bug：只 rerenderSettings，活动阅读器要等下次交互才切模式）。
             const nextMode = normalizeReaderMode(value, draft.bridge);
+            setPath(draft, 'bridge.openMode', nextMode);
             const snapshot = resolveBridgeConfigSnapshot({ mode: nextMode });
             state.activeSettings.readerMode = nextMode;
             draft.readerMode = nextMode;
             draft.readerSettings = cloneData(snapshot.readerSettings);
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
             return rerenderSettings();
         }
 
@@ -431,7 +437,7 @@ export function createIgsReaderHost(options = {}) {
         if (path === 'bridge.vnTheme.preset' && value === 'custom') {
             const prevName = draft.bridge.vnTheme._prevPreset || 'genshin';
             const source = VN_THEME_PRESETS[prevName] || VN_THEME_PRESETS.genshin;
-            const fields = ['nameAlign', 'dividerSymbol', 'nameFont', 'textFont', 'thoughtFont', 'narrationFont', 'nameColor', 'textColor', 'thoughtColor', 'narrationColor', 'dividerColor'];
+            const fields = ['nameAlign', 'textAlign', 'narrationAlign', 'thoughtAlign', 'dividerSymbol', 'nameFont', 'textFont', 'thoughtFont', 'narrationFont', 'nameColor', 'textColor', 'thoughtColor', 'narrationColor', 'dividerColor'];
             for (const f of fields) {
                 setPath(draft, `bridge.vnTheme.${f}`, source[f]);
             }
@@ -557,11 +563,16 @@ export function createIgsReaderHost(options = {}) {
 
     function rerenderActiveReader() {
         if (!state.activeReader) return { ok: true, reason: 'reader-not-open' };
-        const unified = resolveBridgeConfigSnapshot({ mode: state.activeReader.mode });
+        // 先解析出 nextMode，再用 nextMode 取 unified，确保 readerSettings 与立绘位置来自
+        // 同一个模式桶。原 bug：用旧 activeReader.mode 取的 unified.readerSettings 去配
+        // openMode 推出的 nextMode，两者模式桶不一致，导致切模式后 spriteLayouts 取错桶、
+        // 立绘 key 查不到而回退默认位置。
+        const baseSnapshot = resolveBridgeConfigSnapshot({ mode: state.activeReader.mode });
         const nextMode = normalizeReaderMode(
-            firstDefined(unified.bridge.openMode, state.activeReader.mode),
-            unified.bridge,
+            firstDefined(baseSnapshot.bridge.openMode, state.activeReader.mode),
+            baseSnapshot.bridge,
         );
+        const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         state.activeReader.mode = nextMode;
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
@@ -1127,7 +1138,10 @@ export function createIgsReaderHost(options = {}) {
                 charactersEditor: charsHtml,
                 moodGroupsEditor: moodGroupsHtml,
                 themePresetField: field('bridge.vnTheme.preset', '对话主题', selectInput('bridge.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], disabled)),
-                nameAlignField: field('bridge.vnTheme.nameAlign', '对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中']], disabled || !themeCustom)),
+                nameAlignField: field('bridge.vnTheme.nameAlign', '对齐', selectInput('bridge.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
+                textAlignField: field('bridge.vnTheme.textAlign', '对齐', selectInput('bridge.vnTheme.textAlign', displayTheme.textAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
+                narrationAlignField: field('bridge.vnTheme.narrationAlign', '对齐', selectInput('bridge.vnTheme.narrationAlign', displayTheme.narrationAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
+                thoughtAlignField: field('bridge.vnTheme.thoughtAlign', '对齐', selectInput('bridge.vnTheme.thoughtAlign', displayTheme.thoughtAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], disabled || !themeCustom)),
                 dividerField: field('bridge.vnTheme.dividerSymbol', '样式', selectInput('bridge.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], disabled || !themeCustom)),
                 nameFontField: field('bridge.vnTheme.nameFont', '字体', selectInput('bridge.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
                 textFontField: field('bridge.vnTheme.textFont', '字体', selectInput('bridge.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], disabled || !themeCustom)),
@@ -1475,7 +1489,11 @@ export function createIgsReaderHost(options = {}) {
         const validPresets = ['genshin', 'honkai', 'minimal', 'custom'];
         if (!validPresets.includes(normalized.preset)) normalized.preset = 'genshin';
         const fallback = VN_THEME_PRESETS[normalized.preset] || VN_THEME_PRESETS.genshin;
-        normalized.nameAlign = normalized.nameAlign === 'left' ? 'left' : (normalized.nameAlign === 'center' ? 'center' : fallback.nameAlign);
+        const normalizeAlign = (value, def) => (value === 'left' || value === 'center' || value === 'indent') ? value : def;
+        normalized.nameAlign = normalizeAlign(normalized.nameAlign, fallback.nameAlign);
+        normalized.textAlign = normalizeAlign(normalized.textAlign, fallback.textAlign || 'left');
+        normalized.narrationAlign = normalizeAlign(normalized.narrationAlign, fallback.narrationAlign || 'left');
+        normalized.thoughtAlign = normalizeAlign(normalized.thoughtAlign, fallback.thoughtAlign || 'left');
         normalized.dividerSymbol = normalized.dividerSymbol || fallback.dividerSymbol;
         normalized.nameFont = normalized.nameFont || fallback.nameFont;
         normalized.textFont = normalized.textFont || fallback.textFont;

@@ -129,6 +129,9 @@ export function resolveActiveTheme(snapshot) {
     if (presetName === 'custom') {
         return {
             nameAlign: vnTheme.nameAlign || preset.nameAlign,
+            textAlign: vnTheme.textAlign || preset.textAlign || 'left',
+            narrationAlign: vnTheme.narrationAlign || preset.narrationAlign || 'left',
+            thoughtAlign: vnTheme.thoughtAlign || preset.thoughtAlign || 'left',
             dividerSymbol: vnTheme.dividerSymbol != null ? vnTheme.dividerSymbol : preset.dividerSymbol,
             nameFont: vnTheme.nameFont || preset.nameFont,
             textFont: vnTheme.textFont || preset.textFont,

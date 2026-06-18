@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.14.0');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.15.0');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -462,6 +462,11 @@ test('gate:simulation:igs-ui-toolbar-actions-open-settings-toggle-and-close', as
     const modeResult = settingsResult.controller.setValue('bridge.openMode', 'mobile');
     assert.equal(modeResult.ok, true);
     assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
+
+    // 阅读器页「应用到模式」(readerMode) 与基础页 openMode 联动，切换后活动阅读器立即切模式
+    const readerModeResult = settingsResult.controller.setValue('readerMode', 'web');
+    assert.equal(readerModeResult.ok, true);
+    assert.equal(vn.getState().igsUi.activeReader.mode, 'web');
 
     const toggleResult = await controller.invokeAction('toggle-bar');
     assert.equal(toggleResult.ok, true);

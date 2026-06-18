@@ -16,6 +16,8 @@ import {
     parseImageSlots,
 } from '../src/scene/image-slots.js';
 import { parseSceneText } from '../src/scene/text-parser.js';
+import { applyAlignStyle } from '../src/visual/igs-ui/reader-dom-render.js';
+import { resolveSpriteLayout, resolveActiveTheme } from '../src/visual/igs-ui/settings-normalize.js';
 import { runTextPipeline } from '../src/scene/text-pipeline.js';
 import { createMemoryStorage } from '../src/storage/preset-store.js';
 import { resolveScene } from '../src/scene/scene-resolver.js';
@@ -280,6 +282,48 @@ test('gate:scene:sentence-paging-only-splits-narration-when-scene-assets-on', ()
     });
 
     assert.deepEqual(payload.textSegments, ['旁白第一句。', '旁白第二句。', '[玉子]：你好呀。请坐。']);
+});
+
+test('gate:igs-ui:apply-align-style-maps-left-center-indent', () => {
+    const makeEl = () => ({ style: {} });
+    const left = makeEl();
+    applyAlignStyle(left, 'left');
+    assert.equal(left.style.textAlign, 'left');
+    assert.equal(left.style.textIndent, '');
+
+    const center = makeEl();
+    applyAlignStyle(center, 'center');
+    assert.equal(center.style.textAlign, 'center');
+    assert.equal(center.style.textIndent, '');
+
+    const indent = makeEl();
+    applyAlignStyle(indent, 'indent');
+    assert.equal(indent.style.textAlign, 'left');
+    assert.equal(indent.style.textIndent, '2em');
+});
+
+test('gate:igs-ui:resolve-active-theme-exposes-align-fields', () => {
+    const genshin = resolveActiveTheme({ readerSettings: { _vnTheme: { preset: 'genshin' } } });
+    assert.equal(genshin.nameAlign, 'center');
+    assert.equal(genshin.textAlign, 'left');
+    assert.equal(genshin.narrationAlign, 'left');
+    assert.equal(genshin.thoughtAlign, 'left');
+
+    const custom = resolveActiveTheme({ readerSettings: { _vnTheme: { preset: 'custom', textAlign: 'indent', thoughtAlign: 'center' } } });
+    assert.equal(custom.textAlign, 'indent');
+    assert.equal(custom.thoughtAlign, 'center');
+    assert.equal(custom.narrationAlign, 'left');
+});
+
+test('gate:igs-ui:resolve-sprite-layout-keeps-mode-isolated', () => {
+    const layouts = {
+        'pc::小林海斗::平和': { posX: 70, posY: 30, scale: 180 },
+        'mobile::小林海斗::平和': { posX: 40, posY: 90, scale: 110 },
+    };
+    assert.deepEqual(resolveSpriteLayout(layouts, 'pc', '小林海斗', '平和'), { posX: 70, posY: 30, scale: 180 });
+    assert.deepEqual(resolveSpriteLayout(layouts, 'mobile', '小林海斗', '平和'), { posX: 40, posY: 90, scale: 110 });
+    // 切到没有该 key 的模式回退默认，不会串用其他模式的数据
+    assert.deepEqual(resolveSpriteLayout(layouts, 'web', '小林海斗', '平和'), { posX: 50, posY: 100, scale: 100 });
 });
 
 test('gate:scene:igs-message-source:formats-default-bubble-body', () => {

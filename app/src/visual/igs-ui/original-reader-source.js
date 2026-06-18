@@ -56,8 +56,8 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-bar-pinned{display:flex;gap:6px;align-items:center;}
 .igs-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:0;letter-spacing:1px;}
 .igs-status-line{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-bottom:6px;display:none;}
-.igs-speaker{font-size:14px;font-weight:600;letter-spacing:1px;margin-top:1px;margin-bottom:1px;display:none;}
-.igs-divider{font-size:11px;letter-spacing:4px;text-align:center;margin-bottom:2px;opacity:.6;display:none;}
+.igs-speaker{font-size:14px;font-weight:600;letter-spacing:1px;margin-top:0;margin-bottom:4px;display:none;}
+.igs-divider{font-size:11px;letter-spacing:4px;text-align:center;margin-bottom:4px;opacity:.6;display:none;}
 .igs-thought{font-style:italic;opacity:.72;}
 .igs-text{font-size:18px;line-height:1.7;letter-spacing:.5px;min-height:60px;color:#f4f4f6;text-shadow:0 1px 2px rgba(0,0,0,.6);margin-bottom:14px;margin-top:0;white-space:pre-wrap;word-break:break-word;}
 .igs-controls{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
