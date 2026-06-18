@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.20.0`：QR 入口改用「loader 固定声明脚本按钮 + localStorage 标志开关」机制——loader JSON 的 `button` 固定声明 QR 脚本按钮（默认 visible:false），loader content 在酒馆助手脚本上下文用全局 `getButtonEvent`/`eventOn` 绑定点击、轮询 `localStorage['igs:entry:qr']` 切按钮显隐；扩展面板 QR 开关只写该标志。修复 v0.19 QR 注册失败（app bundle 不在脚本上下文、拿不到脚本按钮 API）。删除走不通的运行时 `qr-entry.js`。
+- 当前项目版本 `v0.20.1`：修复 QR 按钮点击不打开阅读器——事件绑定顺序对齐扩写脚本（先 `replaceScriptButtons` 再 `eventOn(getButtonEvent(...))`），并在每次按钮显隐切换后重新绑定点击，确保事件落在最新按钮上。
+- `v0.20.0`：QR 入口改用 loader 固定声明脚本按钮 + localStorage 标志开关机制。
 - `v0.19.1`：修复启用 QR 未注册脚本按钮（多源解析，后被 v0.20.0 机制取代）；扩展面板按钮横排。
 - `v0.19.0`：入口体系(扩展面板+QR+魔法棒开关)；修复工具栏顺序未生效。
 - `v0.18.0`：刷新改造(正文+图片并行回第一页)；输入框仅末页；状态行居中末页隐藏；工具栏重排加首末页按钮。
