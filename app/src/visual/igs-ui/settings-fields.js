@@ -126,7 +126,7 @@ function renderSpriteSlotExpansion(charName, mood, url, moodGroups, icons) {
         const tags = words.map((word) => {
             return `<span class="igs-mood-word-tag">${esc(word)}<button type="button" class="igs-mood-word-del" data-action="mood-remove-word:${encSeg(mood)}:${encSeg(word)}" title="删除词">×</button></span>`;
         }).join('');
-        wordsHtml = `<div class="igs-sprite-words"><span class="igs-sprite-words-title">${esc(mood)}组词</span><div class="igs-mood-word-list">${tags || '<div class="igs-scene-empty">暂无情绪词</div>'}<button type="button" class="igs-btn-mgr-icon" data-action="mood-add-word:${encSeg(mood)}" title="添加词">+</button></div></div>`;
+        wordsHtml = `<div class="igs-sprite-words"><div class="igs-mood-word-list">${tags || '<div class="igs-scene-empty">暂无情绪词</div>'}<button type="button" class="igs-btn-mgr-icon" data-action="mood-add-word:${encSeg(mood)}" title="添加词">+</button></div></div>`;
     } else {
         wordsHtml = `<div class="igs-sprite-words"><div class="igs-source-filter-note">「${esc(mood)}」在词库中无对应情绪组。</div><button type="button" class="igs-settings-action" data-action="mood-create-group:${encSeg(mood)}">建为情绪组</button></div>`;
     }

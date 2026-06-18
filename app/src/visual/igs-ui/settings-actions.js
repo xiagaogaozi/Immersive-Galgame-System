@@ -495,12 +495,39 @@ export async function handleSettingsAction(action, ctx) {
             if (newMood && newMood !== oldMood) {
                 settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
                 const chars = settingsState.draft.bridge.sceneAssets.characters || {};
+                // 同名检查：该角色已有同名槽，或词库已有同名情绪组 → 阻止，避免覆盖丢失
+                if (chars[charName] && Object.prototype.hasOwnProperty.call(chars[charName], newMood)) {
+                    if (globalObj.alert) globalObj.alert(`「${charName}」已有「${newMood}」槽（同名），改名会覆盖，已阻止`);
+                    return rerenderSettings();
+                }
+                const groups = ensureMoodGroups(settingsState);
+                if (groups.some((g) => g.label === newMood && g.label !== oldMood)) {
+                    if (globalObj.alert) globalObj.alert(`词库已有情绪组「${newMood}」（同名），改名会覆盖，已阻止`);
+                    return rerenderSettings();
+                }
+                // 改角色槽名
                 if (chars[charName]) {
                     chars[charName][newMood] = chars[charName][oldMood] || '';
                     delete chars[charName][oldMood];
-                    const persisted = persistSettingsDraft();
-                    if (persisted.ok === false) return persisted;
                 }
+                // 同步词库里同名情绪组的组名（全局：所有角色用到该组名的槽一起改）
+                const group = groups.find((g) => g.label === oldMood);
+                if (group) {
+                    group.label = newMood;
+                    const wordIdx = Array.isArray(group.words) ? group.words.indexOf(oldMood) : -1;
+                    if (wordIdx >= 0) group.words[wordIdx] = newMood;
+                    for (const otherName of Object.keys(chars)) {
+                        if (otherName === charName) continue;
+                        const other = chars[otherName];
+                        if (other && typeof other === 'object' && Object.prototype.hasOwnProperty.call(other, oldMood)
+                            && !Object.prototype.hasOwnProperty.call(other, newMood)) {
+                            other[newMood] = other[oldMood];
+                            delete other[oldMood];
+                        }
+                    }
+                }
+                const persisted = persistSettingsDraft();
+                if (persisted.ok === false) return persisted;
             }
         }
         return rerenderSettings();
@@ -633,25 +660,6 @@ export async function handleSettingsAction(action, ctx) {
         groups.unshift({ label, words: [label] });
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
-        return rerenderSettings();
-    }
-
-    if (normalizedAction === 'scene-import-mood-slots') {
-        settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
-        const characters = settingsState.draft.bridge.sceneAssets.characters || {};
-        const groups = ensureMoodGroups(settingsState);
-        let touched = false;
-        for (const charName of Object.keys(characters)) {
-            const char = characters[charName];
-            if (!char || typeof char !== 'object') continue;
-            for (const group of groups) {
-                if (!(group.label in char)) { char[group.label] = ''; touched = true; }
-            }
-        }
-        if (touched) {
-            const persisted = persistSettingsDraft();
-            if (persisted.ok === false) return persisted;
-        }
         return rerenderSettings();
     }
 

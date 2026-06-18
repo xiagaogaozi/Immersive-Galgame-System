@@ -1163,10 +1163,7 @@ export function createIgsReaderHost(options = {}) {
             const charactersPane = `<div class="igs-source-filter">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div class="igs-source-filter-title">角色立绘</div>
-          <span style="display:flex;gap:4px">
-            <button class="igs-btn-mgr-icon" data-action="scene-import-mood-slots" type="button" title="为所有角色按情绪组名补建立绘槽">↑</button>
-            <button class="igs-btn-mgr-icon" data-action="scene-add-char" type="button" title="添加角色">+</button>
-          </span>
+          <button class="igs-btn-mgr-icon" data-action="scene-add-char" type="button" title="添加角色">+</button>
         </div>
         <div class="igs-source-filter-note">角色名 → 情绪 → 立绘 URL。展开情绪槽可预览立绘并编辑该情绪组的词（词库全局共享）。</div>
         <div class="igs-settings-row">${checkbox('bridge.sceneAssets.unifiedSpriteLayout', sceneAssets.unifiedSpriteLayout, '统一角色立绘位置（各情绪共用一套位置）')}</div>

@@ -556,6 +556,39 @@ test('gate:scene:mood-add-word-dup-confirm-moves-word', async () => {
     assert.equal(calm.words.includes('开心'), true);
 });
 
+test('gate:scene:rename-mood-blocks-dup-and-syncs-group-label', async () => {
+    const make = (prompt) => {
+        const draft = { bridge: { sceneAssets: { enabled: true, scenes: {}, characters: { A: { 喜悦: 'u1', 平和: 'u2' }, B: { 喜悦: 'u3' } }, moodGroups: [{ label: '喜悦', words: ['喜悦', '开心'] }, { label: '平和', words: ['平静'] }] } }, readerSettings: {} };
+        let alerts = 0;
+        const ctx = {
+            state: { activeSettings: { draft, readerMode: 'pc', asyncState: {} } },
+            options: { global: { prompt: () => prompt, alert: () => { alerts += 1; } } },
+            closeSettings: () => ({ ok: true }),
+            persistSettingsDraft: () => ({ ok: true }),
+            rerenderSettings: () => ({ ok: true }),
+            buildRegexPreview: () => '',
+        };
+        return { draft, ctx, getAlerts: () => alerts };
+    };
+
+    // 撞该角色已有的槽名「平和」→ 阻止，不动数据
+    const blocked = make('平和');
+    await handleSettingsAction(`scene-rename-mood:${encodeURIComponent('A')}:${encodeURIComponent('喜悦')}`, blocked.ctx);
+    assert.equal(blocked.getAlerts(), 1);
+    assert.equal('喜悦' in blocked.draft.bridge.sceneAssets.characters.A, true);
+
+    // 改成全新名「欢喜」→ 角色槽名 + 词库组名 + 其他角色同名槽 一起改
+    const ok = make('欢喜');
+    await handleSettingsAction(`scene-rename-mood:${encodeURIComponent('A')}:${encodeURIComponent('喜悦')}`, ok.ctx);
+    assert.equal('欢喜' in ok.draft.bridge.sceneAssets.characters.A, true);
+    assert.equal('喜悦' in ok.draft.bridge.sceneAssets.characters.A, false);
+    assert.equal('欢喜' in ok.draft.bridge.sceneAssets.characters.B, true);
+    const group = ok.draft.bridge.sceneAssets.moodGroups.find((g) => g.label === '欢喜');
+    assert.ok(group);
+    assert.equal(group.words.includes('欢喜'), true);
+    assert.equal(group.words.includes('喜悦'), false);
+});
+
 test('gate:scene:extracts-directives-with-trailing-translation-tail', () => {
     // [igs-char] / [igs-thought] lines often carry a translation tail like *（…）*
     // after the closing bracket; the directive must still be extracted (no end anchor).
