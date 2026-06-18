@@ -2,6 +2,7 @@ import { DEFAULT_VIRTUAL_REGEX } from '../../scene/message-source.js';
 import { cloneData } from './reader-value-utils.js';
 import { DEFAULT_SCENE_PROMPT_RULE, TOOLBAR_ACTIONS } from './reader-host-constants.js';
 import { DEFAULT_MOOD_GROUPS, normalizeMoodGroups } from '../../scene/mood-groups.js';
+import { loadScenePresets, saveScenePresets } from '../../scene/scene-preset-store.js';
 
 function decodeSeg(value) {
     try { return decodeURIComponent(String(value == null ? '' : value)); }
@@ -612,7 +613,124 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
+    if (normalizedAction.startsWith('scene-preset-apply:')) {
+        const name = decodeSeg(normalizedAction.slice('scene-preset-apply:'.length));
+        settingsState.asyncState.scenePresetName = name;
+        if (name) {
+            const globalObj = options.global || globalThis;
+            const presets = loadScenePresets(globalObj.localStorage);
+            const preset = presets[name];
+            if (preset) {
+                settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+                settingsState.draft.bridge.sceneAssets.scenes = cloneData(preset.scenes || {});
+                settingsState.draft.bridge.sceneAssets.characters = cloneData(preset.characters || {});
+                settingsState.draft.bridge.sceneAssets.moodGroups = cloneData(preset.moodGroups || []);
+                const persisted = persistSettingsDraft();
+                if (persisted.ok === false) return persisted;
+            }
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction === 'scene-preset-rename') {
+        const oldName = settingsState.asyncState.scenePresetName || '';
+        if (!oldName) return rerenderSettings();
+        const globalObj = options.global || globalThis;
+        const newName = (globalObj.prompt && globalObj.prompt(`重命名预设「${oldName}」为：`, oldName) || '').trim();
+        if (!newName || newName === oldName) return rerenderSettings();
+        const storage = globalObj.localStorage;
+        const presets = loadScenePresets(storage);
+        if (!presets[oldName]) return rerenderSettings();
+        presets[newName] = presets[oldName];
+        delete presets[oldName];
+        saveScenePresets(storage, presets);
+        settingsState.asyncState.scenePresetName = newName;
+        return rerenderSettings();
+    }
+
+    if (normalizedAction === 'scene-preset-import') {
+        const globalObj = options.global || globalThis;
+        const doc = globalObj.document;
+        if (!doc) return { ok: false, reason: 'no-document' };
+        const fileResult = await pickPresetFile(doc);
+        if (!fileResult) return rerenderSettings();
+        const name = (globalObj.prompt && globalObj.prompt('预设名称：', fileResult.fileName) || '').trim();
+        if (!name) return rerenderSettings();
+        const storage = globalObj.localStorage;
+        const presets = loadScenePresets(storage);
+        presets[name] = {
+            scenes: fileResult.data.scenes || {},
+            characters: fileResult.data.characters || {},
+            moodGroups: fileResult.data.moodGroups || [],
+        };
+        saveScenePresets(storage, presets);
+        settingsState.asyncState.scenePresetName = name;
+        settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+        settingsState.draft.bridge.sceneAssets.scenes = cloneData(presets[name].scenes);
+        settingsState.draft.bridge.sceneAssets.characters = cloneData(presets[name].characters);
+        settingsState.draft.bridge.sceneAssets.moodGroups = cloneData(presets[name].moodGroups);
+        const persisted = persistSettingsDraft();
+        if (persisted.ok === false) return persisted;
+        return rerenderSettings();
+    }
+
+    if (normalizedAction === 'scene-preset-export') {
+        const name = settingsState.asyncState.scenePresetName || '';
+        if (!name) return rerenderSettings();
+        const globalObj = options.global || globalThis;
+        const presets = loadScenePresets(globalObj.localStorage);
+        const preset = presets[name];
+        if (!preset) return rerenderSettings();
+        const doc = globalObj.document;
+        if (!doc) return { ok: false, reason: 'no-document' };
+        const json = JSON.stringify({ scenes: preset.scenes || {}, characters: preset.characters || {}, moodGroups: preset.moodGroups || [] }, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = doc.createElement('a');
+        a.href = url;
+        a.download = `${name}.json`;
+        doc.body.appendChild(a);
+        a.click();
+        doc.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return { ok: true };
+    }
+
+    if (normalizedAction === 'scene-preset-delete') {
+        const name = settingsState.asyncState.scenePresetName || '';
+        if (!name) return rerenderSettings();
+        const globalObj = options.global || globalThis;
+        if (globalObj.confirm && !globalObj.confirm(`删除预设「${name}」？`)) return rerenderSettings();
+        const storage = globalObj.localStorage;
+        const presets = loadScenePresets(storage);
+        delete presets[name];
+        saveScenePresets(storage, presets);
+        settingsState.asyncState.scenePresetName = '';
+        return rerenderSettings();
+    }
+
     return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
+}
+
+function pickPresetFile(doc) {
+    return new Promise((resolve) => {
+        const input = doc.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        let done = false;
+        const finish = (val) => { if (!done) { done = true; resolve(val); } };
+        input.onchange = () => {
+            const file = input.files && input.files[0];
+            if (!file) { finish(null); return; }
+            const fileName = file.name.replace(/\.json$/i, '');
+            const fr = new FileReader();
+            fr.onload = (e) => { try { finish({ fileName, data: JSON.parse(e.target.result) }); } catch { finish(null); } };
+            fr.onerror = () => finish(null);
+            fr.readAsText(file);
+        };
+        input.click();
+        setTimeout(() => finish(null), 300000);
+    });
 }
 
 function ensureMoodGroups(settingsState) {    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};

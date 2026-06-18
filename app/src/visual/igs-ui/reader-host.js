@@ -48,6 +48,7 @@ import {
     renderMoodGroupsEditor,
     renderPinnedButtons,
     renderSceneAssetList,
+    renderScenePresetBar,
     renderTemplate,
     secretInput,
     segmentedInput,
@@ -97,6 +98,7 @@ import {
 import { clearReaderModeRuntime, exitDocumentFullscreen } from './reader-runtime.js';
 import { enterSpriteEditMode } from './sprite-edit.js';
 import { handleSettingsAction as runSettingsAction } from './settings-actions.js';
+import { loadScenePresets } from '../../scene/scene-preset-store.js';
 import {
     applyReaderSnapshotToDom,
     applyToolbarState,
@@ -1077,6 +1079,8 @@ export function createIgsReaderHost(options = {}) {
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {});
             const moodGroupsHtml = renderMoodGroupsEditor(sceneAssets.moodGroups || [], asyncState.moodGroupsExpanded === true);
+            const scenePresets = loadScenePresets((options.global || globalThis).localStorage);
+            const scenePresetBarHtml = renderScenePresetBar(scenePresets, asyncState.scenePresetName || '');
             const vnTheme = bridge.vnTheme || {};
             const themeCustom = vnTheme.preset === 'custom';
             const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
@@ -1085,6 +1089,7 @@ export function createIgsReaderHost(options = {}) {
                 sceneToggle: checkbox('bridge.sceneAssets.enabled', sceneAssets.enabled, '启用场景素材模式'),
                 sceneGroupClass: `igs-settings-section igs-settings-full${disabled ? ' igs-settings-api-group is-disabled' : ''}`,
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
+                scenePresetBar: scenePresetBarHtml,
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
                 moodGroupsEditor: moodGroupsHtml,
@@ -1266,6 +1271,10 @@ export function createIgsReaderHost(options = {}) {
             const modelSync = event.target && event.target.getAttribute ? event.target.getAttribute('data-model-sync') : '';
             if (modelSync) {
                 controller.setValue(modelSync, event.target.value);
+                return;
+            }
+            if (event.target && event.target.getAttribute && event.target.getAttribute('data-preset-select') !== null) {
+                controller.invoke('scene-preset-apply:' + encodeURIComponent(event.target.value));
                 return;
             }
             const path = event.target && event.target.getAttribute ? event.target.getAttribute('data-path') : '';

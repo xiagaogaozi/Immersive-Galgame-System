@@ -124,6 +124,19 @@ export function renderMoodGroupsEditor(moodGroups, expanded) {
     return `<div class="igs-source-filter">${header}<div class="igs-source-filter-note">情绪词分组，注入提示词约束 AI 只能从池里选词。立绘按「组」归约取差分图（如「欣喜」归到「喜悦」组）。↑ 按钮为所有角色按组名补建立绘槽。</div>${groupsHtml || '<div class="igs-scene-empty">暂无情绪组</div>'}<div class="igs-settings-row"><button class="igs-settings-action" data-action="reset-mood-groups" type="button">恢复默认词库</button></div></div>`;
 }
 
+export function renderScenePresetBar(presets, selectedName) {
+    const names = Object.keys(presets || {});
+    const opts = ['<option value="">— 选择预设 —</option>'].concat(names.map((n) =>
+        `<option value="${esc(n)}"${n === selectedName ? ' selected' : ''}>${esc(n)}</option>`
+    )).join('');
+    const dis = (!selectedName || !(presets && presets[selectedName])) ? ' disabled' : '';
+    const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    const trash = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+    const download = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+    const upload = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+    return `<div class="igs-source-filter"><div style="display:flex;align-items:center;gap:6px"><select data-preset-select style="flex:1;min-width:0">${opts}</select><button type="button" class="igs-btn-mgr-icon" data-action="scene-preset-rename"${dis} title="重命名">${pencil}</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-preset-import" title="导入">${upload}</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-preset-export"${dis} title="导出">${download}</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-preset-delete"${dis} title="删除">${trash}</button></div></div>`;
+}
+
 export function renderPinnedButtons(pinnedValue, hiddenValue, orderValue) {
     const pins = Array.isArray(pinnedValue) ? pinnedValue : [];
     const hidden = Array.isArray(hiddenValue) ? hiddenValue : [];

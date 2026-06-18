@@ -101,6 +101,7 @@ const SCENE_TAB_TEMPLATE = `
         <div class="igs-source-filter-title">场景素材</div>
         <div class="igs-source-filter-note">使用 [igs-scene:场景|时间|天气] 切换场景，[igs-char:角色|情绪|对白] 标记对白，[igs-thought:角色|情绪|心里话] 标记心理描写。扫描图优先显示。</div>
       </div>
+      {{scenePresetBar}}
       <div class="igs-source-filter">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div class="igs-source-filter-title">背景场景</div>
