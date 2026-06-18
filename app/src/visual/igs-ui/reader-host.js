@@ -909,7 +909,13 @@ export function createIgsReaderHost(options = {}) {
                 && sceneAssets.characters && sceneAssets.characters[spriteChar]) {
                 const spriteUrls = lookupSceneAssetUrls({ character: spriteChar, mood: spriteMood }, sceneAssets);
                 spriteImage = spriteUrls.spriteUrl || null;
-                if (spriteImage) { spriteCharacter = spriteChar; }
+                if (spriteImage) {
+                    spriteCharacter = spriteChar;
+                    // Position keys follow the resolved image slot (exact mood / group /
+                    // 默认), not the raw mood word, so every mood that maps to the same
+                    // sprite image shares one position across pages.
+                    spriteMood = spriteUrls.spriteSlot || spriteMood;
+                }
             }
         }
         const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)

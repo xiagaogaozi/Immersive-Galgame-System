@@ -320,7 +320,7 @@ test('gate:scene:scene-assets-resolves-by-exact-match-and-default-key-only', () 
         scenes: { 'B班教室': { url: 'https://example.com/classroom.png', times: {} } },
         characters: { '小林海斗': { '平静': 'https://example.com/kaito.png' } },
     });
-    assert.deepEqual(assets1, { backgroundUrl: 'https://example.com/classroom.png', spriteUrl: 'https://example.com/kaito.png' });
+    assert.deepEqual(assets1, { backgroundUrl: 'https://example.com/classroom.png', spriteUrl: 'https://example.com/kaito.png', spriteSlot: '平静' });
 
     // '默认' fallback when scene name doesn't match
     const assets2 = lookupSceneAssetUrls({
@@ -330,7 +330,7 @@ test('gate:scene:scene-assets-resolves-by-exact-match-and-default-key-only', () 
         scenes: { '默认': { url: 'https://example.com/default.png', times: {} } },
         characters: { '小林海斗': { '默认': 'https://example.com/kaito.png' } },
     });
-    assert.deepEqual(assets2, { backgroundUrl: 'https://example.com/default.png', spriteUrl: 'https://example.com/kaito.png' });
+    assert.deepEqual(assets2, { backgroundUrl: 'https://example.com/default.png', spriteUrl: 'https://example.com/kaito.png', spriteSlot: '默认' });
 
     // no scene fallback when only non-matching named key exists, but character still matches exactly
     const assets3 = lookupSceneAssetUrls({
@@ -340,7 +340,7 @@ test('gate:scene:scene-assets-resolves-by-exact-match-and-default-key-only', () 
         scenes: { '场景1': { url: 'https://example.com/classroom.png', times: {} } },
         characters: { '小林海斗': { '随和': 'https://example.com/kaito.png' } },
     });
-    assert.deepEqual(assets3, { backgroundUrl: null, spriteUrl: 'https://example.com/kaito.png' });
+    assert.deepEqual(assets3, { backgroundUrl: null, spriteUrl: 'https://example.com/kaito.png', spriteSlot: '随和' });
 });
 
 test('gate:scene:mood-groups-resolve-fine-word-to-group-label', () => {

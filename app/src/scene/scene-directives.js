@@ -64,18 +64,21 @@ export function resolveSceneStateAtIndex(directives, segmentIndex) {
 }
 
 export function lookupSceneAssetUrls(sceneState, sceneAssets) {
-    if (!sceneAssets || !sceneState) return { backgroundUrl: null, spriteUrl: null };
+    if (!sceneAssets || !sceneState) return { backgroundUrl: null, spriteUrl: null, spriteSlot: '' };
 
     const scenes = sceneAssets.scenes || {};
     const backgroundUrl = lookupSceneUrl(scenes, sceneState.scene, sceneState.time, sceneState.weather);
 
     let spriteUrl = null;
+    let spriteSlot = '';
     const characters = sceneAssets.characters || {};
     if (sceneState.character && characters[sceneState.character]) {
-        spriteUrl = lookupAssetValue(characters[sceneState.character], sceneState.mood, sceneAssets.moodGroups);
+        const hit = lookupAssetValue(characters[sceneState.character], sceneState.mood, sceneAssets.moodGroups);
+        spriteUrl = hit.url;
+        spriteSlot = hit.slot;
     }
 
-    return { backgroundUrl, spriteUrl };
+    return { backgroundUrl, spriteUrl, spriteSlot };
 }
 
 function lookupSceneUrl(scenes, sceneName, time, weather) {
@@ -95,11 +98,12 @@ function lookupSceneUrl(scenes, sceneName, time, weather) {
 }
 
 function lookupAssetValue(record, requestedKey, moodGroups) {
-    if (!record || typeof record !== 'object') return null;
-    if (requestedKey && record[requestedKey]) return record[requestedKey];
+    if (!record || typeof record !== 'object') return { url: null, slot: '' };
+    if (requestedKey && record[requestedKey]) return { url: record[requestedKey], slot: requestedKey };
     const groupLabel = resolveMoodGroup(requestedKey, moodGroups);
-    if (groupLabel && record[groupLabel]) return record[groupLabel];
-    return record['默认'] || null;
+    if (groupLabel && record[groupLabel]) return { url: record[groupLabel], slot: groupLabel };
+    if (record['默认']) return { url: record['默认'], slot: '默认' };
+    return { url: null, slot: '' };
 }
 
 function normalizeSegmentIndex(value) {
