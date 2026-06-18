@@ -627,6 +627,7 @@ export async function handleSettingsAction(action, ctx) {
             scenes: cloneData(sa.scenes || {}),
             characters: cloneData(sa.characters || {}),
             moodGroups: cloneData(sa.moodGroups || []),
+            spriteLayouts: cloneData((settingsState.draft.readerSettings && settingsState.draft.readerSettings.spriteLayouts) || {}),
         };
         saveScenePresets(storage, presets);
         settingsState.asyncState.scenePresetName = name;
@@ -645,6 +646,10 @@ export async function handleSettingsAction(action, ctx) {
                 settingsState.draft.bridge.sceneAssets.scenes = cloneData(preset.scenes || {});
                 settingsState.draft.bridge.sceneAssets.characters = cloneData(preset.characters || {});
                 settingsState.draft.bridge.sceneAssets.moodGroups = cloneData(preset.moodGroups || []);
+                if (preset.spriteLayouts && typeof preset.spriteLayouts === 'object') {
+                    settingsState.draft.readerSettings = settingsState.draft.readerSettings || {};
+                    settingsState.draft.readerSettings.spriteLayouts = cloneData(preset.spriteLayouts);
+                }
                 const persisted = persistSettingsDraft();
                 if (persisted.ok === false) return persisted;
             }
@@ -682,6 +687,7 @@ export async function handleSettingsAction(action, ctx) {
             scenes: fileResult.data.scenes || {},
             characters: fileResult.data.characters || {},
             moodGroups: fileResult.data.moodGroups || [],
+            spriteLayouts: (fileResult.data.spriteLayouts && typeof fileResult.data.spriteLayouts === 'object') ? fileResult.data.spriteLayouts : {},
         };
         saveScenePresets(storage, presets);
         settingsState.asyncState.scenePresetName = name;
@@ -689,6 +695,8 @@ export async function handleSettingsAction(action, ctx) {
         settingsState.draft.bridge.sceneAssets.scenes = cloneData(presets[name].scenes);
         settingsState.draft.bridge.sceneAssets.characters = cloneData(presets[name].characters);
         settingsState.draft.bridge.sceneAssets.moodGroups = cloneData(presets[name].moodGroups);
+        settingsState.draft.readerSettings = settingsState.draft.readerSettings || {};
+        settingsState.draft.readerSettings.spriteLayouts = cloneData(presets[name].spriteLayouts);
         const persisted = persistSettingsDraft();
         if (persisted.ok === false) return persisted;
         return rerenderSettings();
@@ -703,7 +711,7 @@ export async function handleSettingsAction(action, ctx) {
         if (!preset) return rerenderSettings();
         const doc = globalObj.document;
         if (!doc) return { ok: false, reason: 'no-document' };
-        const json = JSON.stringify({ scenes: preset.scenes || {}, characters: preset.characters || {}, moodGroups: preset.moodGroups || [] }, null, 2);
+        const json = JSON.stringify({ scenes: preset.scenes || {}, characters: preset.characters || {}, moodGroups: preset.moodGroups || [], spriteLayouts: preset.spriteLayouts || {} }, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = doc.createElement('a');

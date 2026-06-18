@@ -348,10 +348,11 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         spriteEl.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;transform:none;bottom:auto;left:auto';
         if (!current.spriteEditMode) {
             const spriteKey = snapshot.content.spriteCharacter || snapshot.content.speaker;
-            const layout = resolveSpriteLayout(snapshot.readerSettings.spriteLayouts, snapshot.mode, spriteKey);
+            const spriteMood = snapshot.content.spriteMood || '';
+            const layout = resolveSpriteLayout(snapshot.readerSettings.spriteLayouts, snapshot.mode, spriteKey, spriteMood);
             spriteEl.style.backgroundSize = `${layout.scale}%`;
             spriteEl.style.backgroundPosition = `${layout.posX}% ${layout.posY}%`;
-            igsDebug('[DEBUG-sprite] apply-layout', { mode: snapshot.mode, speaker: spriteKey, index: snapshot.content.currentIndex, layoutKey: spriteKey ? `${snapshot.mode}::${spriteKey}` : snapshot.mode, layout: { ...layout } });
+            igsDebug('[DEBUG-sprite] apply-layout', { mode: snapshot.mode, speaker: spriteKey, mood: spriteMood, index: snapshot.content.currentIndex, layoutKey: spriteKey ? `${snapshot.mode}::${spriteKey}::${spriteMood}` : snapshot.mode, layout: { ...layout } });
         }
     } else if (spriteEl) {
         spriteEl.style.backgroundImage = '';

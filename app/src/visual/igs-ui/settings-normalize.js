@@ -107,10 +107,14 @@ export function normalizeSpriteLayouts(value) {
     return out;
 }
 
-export function resolveSpriteLayout(layouts, mode, character) {
+export function resolveSpriteLayout(layouts, mode, character, mood) {
     const def = { posX: 50, posY: 100, scale: 100 };
     if (!layouts) return def;
     if (character) {
+        if (mood) {
+            const moodKey = `${mode}::${character}::${mood}`;
+            if (layouts[moodKey]) return layouts[moodKey];
+        }
         const charKey = `${mode}::${character}`;
         if (layouts[charKey]) return layouts[charKey];
     }

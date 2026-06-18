@@ -11,11 +11,12 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
     if (typeof ctx.closeSettings === 'function') ctx.closeSettings();
     const mode = current.snapshot.mode;
     const rs = current.snapshot.readerSettings;
-    const character = current.snapshot.content.speaker || '';
-    const modeLayout = resolveSpriteLayout(rs.spriteLayouts, mode, character);
+    const character = current.snapshot.content.spriteCharacter || current.snapshot.content.speaker || '';
+    const mood = current.snapshot.content.spriteMood || '';
+    const modeLayout = resolveSpriteLayout(rs.spriteLayouts, mode, character, mood);
     const orig = { ...modeLayout };
     let posX = orig.posX, posY = orig.posY, scale = orig.scale;
-    igsDebug('[DEBUG-sprite] enter-edit', { mode, character, layoutKey: character ? `${mode}::${character}` : mode, resolved: { ...orig }, allLayouts: rs.spriteLayouts });
+    igsDebug('[DEBUG-sprite] enter-edit', { mode, character, mood, layoutKey: character ? `${mode}::${character}::${mood}` : mode, resolved: { ...orig }, allLayouts: rs.spriteLayouts });
     const clickLayer = overlay.querySelector('#igs-click-layer');
     if (clickLayer) clickLayer.style.pointerEvents = 'none';
 
@@ -39,7 +40,7 @@ export function enterSpriteEditMode(overlay, current, ctx = {}) {
         + '<button data-se="cancel" type="button">取消</button>'
         + '<button data-se="save" class="igs-se-save" type="button">保存</button>';
     overlay.appendChild(editBar);
-    current.spriteEditMode = { orig, editBar, clickLayer, mode, character, origSpriteStyle };
+    current.spriteEditMode = { orig, editBar, clickLayer, mode, character, mood, origSpriteStyle };
 
     function apply() {
         spriteEl.style.backgroundSize = `${scale}%`;
@@ -120,8 +121,26 @@ export function exitSpriteEditMode(overlay, current, save, ctx = {}) {
             ? ctx.resolveUnifiedSettings({ mode: em.mode })
             : { readerSettings: {} };
         const layouts = { ...(unified.readerSettings.spriteLayouts || {}) };
-        const layoutKey = em.character ? `${em.mode}::${em.character}` : em.mode;
-        layouts[layoutKey] = { posX: save.posX, posY: save.posY, scale: save.scale };
+        const value = { posX: save.posX, posY: save.posY, scale: save.scale };
+        if (!em.character) {
+            layouts[em.mode] = value;
+        } else {
+            const sceneAssets = (unified.bridge && unified.bridge.sceneAssets) || {};
+            const unified_ = sceneAssets.unifiedSpriteLayout === true;
+            if (unified_) {
+                // Apply to every known mood slot of this character so all expressions
+                // share one position, while keeping the mode::char::mood key format.
+                const charMoods = (sceneAssets.characters && sceneAssets.characters[em.character])
+                    ? Object.keys(sceneAssets.characters[em.character])
+                    : [];
+                const moods = charMoods.length ? charMoods : [em.mood || '默认'];
+                for (const m of moods) {
+                    layouts[`${em.mode}::${em.character}::${m}`] = { ...value };
+                }
+            } else {
+                layouts[`${em.mode}::${em.character}::${em.mood || '默认'}`] = value;
+            }
+        }
         if (typeof ctx.saveReaderSettingsPatch === 'function') {
             ctx.saveReaderSettingsPatch({ spriteLayouts: layouts });
         }

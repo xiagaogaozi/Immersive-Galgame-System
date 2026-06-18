@@ -817,6 +817,7 @@ export function createIgsReaderHost(options = {}) {
         let bubbleSpeaker = '';
         let segmentBody = currentText;
         let bubbleMood = '';
+        let spriteMood = '';
         if (sceneAssetsEnabled) {
             const charThoughtDirectives = sceneDirectives.filter((d) => d.type === 'char' || d.type === 'thought');
             // Match this bubble back to its directive by speaker + dialogue/thought text
@@ -840,24 +841,32 @@ export function createIgsReaderHost(options = {}) {
                 }
                 return null;
             };
-            const seg = String(currentText || '');
-            const thoughtMatch = seg.match(/^\s*\*\s*(?:\[([^\]]+)\]\s*[:：]\s*)?([\s\S]*?)\s*\*\s*$/);
-            const dialogueMatch = seg.match(/^\s*\[([^\]]+)\]\s*[:：]\s*([\s\S]*)$/);
-            if (thoughtMatch) {
-                textType = 'thought';
-                segmentBody = seg;
-                bubbleSpeaker = thoughtMatch[1] ? thoughtMatch[1].trim() : '';
-                const matched = findDirectiveByText(bubbleSpeaker, thoughtMatch[2]);
-                if (matched) {
-                    if (!bubbleSpeaker) bubbleSpeaker = matched.character || '';
-                    bubbleMood = matched.mood || '';
+            // Classify a single segment into {textType, speaker, mood} purely from its
+            // own formatted text via fingerprint matching (no positional counter).
+            // Returns null when the segment is plain narration with no char/thought tag.
+            const classifySegment = (segText) => {
+                const seg = String(segText || '');
+                const tMatch = seg.match(/^\s*\*\s*(?:\[([^\]]+)\]\s*[:：]\s*)?([\s\S]*?)\s*\*\s*$/);
+                const dMatch = seg.match(/^\s*\[([^\]]+)\]\s*[:：]\s*([\s\S]*)$/);
+                if (tMatch) {
+                    let sp = tMatch[1] ? tMatch[1].trim() : '';
+                    const matched = findDirectiveByText(sp, tMatch[2]);
+                    if (matched && !sp) sp = matched.character || '';
+                    return { textType: 'thought', speaker: sp, mood: matched ? (matched.mood || '') : '', body: seg };
                 }
-            } else if (dialogueMatch) {
-                textType = 'dialogue';
-                bubbleSpeaker = dialogueMatch[1].trim();
-                segmentBody = dialogueMatch[2];
-                const matched = findDirectiveByText(bubbleSpeaker, dialogueMatch[2]);
-                if (matched) bubbleMood = matched.mood || '';
+                if (dMatch) {
+                    const sp = dMatch[1].trim();
+                    const matched = findDirectiveByText(sp, dMatch[2]);
+                    return { textType: 'dialogue', speaker: sp, mood: matched ? (matched.mood || '') : '', body: dMatch[2] };
+                }
+                return null;
+            };
+            const classified = classifySegment(currentText);
+            if (classified) {
+                textType = classified.textType;
+                bubbleSpeaker = classified.speaker;
+                bubbleMood = classified.mood;
+                segmentBody = classified.body;
             }
             // Single-segment fallback: parseSpeakerPrefix strips the "[名字]：" prefix off
             // a lone segment, so the bubble regex no longer matches. Recover speaker/mood
@@ -876,7 +885,20 @@ export function createIgsReaderHost(options = {}) {
             // segmentIndex (which desyncs once char/thought tags are reformatted into
             // visible bubble lines). Background still follows directive accumulation.
             let spriteChar = bubbleSpeaker;
-            let spriteMood = bubbleMood;
+            spriteMood = bubbleMood;
+            // Narration pages carry no char/thought tag of their own. Walk backwards
+            // through prior segments and inherit the nearest one that classifies as a
+            // char/thought bubble, so the sprite stays consistent across narration runs.
+            if (!spriteChar) {
+                for (let i = normalizedIndex - 1; i >= 0; i--) {
+                    const prev = classifySegment(segments[i]);
+                    if (prev && prev.speaker) {
+                        spriteChar = prev.speaker;
+                        spriteMood = prev.mood;
+                        break;
+                    }
+                }
+            }
             if (!spriteChar && sceneStateForBg && sceneStateForBg.character) {
                 // Fallback for untransformed/legacy paths where the bubble text still
                 // carries the raw tag (no reformatted "[名字]：" line to parse).
@@ -887,7 +909,7 @@ export function createIgsReaderHost(options = {}) {
                 && sceneAssets.characters && sceneAssets.characters[spriteChar]) {
                 const spriteUrls = lookupSceneAssetUrls({ character: spriteChar, mood: spriteMood }, sceneAssets);
                 spriteImage = spriteUrls.spriteUrl || null;
-                if (spriteImage) spriteCharacter = spriteChar;
+                if (spriteImage) { spriteCharacter = spriteChar; }
             }
         }
         const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
@@ -929,6 +951,7 @@ export function createIgsReaderHost(options = {}) {
             content: {
                 speaker: resolvedSpeaker,
                 spriteCharacter,
+                spriteMood,
                 textType,
                 text: currentText,
                 fullText: text,
@@ -1090,6 +1113,7 @@ export function createIgsReaderHost(options = {}) {
                 sceneGroupClass: `igs-settings-section igs-settings-full${disabled ? ' igs-settings-api-group is-disabled' : ''}`,
                 promptRuleField: field('bridge.sceneAssets.promptRule', '注入提示词', `<textarea data-path="bridge.sceneAssets.promptRule" placeholder="格式规则..."${disabled ? ' disabled' : ''}>${esc(sceneAssets.promptRule || '')}</textarea>`),
                 scenePresetBar: scenePresetBarHtml,
+                unifiedSpriteToggle: checkbox('bridge.sceneAssets.unifiedSpriteLayout', sceneAssets.unifiedSpriteLayout, '统一角色立绘位置（各情绪共用一套位置）'),
                 scenesEditor: scenesHtml,
                 charactersEditor: charsHtml,
                 moodGroupsEditor: moodGroupsHtml,
@@ -1432,6 +1456,7 @@ export function createIgsReaderHost(options = {}) {
             normalized.characters = {};
         }
         normalized.moodGroups = normalizeMoodGroups(normalized.moodGroups);
+        normalized.unifiedSpriteLayout = normalizeBoolean(normalized.unifiedSpriteLayout, false);
         return normalized;
     }
 

@@ -116,6 +116,7 @@ const SCENE_TAB_TEMPLATE = `
           <button class="igs-btn-mgr-icon" data-action="scene-add-char" type="button" title="添加角色">+</button>
         </div>
         <div class="igs-source-filter-note">角色名 → 情绪 → 立绘 URL。情绪名为「默认」的条目在无匹配时兜底。</div>
+        <div class="igs-settings-row">{{unifiedSpriteToggle}}</div>
         {{charactersEditor}}
         {{moodGroupsEditor}}
       </div>
