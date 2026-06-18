@@ -74,8 +74,8 @@ export function createExtensionPanel(options = {}) {
                 <label class="checkbox_label"><input type="checkbox" data-igs-entry="magic"${cfg.magic ? ' checked' : ''}> 启用魔法棒入口</label>
                 <label class="checkbox_label"><input type="checkbox" data-igs-entry="qr"${cfg.qr ? ' checked' : ''}> 启用 QR 入口</label>
                 <div class="igs-ext-actions" style="display:flex;gap:8px;margin-top:8px">
-                  <button type="button" class="menu_button" data-igs-ext-act="open-settings">打开设置</button>
-                  <button type="button" class="menu_button" data-igs-ext-act="open-reader">打开阅读器</button>
+                  <button type="button" class="menu_button" data-igs-ext-act="open-settings" style="flex:1;white-space:nowrap">打开设置</button>
+                  <button type="button" class="menu_button" data-igs-ext-act="open-reader" style="flex:1;white-space:nowrap">打开阅读器</button>
                 </div>
               </div>
             </div>

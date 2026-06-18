@@ -1,8 +1,10 @@
 import { getTavernHelper } from './tavern-helper-adapter.js';
 
-// QR（快速回复）入口：用 JS-Slash-Runner 的脚本按钮 API 在 Quick Reply 按钮栏附近渲染一个按钮。
-// 依据：appendInexistentScriptButtons([{name,visible}]) 追加按钮，eventOn(getButtonEvent(name), fn)
-// 监听点击。这些函数挂在 window.TavernHelper 上，仅在脚本运行上下文可用，需做存在性守卫。
+// QR（快速回复）入口：用 JS-Slash-Runner 的脚本按钮 API 在快速回复栏注册一个按钮。
+// 依据：appendInexistentScriptButtons([{name,visible}]) 追加按钮，eventOn(getButtonEvent(name), fn) 监听点击。
+// 这些函数可能挂在 window.TavernHelper、顶层 window 全局，或 SillyTavern context 上，运行时按多源解析。
+const SCRIPT_BUTTON_FNS = ['appendInexistentScriptButtons', 'getButtonEvent', 'eventOn', 'getScriptButtons', 'replaceScriptButtons'];
+
 export function createQrEntry(options = {}) {
     const globalObject = options.global || globalThis.window || globalThis;
     const label = options.label || '沉浸式Galgame系统';
@@ -15,25 +17,41 @@ export function createQrEntry(options = {}) {
 
     return { attach, destroy, isSupported, getState };
 
-    function isSupported() {
+    // 在 TavernHelper / 顶层 window / SillyTavern context 三处查找脚本按钮 API 所在的对象。
+    function resolveApi() {
+        const candidates = [];
         const helper = getTavernHelper(globalObject);
-        return Boolean(
-            helper
-            && typeof helper.appendInexistentScriptButtons === 'function'
-            && typeof helper.getButtonEvent === 'function'
-            && typeof helper.eventOn === 'function',
-        );
+        if (helper) candidates.push(helper);
+        try {
+            const top = globalObject && (globalObject.top || globalObject);
+            if (top) candidates.push(top);
+        } catch (error) { /* ignore */ }
+        if (globalObject) candidates.push(globalObject);
+        try {
+            const ctx = globalObject && globalObject.SillyTavern && typeof globalObject.SillyTavern.getContext === 'function'
+                ? globalObject.SillyTavern.getContext()
+                : null;
+            if (ctx) candidates.push(ctx);
+        } catch (error) { /* ignore */ }
+        for (const obj of candidates) {
+            if (obj && SCRIPT_BUTTON_FNS.slice(0, 3).every((k) => typeof obj[k] === 'function')) {
+                return obj;
+            }
+        }
+        return null;
+    }
+
+    function isSupported() {
+        return Boolean(resolveApi());
     }
 
     function attach() {
         if (attached) return { ok: true, reason: 'already-attached' };
-        const helper = getTavernHelper(globalObject);
-        if (!isSupported()) {
-            return { ok: false, reason: 'qr-script-buttons-unavailable' };
-        }
+        const api = resolveApi();
+        if (!api) return { ok: false, reason: 'qr-script-buttons-unavailable' };
         try {
-            helper.appendInexistentScriptButtons([{ name: label, visible: true }]);
-            const handle = helper.eventOn(helper.getButtonEvent(label), handleClick);
+            api.appendInexistentScriptButtons([{ name: label, visible: true }]);
+            const handle = api.eventOn(api.getButtonEvent(label), handleClick);
             listenerHandle = handle && typeof handle.stop === 'function' ? handle : null;
             attached = true;
             return { ok: true };
@@ -48,11 +66,11 @@ export function createQrEntry(options = {}) {
             try { listenerHandle.stop(); } catch (error) { /* ignore */ }
         }
         listenerHandle = null;
-        const helper = getTavernHelper(globalObject);
-        if (helper && typeof helper.getScriptButtons === 'function' && typeof helper.replaceScriptButtons === 'function') {
+        const api = resolveApi();
+        if (api && typeof api.getScriptButtons === 'function' && typeof api.replaceScriptButtons === 'function') {
             try {
-                const remaining = helper.getScriptButtons().filter((button) => button && button.name !== label);
-                helper.replaceScriptButtons(remaining);
+                const remaining = api.getScriptButtons().filter((button) => button && button.name !== label);
+                api.replaceScriptButtons(remaining);
             } catch (error) { /* ignore */ }
         }
         return { ok: true, reason: 'destroyed' };

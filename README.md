@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.19.0`：入口体系——扩展设置面板新增 IGS 抽屉（启用魔法棒/启用 QR 开关可同时勾选，默认魔法棒；打开设置/打开阅读器快捷按钮）；新增 QR 入口（`qr-entry.js`，用 JS-Slash-Runner 脚本按钮 API 在快速回复栏注册按钮，不可用时回退魔法棒）；入口启用状态由 `bridge.entry={magic,qr}` 驱动。同时把阅读器设置 schema 版本提到 `0.5.2`，使旧 `btnOrder` 失效、套用 v0.18.0 的新工具栏默认顺序（旧阅读显示设置会重置一次）。
+- 当前项目版本 `v0.19.1`：修复启用 QR 后未在脚本按钮栏注册——脚本按钮 API（`appendInexistentScriptButtons`/`getButtonEvent`/`eventOn`）改为在 TavernHelper / 顶层 window / SillyTavern context 多源解析，不再只查 `window.TavernHelper`；扩展面板「打开设置/打开阅读器」按钮改横排不再竖排。
+- `v0.19.0`：入口体系(扩展面板+QR+魔法棒开关)；修复工具栏顺序未生效。
 - `v0.18.0`：刷新改造(正文+图片并行回第一页)；输入框仅末页；状态行居中末页隐藏；工具栏重排加首末页按钮。
 - `v0.17.2`：删组词标题/建槽按钮；修复立绘槽改名无同名检查覆盖丢失。
 - `v0.17.1`：修复立绘情绪槽展开按钮点击无反应（key 分隔符不一致）。
