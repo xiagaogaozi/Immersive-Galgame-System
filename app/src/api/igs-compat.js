@@ -166,6 +166,8 @@ function buildReaderPayload(app, message, messageId, readerMode) {
     const visualNovelText = buildIgsTextPayload(message, {
         sourceFilter: bridge.sourceFilter,
         virtualRegex: bridge.virtualRegex,
+        sceneAssets: bridge.sceneAssets,
+        sentencePaging: bridge.sentencePaging,
     });
     const textScene = parseSceneText(
         visualNovelText.formattedText || visualNovelText.visibleText || visualNovelText.cleanedRaw || '',

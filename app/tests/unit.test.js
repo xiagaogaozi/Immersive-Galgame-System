@@ -263,6 +263,25 @@ test('gate:scene:image-slots:maps-reader-segments-to-slot-indexes', () => {
     assert.deepEqual(payload.segmentImageSlots, [0, 1, 2]);
 });
 
+test('gate:scene:sentence-paging-splits-all-body-by-period-when-scene-assets-off', () => {
+    const source = '今天天气很好。我们一起去图书馆。她笑了。';
+    const off = buildIgsTextPayload({ text: source });
+    const on = buildIgsTextPayload({ text: source }, { sentencePaging: true });
+
+    assert.equal(off.textSegments.length, 1);
+    assert.deepEqual(on.textSegments, ['今天天气很好。', '我们一起去图书馆。', '她笑了。']);
+});
+
+test('gate:scene:sentence-paging-only-splits-narration-when-scene-assets-on', () => {
+    const source = '旁白第一句。旁白第二句。\n[玉子]：你好呀。请坐。';
+    const payload = buildIgsTextPayload({ text: source }, {
+        sentencePaging: true,
+        sceneAssets: { enabled: true },
+    });
+
+    assert.deepEqual(payload.textSegments, ['旁白第一句。', '旁白第二句。', '[玉子]：你好呀。请坐。']);
+});
+
 test('gate:scene:igs-message-source:formats-default-bubble-body', () => {
     const payload = buildIgsTextPayload({
         text: '<content>[igs-char:玉子|开心|欢迎来到图书馆。]</content>',
@@ -1168,6 +1187,38 @@ test('gate:host:tavern-helper-adapter-falls-back-to-sillytavern-context-chat', a
     assert.equal(current.id, 3);
     assert.equal(current.text, '第二条 AI 楼层');
     assert.equal(hidden.isHidden, true);
+});
+
+test('gate:host:tavern-helper-adapter-type-and-send-falls-back-to-host-dom', async () => {
+    const events = [];
+    let sentValue = null;
+    const textarea = {
+        tagName: 'TEXTAREA',
+        value: '',
+        dispatchEvent(event) { events.push(event.type); return true; },
+    };
+    const sendButton = {
+        click() { sentValue = textarea.value; },
+    };
+    const doc = {
+        querySelector(selector) {
+            if (selector === '#send_textarea') return textarea;
+            if (selector === '#send_but') return sendButton;
+            return null;
+        },
+        querySelectorAll: () => [],
+    };
+    const adapter = createTavernHelperAdapter({
+        TavernHelper: { triggerSlash: () => {} },
+        document: doc,
+    });
+
+    const result = await adapter.typeAndSend('选择：继续调查');
+
+    assert.equal(result.ok, true);
+    assert.equal(result.reason, 'host-dom-send');
+    assert.equal(sentValue, '选择：继续调查');
+    assert.ok(events.includes('input'));
 });
 
 function readJson(relativePath) {

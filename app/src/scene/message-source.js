@@ -23,6 +23,8 @@ export const DEFAULT_VIRTUAL_REGEX = Object.freeze({
     replacement: '[$1]：$2',
 });
 
+const SENTENCE_PAGING_TERMINATOR = '。';
+
 const THOUGHT_RE_GLOBAL = /\[igs-thought:([^|\]]+)\|[^|\]]+\|([^\]]+)\]/gm;
 
 const HOST_UI_HTML_MARKERS = Object.freeze([
@@ -208,6 +210,37 @@ export function buildFormattedReaderSource(formattedText, imageSource) {
     return parts.join('\n');
 }
 
+export function applySentencePaging(text, options = {}) {
+    const source = String(text || '');
+    if (!source.trim()) return source;
+    const narrationOnly = Boolean(options.narrationOnly);
+    return source
+        .split('\n')
+        .map((line) => splitSentenceLine(line, narrationOnly))
+        .join('\n');
+}
+
+function splitSentenceLine(line, narrationOnly) {
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+    // 跳过非旁白行：场景素材模式下，对话([名字]：…)和心理活动(*…*)整行保留，
+    // 只在旁白行按句号断页，否则会把对话/心理拆碎、丢失气泡样式和角色名归属。
+    if (narrationOnly && !isNarrationLine(trimmed)) return line;
+    // \x00IMG\x00 是图片占位，不能被句号切断；保护标签/心理/插图块内部的句号。
+    if (/\x00IMG\x00/.test(line) || /image###/i.test(line) || /^\s*\[[^\]]+\]\s*$/.test(trimmed)) return line;
+    return line.replace(
+        new RegExp(`${SENTENCE_PAGING_TERMINATOR}(?!\\s*$)(?![\\s${SENTENCE_PAGING_TERMINATOR}」』”’）)\\]】])`, 'g'),
+        `${SENTENCE_PAGING_TERMINATOR}\n`,
+    );
+}
+
+function isNarrationLine(trimmed) {
+    if (/^\*[\s\S]*\*$/.test(trimmed)) return false;
+    if (/^\[[^\]]+\]\s*[:：]/.test(trimmed)) return false;
+    if (/^[^:：\n]{1,24}\s*[:：]\s*\S/.test(trimmed) && !trimmed.startsWith('@')) return false;
+    return true;
+}
+
 export function buildFormattedTextPipeline(raw, sourceFilter, formatRule, options = {}) {
     const cfg = normalizeSourceFilter(sourceFilter);
     const visibleText = typeof options.visibleText === 'string' ? options.visibleText : '';
@@ -241,6 +274,7 @@ export function buildIgsTextPayload(message, options = {}) {
     const virtualRegex = normalizeVirtualRegex(options.virtualRegex);
     const visibleText = resolveVisibleText(message, options.visibleText);
     const sceneAssetsEnabled = Boolean(options.sceneAssets && options.sceneAssets.enabled);
+    const sentencePagingEnabled = Boolean(options.sentencePaging);
     const strictPayload = buildFormattedTextPipeline(raw, sourceFilter, virtualRegex, { visibleText, sceneAssetsEnabled });
     const cleanedRaw = normalizeWhitespace(cleanNarrativeSource(raw));
     const warnings = [];
@@ -294,9 +328,12 @@ export function buildIgsTextPayload(message, options = {}) {
         cleanedRaw,
         String(raw || '').trim(),
     ), readerScene.speaker);
-    const textSegments = buildNarrativeSegments(readerText);
+    const pagedReaderText = sentencePagingEnabled
+        ? applySentencePaging(readerText, { narrationOnly: sceneAssetsEnabled })
+        : readerText;
+    const textSegments = buildNarrativeSegments(pagedReaderText);
     const imageSlots = parseImageSlots(raw, strictPayload.imageSource, sourceFilter);
-    const segmentImageSlots = readerText
+    const segmentImageSlots = pagedReaderText
         ? buildSegmentImageMap(raw, textSegments, imageSlots, { sceneAssetsMode: sceneAssetsEnabled })
         : [];
 

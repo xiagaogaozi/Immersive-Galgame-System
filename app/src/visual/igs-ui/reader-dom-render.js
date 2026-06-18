@@ -365,6 +365,17 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         textEl.innerHTML = renderDialogueHtml(snapshot.content.displayText, theme, sceneAssetsEnabled);
         textEl.style.fontSize = `${snapshot.readerSettings.fontSize}px`;
         textEl.style.lineHeight = computeLineHeight(snapshot.readerSettings.fontSize);
+        // 角色名/分割线在场景素材模式才显示。气泡首行上方有 (line-height-1)*fontSize/2
+        // 的行内留白，靠 margin 压不掉，所以这里按字号算出该留白并用负 margin-top 抵消，
+        // 让「角色名→气泡」贴近「角色名→分割线」的小间距。无角色名时不偏移。
+        if (sceneAssetsEnabled && snapshot.content.speaker) {
+            const fontSize = Number(snapshot.readerSettings.fontSize) || 18;
+            const lineHeight = Number(computeLineHeight(fontSize)) || 1.7;
+            const halfLeading = Math.max(0, (lineHeight - 1) * fontSize / 2);
+            textEl.style.marginTop = `-${halfLeading.toFixed(1)}px`;
+        } else {
+            textEl.style.marginTop = '';
+        }
         const isNarration = textType === 'narration';
         const segFont = isNarration ? theme.narrationFont : theme.textFont;
         const segColor = isNarration ? theme.narrationColor : theme.textColor;

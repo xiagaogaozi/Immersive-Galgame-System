@@ -71,8 +71,7 @@
         "readerSettings.imageCountOverride",
         "readerSettings.inputScale",
         "readerSettings.toolbarScale",
-        "readerSettings.imgMode",
-        "readerSettings.stayMode"
+        "readerSettings.imgMode"
       ]
     }
   ],

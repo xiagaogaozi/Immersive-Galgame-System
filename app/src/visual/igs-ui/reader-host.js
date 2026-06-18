@@ -154,6 +154,7 @@ export function createIgsReaderHost(options = {}) {
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
+        readerSettings._sentencePaging = Boolean(unified.bridge.sentencePaging);
         readerSettings._vnTheme = unified.bridge.vnTheme || null;
         const snapshot = buildReaderSnapshot(
             payload,
@@ -564,6 +565,7 @@ export function createIgsReaderHost(options = {}) {
         state.activeReader.mode = nextMode;
         const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
+        readerSettings._sentencePaging = Boolean(unified.bridge.sentencePaging);
         readerSettings._vnTheme = unified.bridge.vnTheme || null;
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, nextMode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
@@ -747,6 +749,7 @@ export function createIgsReaderHost(options = {}) {
             virtualRegex: payload.virtualRegex,
             visibleText: payload.visibleText,
             sceneAssets: readerSettings._sceneAssets,
+            sentencePaging: readerSettings._sentencePaging,
         });
         const text = firstRenderableText(
             scene.text,
@@ -1149,8 +1152,8 @@ export function createIgsReaderHost(options = {}) {
             inputScaleField: field('readerSettings.inputScale', '输入框高度', selectInput('readerSettings.inputScale', reader.inputScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             toolbarScaleField: field('readerSettings.toolbarScale', '工具栏大小', selectInput('readerSettings.toolbarScale', reader.toolbarScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
-            readerToggles: checkbox('readerSettings.stayMode', reader.stayMode, '留在当前模式')
-                + checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行'),
+            readerToggles: checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行')
+                + checkbox('bridge.sentencePaging', Boolean(bridge.sentencePaging), '按句号自动分页（启用场景素材时仅分旁白）'),
             pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns, reader.btnOrder),
         });
     }
@@ -1428,6 +1431,7 @@ export function createIgsReaderHost(options = {}) {
         normalized.debug = normalizeBoolean(normalized.debug, false);
         normalized.sourceFilter = normalizeSourceFilter(normalized.sourceFilter);
         normalized.virtualRegex = normalizeVirtualRegex(normalized.virtualRegex);
+        normalized.sentencePaging = normalizeBoolean(normalized.sentencePaging, false);
         normalized.imageApi = normalizeImageApi(normalized.imageApi);
         normalized.sceneAssets = normalizeSceneAssets(normalized.sceneAssets);
         normalized.vnTheme = normalizeVnTheme(normalized.vnTheme);
@@ -1498,7 +1502,6 @@ export function createIgsReaderHost(options = {}) {
             toolbarScale: inlineMode ? 60 : 100,
             inputScale: inlineMode ? 60 : 100,
             imgMode: 'adaptive',
-            stayMode: false,
             showStatusLine: false,
             imageCountOverride: null,
             pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
@@ -1514,7 +1517,6 @@ export function createIgsReaderHost(options = {}) {
         normalized.toolbarScale = normalizeFiniteNumber(normalized.toolbarScale, base.toolbarScale);
         normalized.inputScale = normalizeFiniteNumber(normalized.inputScale, base.inputScale);
         normalized.imgMode = normalized.imgMode === 'contain' ? 'contain' : 'adaptive';
-        normalized.stayMode = normalizeBoolean(normalized.stayMode, false);
         normalized.showStatusLine = normalizeBoolean(normalized.showStatusLine, false);
         normalized.imageCountOverride = normalizeNullableNumber(normalized.imageCountOverride);
         normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);
@@ -1589,6 +1591,7 @@ export function createIgsReaderHost(options = {}) {
         const refreshed = resolveBridgeConfigSnapshot({ mode });
         const readerSettings = normalizeReaderSettings(mode, refreshed.readerSettings);
         readerSettings._sceneAssets = refreshed.bridge.sceneAssets || null;
+        readerSettings._sentencePaging = Boolean(refreshed.bridge.sentencePaging);
         state.activeReader.snapshot = buildReaderSnapshot(state.activeReader.payload, mode, readerSettings, state.activeReader.index);
         updateMountedReader(state.activeReader.snapshot);
     }

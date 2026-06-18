@@ -82,19 +82,84 @@ export function createTavernHelperAdapter(globalObject = globalThis.window || gl
 
         async typeAndSend(text) {
             const helper = getTavernHelper(globalObject);
-            if (!helper) return { ok: false, reason: 'missing-tavern-helper' };
-            if (typeof helper.typeAndSend === 'function') {
+            if (helper && typeof helper.typeAndSend === 'function') {
                 await helper.typeAndSend(text);
                 return { ok: true };
             }
-            if (typeof helper.setInputText === 'function' && typeof helper.send === 'function') {
+            if (helper && typeof helper.setInputText === 'function' && typeof helper.send === 'function') {
                 await helper.setInputText(text);
                 await helper.send();
                 return { ok: true };
             }
-            return { ok: false, reason: 'missing-send-api' };
+            const domResult = sendViaHostDom(globalObject, text);
+            if (domResult.ok) return domResult;
+            if (!helper) return { ok: false, reason: 'missing-tavern-helper' };
+            return { ok: false, reason: domResult.reason || 'missing-send-api' };
         },
     };
+}
+
+function sendViaHostDom(globalObject, text) {
+    const value = String(text == null ? '' : text);
+    for (const doc of getCandidateDocuments(globalObject)) {
+        const textarea = safeQuery(doc, '#send_textarea');
+        const button = safeQuery(doc, '#send_but');
+        if (!textarea || !button) continue;
+        try {
+            const setter = resolveNativeValueSetter(textarea, doc);
+            if (setter) {
+                setter.call(textarea, value);
+            } else {
+                textarea.value = value;
+            }
+            dispatchInputEvents(textarea, doc);
+            button.click();
+            return { ok: true, reason: 'host-dom-send' };
+        } catch (error) {
+            return { ok: false, reason: 'host-dom-send-failed' };
+        }
+    }
+    return { ok: false, reason: 'missing-host-dom-send' };
+}
+
+function resolveNativeValueSetter(element, doc) {
+    const view = (doc && doc.defaultView) || globalThis.window || globalThis;
+    const proto = element && typeof element.tagName === 'string' && element.tagName.toLowerCase() === 'textarea'
+        ? view.HTMLTextAreaElement && view.HTMLTextAreaElement.prototype
+        : view.HTMLInputElement && view.HTMLInputElement.prototype;
+    const descriptor = proto && Object.getOwnPropertyDescriptor(proto, 'value');
+    return descriptor && typeof descriptor.set === 'function' ? descriptor.set : null;
+}
+
+function dispatchInputEvents(element, doc) {
+    if (!element || typeof element.dispatchEvent !== 'function') return;
+    const view = (doc && doc.defaultView) || globalThis.window || globalThis;
+    const EventCtor = view && view.Event || globalThis.Event;
+    for (const type of ['input', 'change']) {
+        try {
+            if (typeof EventCtor === 'function') {
+                element.dispatchEvent(new EventCtor(type, { bubbles: true }));
+                continue;
+            }
+        } catch (error) {
+            // Fall back to plain-object dispatch for fake documents.
+        }
+        try {
+            element.dispatchEvent({ type, bubbles: true });
+        } catch (error) {
+            // Ignore dispatch failures from host shims.
+        }
+    }
+}
+
+function safeQuery(root, selector) {
+    try {
+        return root && typeof root.querySelector === 'function'
+            ? root.querySelector(selector)
+            : null;
+    } catch (error) {
+        return null;
+    }
 }
 
 export function getTavernHelper(globalObject = globalThis.window || globalThis) {
