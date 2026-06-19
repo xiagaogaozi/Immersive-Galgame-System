@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { createInputChannel } from '../src/host/input-channel.js';
 import { createPresetRegistry } from '../src/presets/preset-registry.js';
+import { findOptionTable, extractOptionTexts, readOptionItems, OPTION_TABLE_NAMES } from '../src/choices/option-table.js';
 import {
     buildIgsTextPayload,
     cleanNarrativeSource,
@@ -1583,4 +1584,34 @@ test('gate:generated-images:chami-provider-falls-back-to-dom-when-db-unavailable
     const images = await chamiProvider.extractImages({ roots: [root], global: {}, scopePolicy: {} });
     assert.ok(Array.isArray(images));
     assert.equal(images.length, 0);
+});
+
+test('gate:choices:option-table finds 同名表 and extracts text column', () => {
+    const tables = [
+        { uid: 'sheet_1', name: '主角信息表', columns: ['row_id', '名称'], rows: [['1', '望月']] },
+        { uid: 'sheet_2', name: '选项表', columns: ['row_id', '选项内容'], rows: [['1', '报警'], ['2', '找工具'], ['3', '报警'], ['4', '']] },
+    ];
+    const table = findOptionTable(tables);
+    assert.ok(table);
+    assert.equal(table.name, '选项表');
+    const items = extractOptionTexts(table);
+    // 跳过 row_id 列、去空、去重（两个"报警"只保留一个）
+    assert.deepEqual(items, ['报警', '找工具']);
+});
+
+test('gate:choices:option-table accepts 选项/行动选项 aliases', () => {
+    assert.deepEqual(OPTION_TABLE_NAMES, ['选项', '选项表', '行动选项']);
+    for (const name of ['选项', '行动选项']) {
+        const t = findOptionTable([{ uid: 'sheet_1', name, columns: ['row_id', 'x'], rows: [['1', 'A']] }]);
+        assert.ok(t, `应命中表名 ${name}`);
+    }
+    assert.equal(findOptionTable([{ uid: 'sheet_1', name: '其他表', columns: [], rows: [] }]), null);
+});
+
+test('gate:choices:readOptionItems returns empty when api/table missing', () => {
+    assert.deepEqual(readOptionItems(null), []);
+    const noApiClient = { readTables: () => ({ ok: false, reason: 'missing-api' }) };
+    assert.deepEqual(readOptionItems(noApiClient), []);
+    const noTableClient = { readTables: () => ({ ok: true, data: { sheet_1: { uid: 'sheet_1', name: '别的表', content: [['row_id']] } } }) };
+    assert.deepEqual(readOptionItems(noTableClient), []);
 });

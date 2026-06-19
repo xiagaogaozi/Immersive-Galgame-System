@@ -77,6 +77,14 @@ const READER_TAB_TEMPLATE = `
   {{toolbarScaleField}}
   {{imgModeField}}
   <div class="igs-settings-section">{{readerToggles}}</div>
+  <div class="igs-source-filter igs-settings-full">
+    <div>
+      <div class="igs-source-filter-title">选项气泡</div>
+      <div class="igs-source-filter-note">在最后一页点击对话框空白处显示选项（取自数据库「选项 / 选项表 / 行动选项」表的文本列），再点空白处隐藏。需安装数据库插件。</div>
+    </div>
+    <div class="igs-settings-row">{{optionBubbleToggle}}</div>
+    <div class="igs-settings-row">{{optionBubblePositionField}}{{optionBubbleActionField}}</div>
+  </div>
   <div class="igs-settings-section igs-settings-full">{{pinnedButtonsField}}</div>
   <div class="{{themeGroupClass}}">
     <div>

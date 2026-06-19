@@ -298,13 +298,14 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
             const viewportWidth = Number(win && win.innerWidth) || readerSettings.dialogWidth;
             dialog.style.width = `${Math.max(260, Math.min(readerSettings.dialogWidth, Math.max(260, viewportWidth - 8)))}px`;
         }
-        dialog.style.background = `rgba(20,20,22,${normalizeOpacity(readerSettings.glassOpacity, .62)})`;
+        dialog.style.background = `rgba(20,20,22,${normalizeOpacity(readerSettings.glassOpacity, .12)})`;
     }
 
     if (toolbar) {
         toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
         toolbar.style.transformOrigin = 'right bottom';
-        toolbar.style.background = `rgba(20,20,22,${Math.max(0, normalizeOpacity(readerSettings.glassOpacity, .62) - 0.07)})`;
+        // 工具栏/对话框/数据库面板统一用 glassOpacity，对齐通透质感（默认低 alpha）。
+        toolbar.style.background = `rgba(20,20,22,${normalizeOpacity(readerSettings.glassOpacity, .12)})`;
     }
 
     if (controls) {
@@ -508,6 +509,8 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
                 if (typeof ctx.closeSettings === 'function') ctx.closeSettings();
                 return;
             }
+            // 最后一页且启用选项气泡时，点击空白处切换气泡显隐（消费本次点击，不翻页）。
+            if (typeof ctx.handleBlankClick === 'function' && ctx.handleBlankClick()) return;
             if (typeof ctx.handleReaderAction === 'function') ctx.handleReaderAction('next');
         });
     }

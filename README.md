@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.22.8`：修复数据库面板四个问题（Playwright 真机验证）。①标签栏溢出后电脑/手机都无法滚动、看不到后面的标签：加标签栏拖动滚动（pointer 事件，鼠标按住拖+手机触摸拖，拖动后抑制误触发切换），保持单行不折行、滚动条隐藏。②行数>8 时看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（body 的实际 flex 父级）无 flex 样式，table 把它撑破溢出面板、`flex:1+min-height:0` 失去高度约束；现给 inner 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器、表头 sticky 钉住（背景调至不透明防透色），去掉多余 table-wrap 层、横向滚动条隐藏。③新增行后空格子无法编辑：真因是 `data-db-edit` 挂在内层 span 上，空 span `display:-webkit-box` 无内容时塌缩成 0×0 无点击区；现移到 `<td>`（有 padding/列宽，空格子也可点）。④对话框+数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 由 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`，透明度仍由「毛玻璃浓度」可调。新增 DB 面板渲染回归单测。
+- 当前项目版本 `v0.22.9`：①毛玻璃真正对齐工具栏通透感——v0.22.8 只统一了 blur，但通透由背景 alpha 决定（工具栏 0.12 vs 对话框/数据库 0.62）；现对话框/数据库/工具栏/选项气泡统一用 glassOpacity 且默认值 0.62→0.12，「毛玻璃浓度」滑块保留可调；正文/角色名加重文字阴影补偿通透背景下的可读性。②新增「选项气泡」功能：阅读器 tab 新增设置卡片（启用开关 + 气泡位置滑块[左上角/正上方居中] + 点击行为滑块[自动发送/填入输入框]）；选项取自数据库中名为「选项/选项表/行动选项」的同名表的文本列（参考骰子系统机制，复用 shujuku client）；仅在最后一页点击对话框空白处显示气泡、再点空白隐藏（不加工具栏按钮），翻页/新回复自动收起；点击选项按设置走发送或填入（发送经输入框，不绕过，保剧情推进）。Playwright 真机验证气泡定位与毛玻璃对齐。
+- `v0.22.8`：修复数据库面板四个问题（Playwright 真机验证）。①标签栏溢出后电脑/手机都无法滚动、看不到后面的标签：加标签栏拖动滚动（pointer 事件，鼠标按住拖+手机触摸拖，拖动后抑制误触发切换），保持单行不折行、滚动条隐藏。②行数>8 时看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（body 的实际 flex 父级）无 flex 样式，table 把它撑破溢出面板、`flex:1+min-height:0` 失去高度约束；现给 inner 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器、表头 sticky 钉住（背景调至不透明防透色），去掉多余 table-wrap 层、横向滚动条隐藏。③新增行后空格子无法编辑：真因是 `data-db-edit` 挂在内层 span 上，空 span `display:-webkit-box` 无内容时塌缩成 0×0 无点击区；现移到 `<td>`（有 padding/列宽，空格子也可点）。④对话框+数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 由 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`，透明度仍由「毛玻璃浓度」可调。新增 DB 面板渲染回归单测。
 - `v0.22.7`：修复 v0.22.6 矫枉过正——上一版 floating（pc/mobile）模式直接忽略「对话框高度」，导致 PC/手机端怎么调都无效。现 floating 模式下 dialogHeight 改用 `.igs-dialog` 的 `min-height`（把气泡撑到目标高度，内容更多时自然增长）+ `max-height` clamp 到浮窗可用高度（约 86%），不再写死 `height`（固定 height 比内容小时会把输入框挤出气泡）。Playwright 真机验证：dialogHeight 60→600 气泡高度跟随、输入框恒在气泡内不溢出、气泡始终在视口内。
 - `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text`；v0.22.6 改为忽略 dialogHeight（v0.22.7 修正为改气泡 min-height）。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
 - `v0.22.5`：修复移动端阅读器被压成一小块（立绘/输入框看似溢出的真因）——宿主移动端 body 为 position:fixed 且尺寸受限，成为 `#igs-overlay` 的 fixed 包含块，`width/height:100%` 取到 body 尺寸而非视口；现 overlay 改挂 documentElement、尺寸用 `100vw/100vh`（保留 100dvh 兜底）。顺带清理 igs-compat / reader-state 两处老桶残留读取，统一回退 default 桶。
@@ -165,6 +166,16 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.22.9 - 2026-06-20
+
+- 毛玻璃真正对齐工具栏：v0.22.8 仅统一了 `backdrop-filter` 的 blur，但通透感由背景层 alpha 决定——工具栏 0.12、对话框/数据库被 glassOpacity 覆盖成 0.62，所以仍显厚重。现对话框 `.igs-dialog`、数据库 `#igs-db-panel`、工具栏 `.igs-ctrl-bar`、选项气泡统一用 glassOpacity 驱动背景，默认值 0.62→0.12（去掉工具栏原 `-0.07` 偏移）；「毛玻璃浓度」滑块保留，想调厚仍可调。`.igs-text`/`.igs-speaker` 加重文字阴影，补偿通透背景下的正文可读性。
+- 新增「选项气泡」功能：
+  - 设置：阅读器 tab 新增「选项气泡」卡片——启用开关、气泡位置（滑块：左上角 / 正上方居中）、点击行为（滑块：自动发送 / 填入输入框）。配置存于 bridge config（全模式共用）。
+  - 数据源：`app/src/choices/option-table.js` 从数据库读名为「选项 / 选项表 / 行动选项」的同名表，取首个非 row_id 列的文本（去空去重）作为选项。参考骰子系统的同名表机制，复用 `createShujukuClient` + `parseTables`。
+  - 交互：仅在最后一页点击对话框空白处显示气泡，再点空白隐藏（不加工具栏按钮）；翻页离开最后一页 / 新回复重渲染时自动收起。点击选项按设置「自动发送」（经 `submitReaderInput` 走输入框→发送，不绕过，保 shujuku 剧情推进）或「填入输入框」（写 `#igs-input` 不发送）。数据库不可用 / 无同名表时静默不弹并提示。
+  - 气泡毛玻璃与工具栏一致（`rgba(20,20,22,.12)` + `blur(48px) saturate(220%)`），位置浮于对话框正上方（CSS 变量 `--igs-dialog-h` 跟随对话框实际高度）。
+- Playwright 真机验证：气泡左上/居中定位、浮于对话框上方且不溢出视口、毛玻璃参数与工具栏一致。新增选项表数据提取与别名/空表兜底单测。
 
 ### v0.22.8 - 2026-06-20
 

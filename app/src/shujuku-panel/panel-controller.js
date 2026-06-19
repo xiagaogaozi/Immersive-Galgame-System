@@ -74,7 +74,7 @@ export function createDbPanelController(doc, global) {
 
         // apply glassOpacity from reader settings (drives panel bg + sticky header bg)
         const opacity = readerSettings && typeof readerSettings.glassOpacity === 'number'
-            ? readerSettings.glassOpacity : 0.62;
+            ? readerSettings.glassOpacity : 0.12;
         root.style.setProperty('--igs-db-bg', `rgba(20,20,22,${opacity})`);
         // sticky 表头需足够不透明，否则滚动时下方行会透过表头；在面板浓度之上叠到至少 0.92。
         root.style.setProperty('--igs-db-head-bg', `rgba(24,24,27,${Math.max(0.92, opacity)})`);

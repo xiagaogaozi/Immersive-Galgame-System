@@ -97,6 +97,8 @@ import {
 import { clearReaderModeRuntime, exitDocumentFullscreen } from './reader-runtime.js';
 import { enterSpriteEditMode } from './sprite-edit.js';
 import { createDbPanelController } from '../../shujuku-panel/panel-controller.js';
+import { createShujukuClient } from '../../data/shujuku/client.js';
+import { readOptionItems } from '../../choices/option-table.js';
 import { handleSettingsAction as runSettingsAction } from './settings-actions.js';
 import { loadScenePresets } from '../../scene/scene-preset-store.js';
 import { LEGACY_READER_MODES } from '../../storage/legacy-igs.js';
@@ -393,6 +395,85 @@ export function createIgsReaderHost(options = {}) {
             text: nextText,
             result,
         };
+    }
+
+    function getOptionBubbleConfig() {
+        const bridge = state.config && state.config.bridge ? state.config.bridge : {};
+        const ob = bridge.optionBubble && typeof bridge.optionBubble === 'object' ? bridge.optionBubble : {};
+        return {
+            enabled: ob.enabled === true,
+            position: ob.position === 'top-center' ? 'top-center' : 'top-left',
+            clickAction: ob.clickAction === 'fill' ? 'fill' : 'send',
+        };
+    }
+
+    function isReaderLastPage(snapshot) {
+        const segs = snapshot && snapshot.content && Array.isArray(snapshot.content.segments)
+            ? snapshot.content.segments.length : 0;
+        const idx = snapshot && snapshot.content ? Number(snapshot.content.currentIndex) : 0;
+        return segs <= 0 || idx >= segs - 1;
+    }
+
+    function handleOptionBubbleBlankClick(current, snapshot) {
+        const cfg = getOptionBubbleConfig();
+        if (!cfg.enabled || !isReaderLastPage(snapshot)) return false;
+        const overlay = current && current.dom && current.dom.overlay;
+        const container = overlay && overlay.querySelector ? overlay.querySelector('#igs-option-bubbles') : null;
+        if (!container) return false;
+        if (!container.hasAttribute('hidden')) {
+            hideOptionBubbles(container);
+            return true;
+        }
+        showOptionBubbles(container, cfg);
+        return true;
+    }
+
+    function hideOptionBubbles(container) {
+        if (!container) return;
+        container.setAttribute('hidden', '');
+        clearChildren(container);
+    }
+
+    function showOptionBubbles(container, cfg) {
+        const doc = container.ownerDocument || getRootDocument(options.global);
+        const api = (options.global || globalThis).AutoCardUpdaterAPI || null;
+        const items = readOptionItems(createShujukuClient(api));
+        if (!items.length) {
+            hideOptionBubbles(container);
+            writeToastSafe('未找到选项表（选项 / 选项表 / 行动选项）或表为空');
+            return;
+        }
+        container.setAttribute('data-igs-pos', cfg.position);
+        clearChildren(container);
+        for (const text of items) {
+            const bubble = doc.createElement('button');
+            bubble.type = 'button';
+            bubble.className = 'igs-option-bubble';
+            bubble.textContent = text;
+            bubble.addEventListener('click', (event) => {
+                if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+                onOptionBubbleClick(container, text, cfg);
+            });
+            container.appendChild(bubble);
+        }
+        container.removeAttribute('hidden');
+    }
+
+    async function onOptionBubbleClick(container, text, cfg) {
+        hideOptionBubbles(container);
+        if (cfg.clickAction === 'fill') {
+            if (state.activeReader) {
+                state.activeReader.inputValue = text;
+                const input = state.activeReader.dom && state.activeReader.dom.input;
+                if (input) { input.value = text; if (typeof input.focus === 'function') input.focus(); }
+            }
+            return;
+        }
+        await submitReaderInput(text);
+    }
+
+    function writeToastSafe(message) {
+        try { if (state.activeReader) writeToast(message); } catch (error) { /* ignore */ }
     }
 
     function updateSettingsValue(path, value) {
@@ -1198,6 +1279,9 @@ export function createIgsReaderHost(options = {}) {
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
             readerToggles: checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行')
                 + checkbox('bridge.sentencePaging', Boolean(bridge.sentencePaging), '按句号自动分页（启用场景素材时仅分旁白）'),
+            optionBubbleToggle: checkbox('bridge.optionBubble.enabled', Boolean(bridge.optionBubble && bridge.optionBubble.enabled), '启用选项气泡'),
+            optionBubblePositionField: field('bridge.optionBubble.position', '气泡位置', segmentedInput('bridge.optionBubble.position', (bridge.optionBubble && bridge.optionBubble.position) || 'top-left', [['top-left', '左上角'], ['top-center', '正上方居中']], '气泡位置')),
+            optionBubbleActionField: field('bridge.optionBubble.clickAction', '点击选项', segmentedInput('bridge.optionBubble.clickAction', (bridge.optionBubble && bridge.optionBubble.clickAction) || 'send', [['send', '自动发送'], ['fill', '填入输入框']], '点击行为')),
             pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns, reader.btnOrder),
             themeGroupClass: `igs-source-filter igs-settings-full${themeDisabled ? ' igs-settings-api-group is-disabled' : ''}`,
             themePresetField: field('readerSettings.vnTheme.preset', '对话主题', selectInput('readerSettings.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], themeDisabled)),
@@ -1432,9 +1516,28 @@ export function createIgsReaderHost(options = {}) {
             hasActiveSettings: () => Boolean(state.activeSettings),
             closeSettings,
             handleReaderAction,
+            handleBlankClick: () => handleOptionBubbleBlankClick(current, snapshot),
             isActiveReader: (reader) => state.activeReader === reader,
             closeReader,
         });
+        syncOptionBubblesAfterRender(current, snapshot);
+    }
+
+    function syncOptionBubblesAfterRender(current, snapshot) {
+        const overlay = current && current.dom && current.dom.overlay;
+        if (!overlay || !overlay.querySelector) return;
+        const container = overlay.querySelector('#igs-option-bubbles');
+        if (!container) return;
+        // 翻页离开最后一页 / 重渲染（如新回复到来）一律收起气泡，避免错页残留。
+        if (!getOptionBubbleConfig().enabled || !isReaderLastPage(snapshot)) {
+            hideOptionBubbles(container);
+        }
+        // 把对话框实际高度写入 CSS 变量，供气泡定位在对话框正上方。
+        const dialog = overlay.querySelector('#igs-dialog');
+        if (dialog && typeof dialog.getBoundingClientRect === 'function') {
+            const h = Math.round(dialog.getBoundingClientRect().height || 0);
+            if (h > 0) overlay.style.setProperty('--igs-dialog-h', `${h}px`);
+        }
     }
 
     function hydrateReaderMount(container, snapshot) {
@@ -1517,7 +1620,17 @@ export function createIgsReaderHost(options = {}) {
         normalized.sceneAssets = normalizeSceneAssets(normalized.sceneAssets);
         normalized.vnTheme = normalizeVnTheme(normalized.vnTheme);
         normalized.entry = normalizeEntryConfig(normalized.entry);
+        normalized.optionBubble = normalizeOptionBubble(normalized.optionBubble);
         return normalized;
+    }
+
+    function normalizeOptionBubble(value) {
+        const src = value && typeof value === 'object' ? value : {};
+        return {
+            enabled: normalizeBoolean(src.enabled, false),
+            position: src.position === 'top-center' ? 'top-center' : 'top-left',
+            clickAction: src.clickAction === 'fill' ? 'fill' : 'send',
+        };
     }
 
     function normalizeEntryConfig(value) {
@@ -1625,7 +1738,7 @@ export function createIgsReaderHost(options = {}) {
             fontSize: 18,
             dialogWidth: null,
             dialogHeight: null,
-            glassOpacity: 0.62,
+            glassOpacity: 0.12,
             toolbarScale: 100,
             inputScale: 100,
             imgMode: 'adaptive',

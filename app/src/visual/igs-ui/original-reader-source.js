@@ -48,7 +48,17 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-sprite-edit-bar button:hover{background:rgba(255,255,255,.22);}
 #igs-sprite-edit-bar .igs-se-save{background:rgba(92,170,255,.25);border-color:rgba(92,170,255,.5);}
 #igs-click-layer{position:absolute;inset:0;cursor:pointer;z-index:3;}
-.igs-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.62);border:1px solid rgba(255,255,255,.14);-webkit-backdrop-filter:blur(48px) saturate(220%);backdrop-filter:blur(48px) saturate(220%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
+#igs-option-bubbles{position:absolute;z-index:6;display:flex;flex-direction:column;gap:8px;max-width:min(70%,420px);max-height:60%;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;pointer-events:auto;}
+#igs-option-bubbles::-webkit-scrollbar{display:none;}
+#igs-option-bubbles[hidden]{display:none;}
+#igs-option-bubbles[data-igs-pos="top-left"]{left:16px;bottom:calc(24px + var(--igs-dialog-h,220px) + 12px);align-items:flex-start;}
+#igs-option-bubbles[data-igs-pos="top-center"]{left:50%;transform:translateX(-50%);bottom:calc(24px + var(--igs-dialog-h,220px) + 12px);align-items:center;}
+#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-left"]{left:12px;bottom:calc(14px + var(--igs-dialog-h,220px) + 10px);}
+#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-center"]{bottom:calc(14px + var(--igs-dialog-h,220px) + 10px);}
+.igs-option-bubble{pointer-events:auto;cursor:pointer;border:1px solid rgba(255,255,255,.14);background:rgba(20,20,22,.12);-webkit-backdrop-filter:blur(48px) saturate(220%);backdrop-filter:blur(48px) saturate(220%);border-radius:16px;padding:10px 16px;color:#f4f4f6;font-size:14px;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.92),0 0 8px rgba(0,0,0,.7);box-shadow:0 4px 24px rgba(0,0,0,.28);max-width:100%;word-break:break-word;transition:background .15s,transform .1s;}
+.igs-option-bubble:hover{background:rgba(60,60,66,.32);}
+.igs-option-bubble:active{transform:scale(.97);}
+.igs-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.12);border:1px solid rgba(255,255,255,.14);-webkit-backdrop-filter:blur(48px) saturate(220%);backdrop-filter:blur(48px) saturate(220%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
 .igs-dialog.igs-hidden{opacity:0;transform:translateX(-50%) translateY(20px);pointer-events:none;}
 #igs-overlay.igs-floating #igs-click-layer{cursor:grab;touch-action:none;}
 #igs-overlay.igs-floating.is-dragging #igs-click-layer{cursor:grabbing;}
@@ -62,10 +72,10 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-bar-pinned{display:flex;gap:6px;align-items:center;}
 .igs-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:0;letter-spacing:1px;}
 .igs-status-line{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1px;margin:2px 0 8px;text-align:center;display:none;}
-.igs-speaker{font-size:14px;font-weight:600;letter-spacing:1px;margin-top:0;margin-bottom:4px;display:none;}
+.igs-speaker{font-size:14px;font-weight:600;letter-spacing:1px;margin-top:0;margin-bottom:4px;display:none;text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 6px rgba(0,0,0,.6);}
 .igs-divider{font-size:11px;letter-spacing:4px;text-align:center;margin-bottom:4px;opacity:.6;display:none;}
 .igs-thought{font-style:italic;opacity:.72;}
-.igs-text{font-size:18px;line-height:1.7;letter-spacing:.5px;min-height:60px;color:#f4f4f6;text-shadow:0 1px 2px rgba(0,0,0,.6);margin-bottom:14px;margin-top:0;white-space:pre-wrap;word-break:break-word;}
+.igs-text{font-size:18px;line-height:1.7;letter-spacing:.5px;min-height:60px;color:#f4f4f6;text-shadow:0 1px 3px rgba(0,0,0,.92),0 0 8px rgba(0,0,0,.7);margin-bottom:14px;margin-top:0;white-space:pre-wrap;word-break:break-word;}
 .igs-controls{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
 #igs-overlay.igs-floating .igs-progress{flex-shrink:0;}
 #igs-overlay.igs-floating .igs-text{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;}
@@ -93,6 +103,7 @@ const ORIGINAL_READER_HTML = `
 <div id="igs-bg"></div>
 <div id="igs-sprite"></div>
 <div id="igs-click-layer"></div>
+<div id="igs-option-bubbles" data-igs-pos="top-left" hidden></div>
 <div class="igs-dialog" id="igs-dialog">
   <div class="igs-ctrl-bar" id="igs-ctrl-bar">
     <div id="igs-bar-btns">
