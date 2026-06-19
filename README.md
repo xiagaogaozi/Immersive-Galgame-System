@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.21.1`：修复3个bug——词库同名检测删词失效（findSceneWord 漏传 word 字段）；背景场景/角色立绘重命名后展开状态折叠（Set 未同步旧 key）；重命名后条目位置移到底部（改用 reorderKey 原位重建对象）。
+- 当前项目版本 `v0.21.2`：背景场景词库架构重设计——时间/天气词库改为全局组（timeGroups/weatherGroups，对齐立绘 moodGroups）；新增时间/天气时 prompt 输入名称并自动建组；重命名时间/天气全局同步所有场景/时间层；词重复检测分层（bg/time/weather 各自池）；场景/时间/天气列表加层级小标题；天气 words 去除嵌入式，迁移到全局 weatherGroups；旧数据自动迁移。
+- `v0.21.1`：修复3个bug——词库同名检测删词失效（findSceneWord 漏传 word 字段）；背景场景/角色立绘重命名后展开状态折叠（Set 未同步旧 key）；重命名后条目位置移到底部（改用 reorderKey 原位重建对象）。
 - `v0.21.0`：背景场景词库+预览图——场景名/时间/天气三层均新增展开折叠（▼/▲）、词库 tag（带 × 删除/+ 添加/跨层全局重复词 confirm 迁移）、预览缩略图；三层组名同名改名阻止；天气条目从字符串升级为 object（向后兼容）；提示词注入新增场景/时间/天气三条约束（空间限定、笼统时段、天气类型词）。
 - `v0.20.4`：修复 floating 模式下对话框高度≥160px 分割线消失（speaker/divider 加 `flex-shrink:0`）；「应用到模式」独立桶——「默认」现有专属存储桶 `igs-reader-settings-v9-default`，不再分发写入全部四个桶；切换「切换模式」不再联动「应用到模式」选项。
 - `v0.20.3`：修复阅读器读不到第三方 DOM 过滤插件（如 Veridis 关键词过滤）写回 `mes` 的内容——`buildReaderSnapshot` 现在优先读 `payload.message.raw`（ST 活引用）而非 normalized wrapper 的缓存字段 `rawHtml`/`text`。

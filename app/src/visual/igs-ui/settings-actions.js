@@ -216,12 +216,20 @@ export async function handleSettingsAction(action, ctx) {
 
     if (normalizedAction.startsWith('scene-add-time:')) {
         const sceneName = decodeSeg(normalizedAction.slice('scene-add-time:'.length));
-        const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+        const globalObj = options.global || globalThis;
+        const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
         const scene = scenes[sceneName];
         if (scene && typeof scene === 'object') {
+            const newTime = (globalObj.prompt && globalObj.prompt('时间名称（建议与时间组名一致）：', '') || '').trim();
+            if (!newTime) return rerenderSettings();
             scene.times = scene.times || {};
-            const existingKeys = Object.keys(scene.times);
-            scene.times['时间' + (existingKeys.length + 1)] = { url: '', weathers: {} };
+            if (Object.prototype.hasOwnProperty.call(scene.times, newTime)) {
+                if (globalObj.alert) globalObj.alert(`「${sceneName}」已有时间「${newTime}」（同名）`);
+                return rerenderSettings();
+            }
+            scene.times[newTime] = { url: '', weathers: {} };
+            const timeGroups = ensureTimeGroups(settingsState);
+            if (!timeGroups.some((g) => g.label === newTime)) timeGroups.unshift({ label: newTime, words: [newTime] });
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
         }
@@ -260,9 +268,28 @@ export async function handleSettingsAction(action, ctx) {
                         return rerenderSettings();
                     }
                     scene.times = reorderKey(scene.times, oldTime, newTime);
+                    // global sync: rename same time slot in all other scenes
+                    for (const [otherSn, otherSv] of Object.entries(scenes)) {
+                        if (otherSn === sceneName || !otherSv || typeof otherSv !== 'object') continue;
+                        if (Object.prototype.hasOwnProperty.call(otherSv.times || {}, oldTime)
+                            && !Object.prototype.hasOwnProperty.call(otherSv.times, newTime)) {
+                            otherSv.times = reorderKey(otherSv.times, oldTime, newTime);
+                        }
+                    }
+                    // sync timeGroups label
+                    const timeGroups = ensureTimeGroups(settingsState);
+                    const tg = timeGroups.find((g) => g.label === oldTime);
+                    if (tg) {
+                        tg.label = newTime;
+                        const wi = Array.isArray(tg.words) ? tg.words.indexOf(oldTime) : -1;
+                        if (wi >= 0) tg.words[wi] = newTime;
+                    }
+                    // update Set keys for all scenes
                     const sl = settingsState.asyncState.expandedSceneSlots;
-                    renameSetPrefix(sl, `time\x00${sceneName}\x00${oldTime}`, `time\x00${sceneName}\x00${newTime}`);
-                    renameSetPrefix(sl, `weather\x00${sceneName}\x00${oldTime}\x00`, `weather\x00${sceneName}\x00${newTime}\x00`);
+                    for (const sn of Object.keys(scenes)) {
+                        renameSetPrefix(sl, `time\x00${sn}\x00${oldTime}`, `time\x00${sn}\x00${newTime}`);
+                        renameSetPrefix(sl, `weather\x00${sn}\x00${oldTime}\x00`, `weather\x00${sn}\x00${newTime}\x00`);
+                    }
                     const persisted = persistSettingsDraft();
                     if (persisted.ok === false) return persisted;
                 }
@@ -300,17 +327,23 @@ export async function handleSettingsAction(action, ctx) {
         if (colonIdx > 0) {
             const sceneName = decodeSeg(rest.slice(0, colonIdx));
             const timeName = decodeSeg(rest.slice(colonIdx + 1));
-            const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
+            const globalObj = options.global || globalThis;
+            const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
             const scene = scenes[sceneName];
-            if (scene && scene.times && scene.times[timeName]) {
+            if (scene && scene.times && typeof scene.times[timeName] === 'object') {
                 const timeEntry = scene.times[timeName];
-                if (typeof timeEntry === 'object') {
-                    timeEntry.weathers = timeEntry.weathers || {};
-                    const existingKeys = Object.keys(timeEntry.weathers);
-                    timeEntry.weathers['天气' + (existingKeys.length + 1)] = { url: '', words: [] };
-                    const persisted = persistSettingsDraft();
-                    if (persisted.ok === false) return persisted;
+                const newWeather = (globalObj.prompt && globalObj.prompt('天气名称（建议与天气组名一致）：', '') || '').trim();
+                if (!newWeather) return rerenderSettings();
+                timeEntry.weathers = timeEntry.weathers || {};
+                if (Object.prototype.hasOwnProperty.call(timeEntry.weathers, newWeather)) {
+                    if (globalObj.alert) globalObj.alert(`「${timeName}」已有天气「${newWeather}」（同名）`);
+                    return rerenderSettings();
                 }
+                timeEntry.weathers[newWeather] = { url: '' };
+                const weatherGroups = ensureWeatherGroups(settingsState);
+                if (!weatherGroups.some((g) => g.label === newWeather)) weatherGroups.unshift({ label: newWeather, words: [newWeather] });
+                const persisted = persistSettingsDraft();
+                if (persisted.ok === false) return persisted;
             }
         }
         return rerenderSettings();
@@ -361,10 +394,36 @@ export async function handleSettingsAction(action, ctx) {
                                 if (globalObj.alert) globalObj.alert(`天气「${newWeather}」已存在（同名），已阻止`);
                                 return rerenderSettings();
                             }
-                            const old = t.weathers[oldWeather];
-                            t.weathers[oldWeather] = typeof old === 'string' ? { url: old, words: [] } : (old || { url: '', words: [] });
-                            t.weathers = reorderKey(t.weathers, oldWeather, newWeather);
-                            renameSetPrefix(settingsState.asyncState.expandedSceneSlots, `weather\x00${sceneName}\x00${timeName}\x00${oldWeather}`, `weather\x00${sceneName}\x00${timeName}\x00${newWeather}`);
+                            // global sync: rename same weather slot across all scenes/times
+                            for (const [gsn, gsv] of Object.entries(scenes)) {
+                                if (!gsv || typeof gsv !== 'object') continue;
+                                for (const [gtn, gtv] of Object.entries(gsv.times || {})) {
+                                    if (!gtv || typeof gtv !== 'object') continue;
+                                    const gw = gtv.weathers || {};
+                                    if (Object.prototype.hasOwnProperty.call(gw, oldWeather)
+                                        && !Object.prototype.hasOwnProperty.call(gw, newWeather)) {
+                                        const ow = gw[oldWeather];
+                                        gw[oldWeather] = typeof ow === 'string' ? { url: ow } : (ow || { url: '' });
+                                        gtv.weathers = reorderKey(gw, oldWeather, newWeather);
+                                    }
+                                }
+                            }
+                            // sync weatherGroups label
+                            const weatherGroups = ensureWeatherGroups(settingsState);
+                            const wg = weatherGroups.find((g) => g.label === oldWeather);
+                            if (wg) {
+                                wg.label = newWeather;
+                                const wi = Array.isArray(wg.words) ? wg.words.indexOf(oldWeather) : -1;
+                                if (wi >= 0) wg.words[wi] = newWeather;
+                            }
+                            // update Set keys for all scenes/times
+                            const sl = settingsState.asyncState.expandedSceneSlots;
+                            for (const [gsn2, gsv2] of Object.entries(scenes)) {
+                                if (!gsv2 || typeof gsv2 !== 'object') continue;
+                                for (const gtn2 of Object.keys(gsv2.times || {})) {
+                                    renameSetPrefix(sl, `weather\x00${gsn2}\x00${gtn2}\x00${oldWeather}`, `weather\x00${gsn2}\x00${gtn2}\x00${newWeather}`);
+                                }
+                            }
                             const persisted = persistSettingsDraft();
                             if (persisted.ok === false) return persisted;
                         }
@@ -701,6 +760,8 @@ export async function handleSettingsAction(action, ctx) {
             scenes: cloneData(sa.scenes || {}),
             characters: cloneData(sa.characters || {}),
             moodGroups: cloneData(sa.moodGroups || []),
+            timeGroups: cloneData(sa.timeGroups || []),
+            weatherGroups: cloneData(sa.weatherGroups || []),
             spriteLayouts: cloneData((settingsState.draft.readerSettings && settingsState.draft.readerSettings.spriteLayouts) || {}),
         };
         saveScenePresets(storage, presets);
@@ -726,6 +787,8 @@ export async function handleSettingsAction(action, ctx) {
                 settingsState.draft.bridge.sceneAssets.scenes = cloneData(preset.scenes || {});
                 settingsState.draft.bridge.sceneAssets.characters = cloneData(preset.characters || {});
                 settingsState.draft.bridge.sceneAssets.moodGroups = cloneData(preset.moodGroups || []);
+                settingsState.draft.bridge.sceneAssets.timeGroups = cloneData(preset.timeGroups || []);
+                settingsState.draft.bridge.sceneAssets.weatherGroups = cloneData(preset.weatherGroups || []);
                 if (preset.spriteLayouts && typeof preset.spriteLayouts === 'object') {
                     settingsState.draft.readerSettings = settingsState.draft.readerSettings || {};
                     settingsState.draft.readerSettings.spriteLayouts = cloneData(preset.spriteLayouts);
@@ -771,6 +834,8 @@ export async function handleSettingsAction(action, ctx) {
             scenes: fileResult.data.scenes || {},
             characters: fileResult.data.characters || {},
             moodGroups: fileResult.data.moodGroups || [],
+            timeGroups: fileResult.data.timeGroups || [],
+            weatherGroups: fileResult.data.weatherGroups || [],
             spriteLayouts: (fileResult.data.spriteLayouts && typeof fileResult.data.spriteLayouts === 'object') ? fileResult.data.spriteLayouts : {},
         };
         saveScenePresets(storage, presets);
@@ -779,6 +844,8 @@ export async function handleSettingsAction(action, ctx) {
         settingsState.draft.bridge.sceneAssets.scenes = cloneData(presets[name].scenes);
         settingsState.draft.bridge.sceneAssets.characters = cloneData(presets[name].characters);
         settingsState.draft.bridge.sceneAssets.moodGroups = cloneData(presets[name].moodGroups);
+        settingsState.draft.bridge.sceneAssets.timeGroups = cloneData(presets[name].timeGroups || []);
+        settingsState.draft.bridge.sceneAssets.weatherGroups = cloneData(presets[name].weatherGroups || []);
         settingsState.draft.readerSettings = settingsState.draft.readerSettings || {};
         settingsState.draft.readerSettings.spriteLayouts = cloneData(presets[name].spriteLayouts);
         const persisted = persistSettingsDraft();
@@ -795,7 +862,7 @@ export async function handleSettingsAction(action, ctx) {
         if (!preset) return rerenderSettings();
         const doc = globalObj.document;
         if (!doc) return { ok: false, reason: 'no-document' };
-        const json = JSON.stringify({ scenes: preset.scenes || {}, characters: preset.characters || {}, moodGroups: preset.moodGroups || [], spriteLayouts: preset.spriteLayouts || {} }, null, 2);
+        const json = JSON.stringify({ scenes: preset.scenes || {}, characters: preset.characters || {}, moodGroups: preset.moodGroups || [], timeGroups: preset.timeGroups || [], weatherGroups: preset.weatherGroups || [], spriteLayouts: preset.spriteLayouts || {} }, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = doc.createElement('a');
@@ -893,43 +960,38 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
-    if (normalizedAction.startsWith('scene-add-time-word:')) {
-        const rest = normalizedAction.slice('scene-add-time-word:'.length);
+    if (normalizedAction.startsWith('time-add-word:')) {
+        const label = decodeSeg(normalizedAction.slice('time-add-word:'.length));
+        const globalObj = options.global || globalThis;
+        const word = (globalObj.prompt && globalObj.prompt(`向时间组「${label}」添加词：`, '') || '').trim();
+        if (word) {
+            const groups = ensureTimeGroups(settingsState);
+            const dup = groups.find((g) => Array.isArray(g.words) && g.words.includes(word));
+            if (dup) {
+                const proceed = typeof globalObj.confirm === 'function'
+                    ? globalObj.confirm(`「${word}」已存在于时间组「${dup.label}」。是否删除重复词并加入「${label}」？`) : true;
+                if (!proceed) return rerenderSettings();
+                dup.words = dup.words.filter((w) => w !== word);
+            }
+            const g = groups.find((g) => g.label === label);
+            if (g) g.words.push(word);
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('time-remove-word:')) {
+        const rest = normalizedAction.slice('time-remove-word:'.length);
         const c = rest.indexOf(':');
         if (c > 0) {
-            const sceneName = decodeSeg(rest.slice(0, c)); const timeName = decodeSeg(rest.slice(c + 1));
-            const globalObj = options.global || globalThis;
-            const word = (globalObj.prompt && globalObj.prompt(`向时间「${timeName}」添加词：`, '') || '').trim();
-            if (word) {
-                const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
-                const dup = findSceneWord(scenes, word);
-                if (dup) {
-                    const proceed = typeof globalObj.confirm === 'function'
-                        ? globalObj.confirm(`「${word}」已存在于${dup.label}的词库。是否删除重复词并加入时间「${timeName}」的词库？`)
-                        : true;
-                    if (!proceed) return rerenderSettings();
-                    removeSceneWordEntry(scenes, dup);
-                }
-                const t = scenes[sceneName] && scenes[sceneName].times && scenes[sceneName].times[timeName];
-                if (t && typeof t === 'object') { if (!Array.isArray(t.words)) t.words = []; t.words.push(word); }
-                const persisted = persistSettingsDraft();
-                if (persisted.ok === false) return persisted;
-            }
-        }
-        return rerenderSettings();
-    }
-
-    if (normalizedAction.startsWith('scene-remove-time-word:')) {
-        const rest = normalizedAction.slice('scene-remove-time-word:'.length);
-        const c1 = rest.indexOf(':'); const c2 = c1 >= 0 ? rest.indexOf(':', c1 + 1) : -1;
-        if (c1 > 0 && c2 > c1) {
-            const sceneName = decodeSeg(rest.slice(0, c1)); const timeName = decodeSeg(rest.slice(c1 + 1, c2)); const word = decodeSeg(rest.slice(c2 + 1));
-            const t = ((settingsState.draft.bridge.sceneAssets || {}).scenes || {})[sceneName];
-            const timeObj = t && t.times && t.times[timeName];
-            if (timeObj && Array.isArray(timeObj.words)) {
+            const label = decodeSeg(rest.slice(0, c)); const word = decodeSeg(rest.slice(c + 1));
+            const groups = ensureTimeGroups(settingsState);
+            const g = groups.find((g) => g.label === label);
+            if (g && Array.isArray(g.words)) {
                 const globalObj = options.global || globalThis;
-                if (timeObj.words.length <= 1) { if (globalObj.alert) globalObj.alert('至少保留 1 个词'); return rerenderSettings(); }
-                timeObj.words = timeObj.words.filter((w) => w !== word);
+                if (g.words.length <= 1) { if (globalObj.alert) globalObj.alert('至少保留 1 个词'); return rerenderSettings(); }
+                g.words = g.words.filter((w) => w !== word);
             }
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
@@ -937,49 +999,64 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
-    if (normalizedAction.startsWith('scene-add-weather-word:')) {
-        const rest = normalizedAction.slice('scene-add-weather-word:'.length);
-        const c1 = rest.indexOf(':'); const c2 = c1 >= 0 ? rest.indexOf(':', c1 + 1) : -1;
-        if (c1 > 0 && c2 > c1) {
-            const sceneName = decodeSeg(rest.slice(0, c1)); const timeName = decodeSeg(rest.slice(c1 + 1, c2)); const weatherName = decodeSeg(rest.slice(c2 + 1));
-            const globalObj = options.global || globalThis;
-            const word = (globalObj.prompt && globalObj.prompt(`向天气「${weatherName}」添加词：`, '') || '').trim();
-            if (word) {
-                const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
-                const dup = findSceneWord(scenes, word);
-                if (dup) {
-                    const proceed = typeof globalObj.confirm === 'function'
-                        ? globalObj.confirm(`「${word}」已存在于${dup.label}的词库。是否删除重复词并加入天气「${weatherName}」的词库？`)
-                        : true;
-                    if (!proceed) return rerenderSettings();
-                    removeSceneWordEntry(scenes, dup);
-                }
-                const s = scenes[sceneName]; const tObj = s && s.times && s.times[timeName];
-                const wObj = tObj && tObj.weathers && tObj.weathers[weatherName];
-                if (wObj && typeof wObj === 'object') { if (!Array.isArray(wObj.words)) wObj.words = []; wObj.words.push(word); }
-                const persisted = persistSettingsDraft();
-                if (persisted.ok === false) return persisted;
+    if (normalizedAction.startsWith('time-create-group:')) {
+        const label = decodeSeg(normalizedAction.slice('time-create-group:'.length));
+        const globalObj = options.global || globalThis;
+        const groups = ensureTimeGroups(settingsState);
+        if (groups.some((g) => g.label === label)) { if (globalObj.alert) globalObj.alert(`时间组「${label}」已存在`); return rerenderSettings(); }
+        groups.unshift({ label, words: [label] });
+        const persisted = persistSettingsDraft();
+        if (persisted.ok === false) return persisted;
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('weather-add-word:')) {
+        const label = decodeSeg(normalizedAction.slice('weather-add-word:'.length));
+        const globalObj = options.global || globalThis;
+        const word = (globalObj.prompt && globalObj.prompt(`向天气组「${label}」添加词：`, '') || '').trim();
+        if (word) {
+            const groups = ensureWeatherGroups(settingsState);
+            const dup = groups.find((g) => Array.isArray(g.words) && g.words.includes(word));
+            if (dup) {
+                const proceed = typeof globalObj.confirm === 'function'
+                    ? globalObj.confirm(`「${word}」已存在于天气组「${dup.label}」。是否删除重复词并加入「${label}」？`) : true;
+                if (!proceed) return rerenderSettings();
+                dup.words = dup.words.filter((w) => w !== word);
             }
+            const g = groups.find((g) => g.label === label);
+            if (g) g.words.push(word);
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
         }
         return rerenderSettings();
     }
 
-    if (normalizedAction.startsWith('scene-remove-weather-word:')) {
-        const rest = normalizedAction.slice('scene-remove-weather-word:'.length);
-        const c1 = rest.indexOf(':'); const c2 = c1 >= 0 ? rest.indexOf(':', c1 + 1) : -1; const c3 = c2 >= 0 ? rest.indexOf(':', c2 + 1) : -1;
-        if (c1 > 0 && c2 > c1 && c3 > c2) {
-            const sceneName = decodeSeg(rest.slice(0, c1)); const timeName = decodeSeg(rest.slice(c1 + 1, c2)); const weatherName = decodeSeg(rest.slice(c2 + 1, c3)); const word = decodeSeg(rest.slice(c3 + 1));
-            const s = ((settingsState.draft.bridge.sceneAssets || {}).scenes || {})[sceneName];
-            const tObj = s && s.times && s.times[timeName];
-            const wObj = tObj && tObj.weathers && tObj.weathers[weatherName];
-            if (wObj && Array.isArray(wObj.words)) {
+    if (normalizedAction.startsWith('weather-remove-word:')) {
+        const rest = normalizedAction.slice('weather-remove-word:'.length);
+        const c = rest.indexOf(':');
+        if (c > 0) {
+            const label = decodeSeg(rest.slice(0, c)); const word = decodeSeg(rest.slice(c + 1));
+            const groups = ensureWeatherGroups(settingsState);
+            const g = groups.find((g) => g.label === label);
+            if (g && Array.isArray(g.words)) {
                 const globalObj = options.global || globalThis;
-                if (wObj.words.length <= 1) { if (globalObj.alert) globalObj.alert('至少保留 1 个词'); return rerenderSettings(); }
-                wObj.words = wObj.words.filter((w) => w !== word);
+                if (g.words.length <= 1) { if (globalObj.alert) globalObj.alert('至少保留 1 个词'); return rerenderSettings(); }
+                g.words = g.words.filter((w) => w !== word);
             }
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
         }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('weather-create-group:')) {
+        const label = decodeSeg(normalizedAction.slice('weather-create-group:'.length));
+        const globalObj = options.global || globalThis;
+        const groups = ensureWeatherGroups(settingsState);
+        if (groups.some((g) => g.label === label)) { if (globalObj.alert) globalObj.alert(`天气组「${label}」已存在`); return rerenderSettings(); }
+        groups.unshift({ label, words: [label] });
+        const persisted = persistSettingsDraft();
+        if (persisted.ok === false) return persisted;
         return rerenderSettings();
     }
 
@@ -1003,14 +1080,6 @@ function findSceneWord(scenes, word) {
     for (const [sn, sv] of Object.entries(scenes || {})) {
         const s = typeof sv === 'string' ? {} : (sv || {});
         if (Array.isArray(s.words) && s.words.includes(word)) return { type: 'bg', keys: [sn], word, label: `场景「${sn}」` };
-        for (const [tn, tv] of Object.entries(s.times || {})) {
-            const t = typeof tv === 'string' ? {} : (tv || {});
-            if (Array.isArray(t.words) && t.words.includes(word)) return { type: 'time', keys: [sn, tn], word, label: `时间「${tn}」` };
-            for (const [wn, wv] of Object.entries(t.weathers || {})) {
-                const w = typeof wv === 'string' ? {} : (wv || {});
-                if (Array.isArray(w.words) && w.words.includes(word)) return { type: 'weather', keys: [sn, tn, wn], word, label: `天气「${wn}」` };
-            }
-        }
     }
     return null;
 }
@@ -1043,6 +1112,20 @@ function pickPresetFile(doc) {
         input.click();
         setTimeout(() => finish(null), 300000);
     });
+}
+
+function ensureTimeGroups(settingsState) {
+    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+    const sa = settingsState.draft.bridge.sceneAssets;
+    if (!Array.isArray(sa.timeGroups)) sa.timeGroups = [];
+    return sa.timeGroups;
+}
+
+function ensureWeatherGroups(settingsState) {
+    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
+    const sa = settingsState.draft.bridge.sceneAssets;
+    if (!Array.isArray(sa.weatherGroups)) sa.weatherGroups = [];
+    return sa.weatherGroups;
 }
 
 function ensureMoodGroups(settingsState) {    settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};

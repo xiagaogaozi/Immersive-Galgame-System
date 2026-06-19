@@ -1158,6 +1158,8 @@ export function createIgsReaderHost(options = {}) {
             const subTab = asyncState.sceneSubTab === 'characters' ? 'characters' : 'scenes';
             const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {}, {
                 expandedSlots: asyncState.expandedSceneSlots instanceof Set ? asyncState.expandedSceneSlots : new Set(),
+                timeGroups: sceneAssets.timeGroups || [],
+                weatherGroups: sceneAssets.weatherGroups || [],
             });
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {}, {
                 moodGroups: sceneAssets.moodGroups || [],
@@ -1575,6 +1577,30 @@ export function createIgsReaderHost(options = {}) {
             normalized.characters = {};
         }
         normalized.moodGroups = normalizeMoodGroups(normalized.moodGroups);
+        // init group arrays
+        if (!Array.isArray(normalized.timeGroups)) normalized.timeGroups = [];
+        if (!Array.isArray(normalized.weatherGroups)) normalized.weatherGroups = [];
+        // migrate any embedded time/weather words into global groups
+        for (const sceneObj of Object.values(normalized.scenes)) {
+            for (const [tKey, timeObj] of Object.entries(sceneObj.times || {})) {
+                if (!timeObj || typeof timeObj !== 'object') continue;
+                if (Array.isArray(timeObj.words) && timeObj.words.length) {
+                    let tg = normalized.timeGroups.find((g) => g.label === tKey);
+                    if (!tg) { tg = { label: tKey, words: [] }; normalized.timeGroups.push(tg); }
+                    for (const w of timeObj.words) if (!tg.words.includes(w)) tg.words.push(w);
+                    delete timeObj.words;
+                }
+                for (const [wKey, wObj] of Object.entries(timeObj.weathers || {})) {
+                    if (!wObj || typeof wObj !== 'object') continue;
+                    if (Array.isArray(wObj.words) && wObj.words.length) {
+                        let wg = normalized.weatherGroups.find((g) => g.label === wKey);
+                        if (!wg) { wg = { label: wKey, words: [] }; normalized.weatherGroups.push(wg); }
+                        for (const w of wObj.words) if (!wg.words.includes(w)) wg.words.push(w);
+                        delete wObj.words;
+                    }
+                }
+            }
+        }
         normalized.unifiedSpriteLayout = normalizeBoolean(normalized.unifiedSpriteLayout, false);
         return normalized;
     }
