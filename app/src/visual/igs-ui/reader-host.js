@@ -1299,7 +1299,10 @@ export function createIgsReaderHost(options = {}) {
         if (existing) existing.remove();
 
         const root = doc.createElement('div');
-        doc.body.appendChild(root);
+        // 与 #igs-overlay 一致挂到 documentElement：宿主移动端 body 为 position:fixed 时会成为
+        // 独立层叠上下文，设置面板挂在 body 内时整体被压在 overlay 之下（z-index 翻不出 body），
+        // 且 100vw/100dvh 取到受限的 body 尺寸而非视口。
+        (doc.documentElement || doc.body).appendChild(root);
         root.addEventListener('click', async (event) => {
             const tab = event.target.closest('[data-tab]');
             if (tab) {

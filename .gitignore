@@ -8,6 +8,7 @@ Thumbs.db
 .cache/
 .tmp/
 coverage/
+.playwright-mcp/
 
 # 真实用户数据和私有配置不得进入仓库
 pc-data/

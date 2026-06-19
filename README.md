@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.22.5`：修复移动端阅读器被压成一小块（立绘/输入框看似溢出的真因）——宿主移动端 body 为 position:fixed 且尺寸受限，成为 `#igs-overlay` 的 fixed 包含块，`width/height:100%` 取到 body 尺寸而非视口；现 overlay 改挂 documentElement、尺寸用 `100vw/100vh`（保留 100dvh 兜底）。顺带清理 igs-compat / reader-state 两处老桶残留读取，统一回退 default 桶。
+- 当前项目版本 `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text` 覆盖了 CSS 的 `flex:1 1 auto + min-height:0`，且原有 `overlayHeight*0.24` clamp 不可靠；现 floating 模式忽略 dialogHeight、min-height 归 0 交给 flex 自适应，dialogHeight 仅在 web/fullscreen 生效。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
+- `v0.22.5`：修复移动端阅读器被压成一小块（立绘/输入框看似溢出的真因）——宿主移动端 body 为 position:fixed 且尺寸受限，成为 `#igs-overlay` 的 fixed 包含块，`width/height:100%` 取到 body 尺寸而非视口；现 overlay 改挂 documentElement、尺寸用 `100vw/100vh`（保留 100dvh 兜底）。顺带清理 igs-compat / reader-state 两处老桶残留读取，统一回退 default 桶。
 - `v0.22.4`：修复 v0.21.4 删分桶的总根源回归——`saveUnifiedSettings` 曾按 readerMode 分桶存、`getUnifiedSettingsSnapshot` 却固定读 default 桶，导致移动端保存的设置（含立绘 spriteLayouts）读不回（立绘保存后回初始位置、输入框/发送按钮被挤出的真因）；现统一存取 default 桶，老用户 default 空时回退旧桶。立绘预览图放大改挂 `#igs-unified-settings`（absolute 填满），修复移动端宿主 body 高度坍缩导致预览只占顶部一条、看不到关闭区的问题。新增 2 个回归单测。
 - `v0.22.3`：修复4个问题——①场景/时间/天气背景查表改为「精确→组归约→默认」三级兜底（对齐情绪词逻辑，AI 写细分词可命中组名 URL）；新增 `{{scene_groups}}`/`{{time_groups}}`/`{{weather_groups}}` 占位符（默认模板已含，可 DIY 删除）；②立绘保存后回初始位置回归（空 mood 存 `mode::char` 与读取侧对齐）；③数据库表格色跟随 glassOpacity（CSS 变量驱动表头 sticky 背景）；④数据库面板默认右上角缩小。
 - `v0.22.2`：新增数据库前端面板——阅读器工具栏增加数据库按钮，独立悬浮窗，Tab 多表切换，完整 CRUD（内联编辑/长文本弹层/增行/删行），实时回调监听外部更新，冲突检测；热修 dispose 中 dbController ReferenceError；面板约束到阅读器内、可拖动、透明度跟随设置。
@@ -162,6 +163,14 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.22.6 - 2026-06-20
+
+- 修复删桶（v0.21.4 全模式共用一套设置）+ 改挂载点（v0.22.5）后引入的两类 UI 回归，全部用 Playwright 真机验证（非模拟测试）。
+- 问题1（设置面板层级被阅读器盖住，复现于 PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 v0.22.5 把 `#igs-overlay` 改挂 `documentElement`，但 `#igs-unified-settings` 仍挂 `body`；宿主 web/fullscreen 运行时把 `body` 设为 `position:fixed`（移动端宿主同样如此），使 body 成为独立层叠上下文，设置面板的 `z-index:2147483200` 翻不出 body、整体被压在 overlay（`2147483000`）之下。真机验证：旧版点击设置中心命中 overlay，修复后命中 settings。现 `mountSettingsDom` 与 overlay 一致挂 `documentElement`。
+- 问题2（floating 即 pc/mobile 模式「对话框高度」≥130 时输入框被挤出气泡，真机实测溢出 +43px）：根因是 `applyReaderSettingsToDom` 用内联 `min-height` 强撑 `.igs-text`，覆盖了 CSS 为 floating 设计的 `flex:1 1 auto + min-height:0`；固定行 + 撑高的正文超过气泡 `max-height:220px` 后把底部 `.igs-controls`（输入框/发送按钮）挤出。原有 `overlayHeight*0.24` 的 clamp 不可靠（真机环境下未拦住）。现 floating 模式忽略 `dialogHeight`、`min-height` 归 0 交给 flex 自适应滚动；`dialogHeight` 仅在 web/fullscreen 生效（这两个模式对话框从底部向上生长、不挤压输入框，真机验证至 600px 不溢出）。
+- 问题3（「输入框高度」inputScale 联动）：从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 的 `height`（基准 32px 按比例），避免 zoom 改变 controls 实际占位高度、干扰 floating 气泡的 flex 计算。
+- 顺带清理因此失效的 `overlayHeight` 死变量与 `readElementHeight` 孤儿 import；`.gitignore` 新增 `.playwright-mcp/` 并移除此前误提交的临时产物。
 
 ### v0.13.1 - 2026-06-18
 

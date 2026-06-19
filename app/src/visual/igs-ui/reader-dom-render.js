@@ -7,7 +7,6 @@ import {
     ensureImageLoadingSpinner,
     ensureImageEmptyPlaceholder,
     getOwnerWindow,
-    readElementHeight,
     readElementWidth,
     removeImageEmptyPlaceholder,
     removeImageLoadingSpinner,
@@ -255,16 +254,17 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     const inlineMode = snapshot.mode === 'pc' || snapshot.mode === 'mobile';
     const win = getOwnerWindow(root);
     const overlayWidth = readElementWidth(root, win && win.innerWidth);
-    const overlayHeight = readElementHeight(root, win && win.innerHeight);
 
     if (textEl) {
         textEl.style.fontSize = `${readerSettings.fontSize}px`;
         textEl.style.lineHeight = computeLineHeight(readerSettings.fontSize);
-        if (readerSettings.dialogHeight == null) {
+        // floating（pc/mobile）对话框是固定上限的弹性盒（max-height + flex column），
+        // 正文交给 CSS 的 flex:1 1 auto + min-height:0 自适应滚动；这里若再写死 min-height
+        // 会把底部 .igs-controls（输入框/发送按钮）挤出对话框。dialogHeight 仅在非 floating 生效。
+        if (inlineMode) {
             textEl.style.minHeight = '0';
-        } else if (inlineMode) {
-            const maxHeight = Math.max(40, Math.floor((overlayHeight || 0) * 0.24));
-            textEl.style.minHeight = `${Math.min(readerSettings.dialogHeight, maxHeight || readerSettings.dialogHeight)}px`;
+        } else if (readerSettings.dialogHeight == null) {
+            textEl.style.minHeight = '0';
         } else {
             textEl.style.minHeight = `${readerSettings.dialogHeight}px`;
         }
@@ -290,7 +290,15 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     }
 
     if (controls) {
-        controls.style.zoom = String(Number(readerSettings.inputScale || 100) / 100);
+        // 不用 zoom：zoom 会改变 .igs-controls 的实际占位高度并干扰 floating 对话框的 flex 计算，
+        // 放大时把输入框/发送按钮挤出对话框。直接按比例设输入框与发送按钮高度（基准 32px）。
+        controls.style.zoom = '';
+        const inputScale = Number(readerSettings.inputScale || 100) / 100;
+        const inputHeight = Math.max(20, Math.round(32 * inputScale));
+        const inputEl = controls.querySelector('#igs-input');
+        const sendBtn = controls.querySelector('#igs-send-btn');
+        if (inputEl) inputEl.style.height = `${inputHeight}px`;
+        if (sendBtn) sendBtn.style.height = `${inputHeight}px`;
     }
 
     if (bg) {
