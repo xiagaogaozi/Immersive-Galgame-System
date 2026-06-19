@@ -184,9 +184,11 @@ export async function handleSettingsAction(action, ctx) {
                 if (globalObj.alert) globalObj.alert(`场景「${newName}」已存在（同名），已阻止`);
                 return rerenderSettings();
             }
-            scenes[newName] = scenes[oldName] || { url: '', times: {} };
-            delete scenes[oldName];
-            settingsState.draft.bridge.sceneAssets.scenes = scenes;
+            settingsState.draft.bridge.sceneAssets.scenes = reorderKey(scenes, oldName, newName);
+            const sl = settingsState.asyncState.expandedSceneSlots;
+            renameSetPrefix(sl, `bg\x00${oldName}`, `bg\x00${newName}`);
+            renameSetPrefix(sl, `time\x00${oldName}\x00`, `time\x00${newName}\x00`);
+            renameSetPrefix(sl, `weather\x00${oldName}\x00`, `weather\x00${newName}\x00`);
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
         }
@@ -257,8 +259,10 @@ export async function handleSettingsAction(action, ctx) {
                         if (globalObj.alert) globalObj.alert(`时间「${newTime}」已存在（同名），已阻止`);
                         return rerenderSettings();
                     }
-                    scene.times[newTime] = scene.times[oldTime] || { url: '', weathers: {} };
-                    delete scene.times[oldTime];
+                    scene.times = reorderKey(scene.times, oldTime, newTime);
+                    const sl = settingsState.asyncState.expandedSceneSlots;
+                    renameSetPrefix(sl, `time\x00${sceneName}\x00${oldTime}`, `time\x00${sceneName}\x00${newTime}`);
+                    renameSetPrefix(sl, `weather\x00${sceneName}\x00${oldTime}\x00`, `weather\x00${sceneName}\x00${newTime}\x00`);
                     const persisted = persistSettingsDraft();
                     if (persisted.ok === false) return persisted;
                 }
@@ -358,8 +362,9 @@ export async function handleSettingsAction(action, ctx) {
                                 return rerenderSettings();
                             }
                             const old = t.weathers[oldWeather];
-                            t.weathers[newWeather] = typeof old === 'string' ? { url: old, words: [] } : (old || { url: '', words: [] });
-                            delete t.weathers[oldWeather];
+                            t.weathers[oldWeather] = typeof old === 'string' ? { url: old, words: [] } : (old || { url: '', words: [] });
+                            t.weathers = reorderKey(t.weathers, oldWeather, newWeather);
+                            renameSetPrefix(settingsState.asyncState.expandedSceneSlots, `weather\x00${sceneName}\x00${timeName}\x00${oldWeather}`, `weather\x00${sceneName}\x00${timeName}\x00${newWeather}`);
                             const persisted = persistSettingsDraft();
                             if (persisted.ok === false) return persisted;
                         }
@@ -495,9 +500,8 @@ export async function handleSettingsAction(action, ctx) {
         if (newName && newName !== oldName) {
             settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
             const chars = settingsState.draft.bridge.sceneAssets.characters || {};
-            chars[newName] = chars[oldName] || {};
-            delete chars[oldName];
-            settingsState.draft.bridge.sceneAssets.characters = chars;
+            settingsState.draft.bridge.sceneAssets.characters = reorderKey(chars, oldName, newName);
+            renameSetPrefix(settingsState.asyncState.expandedSpriteSlots, `${oldName}\x00`, `${newName}\x00`);
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
         }
@@ -527,8 +531,8 @@ export async function handleSettingsAction(action, ctx) {
                 }
                 // 改角色槽名
                 if (chars[charName]) {
-                    chars[charName][newMood] = chars[charName][oldMood] || '';
-                    delete chars[charName][oldMood];
+                    chars[charName] = reorderKey(chars[charName], oldMood, newMood);
+                    renameSetPrefix(settingsState.asyncState.expandedSpriteSlots, `${charName}\x00${oldMood}`, `${charName}\x00${newMood}`);
                 }
                 // 同步词库里同名情绪组的组名（全局：所有角色用到该组名的槽一起改）
                 const group = groups.find((g) => g.label === oldMood);
@@ -541,8 +545,8 @@ export async function handleSettingsAction(action, ctx) {
                         const other = chars[otherName];
                         if (other && typeof other === 'object' && Object.prototype.hasOwnProperty.call(other, oldMood)
                             && !Object.prototype.hasOwnProperty.call(other, newMood)) {
-                            other[newMood] = other[oldMood];
-                            delete other[oldMood];
+                            chars[otherName] = reorderKey(other, oldMood, newMood);
+                            renameSetPrefix(settingsState.asyncState.expandedSpriteSlots, `${otherName}\x00${oldMood}`, `${otherName}\x00${newMood}`);
                         }
                     }
                 }
@@ -982,16 +986,29 @@ export async function handleSettingsAction(action, ctx) {
     return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
 }
 
+function reorderKey(obj, oldKey, newKey) {
+    const result = {};
+    for (const [k, v] of Object.entries(obj)) result[k === oldKey ? newKey : k] = v;
+    return result;
+}
+
+function renameSetPrefix(set, oldPrefix, newPrefix) {
+    if (!(set instanceof Set)) return;
+    const toUpdate = [];
+    for (const key of set) if (key.startsWith(oldPrefix)) toUpdate.push(key);
+    for (const k of toUpdate) { set.delete(k); set.add(newPrefix + k.slice(oldPrefix.length)); }
+}
+
 function findSceneWord(scenes, word) {
     for (const [sn, sv] of Object.entries(scenes || {})) {
         const s = typeof sv === 'string' ? {} : (sv || {});
-        if (Array.isArray(s.words) && s.words.includes(word)) return { type: 'bg', keys: [sn], label: `场景「${sn}」` };
+        if (Array.isArray(s.words) && s.words.includes(word)) return { type: 'bg', keys: [sn], word, label: `场景「${sn}」` };
         for (const [tn, tv] of Object.entries(s.times || {})) {
             const t = typeof tv === 'string' ? {} : (tv || {});
-            if (Array.isArray(t.words) && t.words.includes(word)) return { type: 'time', keys: [sn, tn], label: `时间「${tn}」` };
+            if (Array.isArray(t.words) && t.words.includes(word)) return { type: 'time', keys: [sn, tn], word, label: `时间「${tn}」` };
             for (const [wn, wv] of Object.entries(t.weathers || {})) {
                 const w = typeof wv === 'string' ? {} : (wv || {});
-                if (Array.isArray(w.words) && w.words.includes(word)) return { type: 'weather', keys: [sn, tn, wn], label: `天气「${wn}」` };
+                if (Array.isArray(w.words) && w.words.includes(word)) return { type: 'weather', keys: [sn, tn, wn], word, label: `天气「${wn}」` };
             }
         }
     }
