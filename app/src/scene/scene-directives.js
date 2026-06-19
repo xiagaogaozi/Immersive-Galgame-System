@@ -67,7 +67,7 @@ export function lookupSceneAssetUrls(sceneState, sceneAssets) {
     if (!sceneAssets || !sceneState) return { backgroundUrl: null, spriteUrl: null, spriteSlot: '' };
 
     const scenes = sceneAssets.scenes || {};
-    const backgroundUrl = lookupSceneUrl(scenes, sceneState.scene, sceneState.time, sceneState.weather);
+    const backgroundUrl = lookupSceneUrl(scenes, sceneState.scene, sceneState.time, sceneState.weather, sceneAssets);
 
     let spriteUrl = null;
     let spriteSlot = '';
@@ -81,16 +81,48 @@ export function lookupSceneAssetUrls(sceneState, sceneAssets) {
     return { backgroundUrl, spriteUrl, spriteSlot };
 }
 
-function lookupSceneUrl(scenes, sceneName, time, weather) {
-    const raw = (sceneName && scenes[sceneName] != null) ? scenes[sceneName]
+// 场景名词库是内嵌式：scenes[名].words 是归属该场景的标签词。
+// AI 写的细分场景名先精确命中 key，再找哪个场景的 words 包含它（组归约）。
+function resolveSceneKey(scenes, sceneName) {
+    const target = String(sceneName || '').trim();
+    if (!target) return null;
+    if (scenes[target] != null) return target;
+    for (const key of Object.keys(scenes)) {
+        const entry = scenes[key];
+        const words = entry && typeof entry === 'object' && Array.isArray(entry.words) ? entry.words : [];
+        if (words.some((w) => String(w || '').trim() === target)) return key;
+    }
+    return null;
+}
+
+// 时间/天气词库是全局组：[{label,words}]。先精确命中 record 的 key，
+// 再用 resolveMoodGroup 把细分词归约到组 label 当 key。
+function resolveLayerKey(record, requestedKey, groups) {
+    const target = String(requestedKey || '').trim();
+    if (!target || !record || typeof record !== 'object') return null;
+    if (record[target] != null) return target;
+    const groupLabel = resolveMoodGroup(target, groups);
+    if (groupLabel && record[groupLabel] != null) return groupLabel;
+    return null;
+}
+
+function lookupSceneUrl(scenes, sceneName, time, weather, sceneAssets) {
+    const sceneKey = resolveSceneKey(scenes, sceneName);
+    const raw = sceneKey != null ? scenes[sceneKey]
         : (scenes['默认'] != null ? scenes['默认'] : null);
     if (!raw) return null;
     const entry = typeof raw === 'string' ? { url: raw } : raw;
-    if (time && entry.times && entry.times[time] != null) {
-        const timeRaw = entry.times[time];
+    const timeGroups = sceneAssets && sceneAssets.timeGroups;
+    const weatherGroups = sceneAssets && sceneAssets.weatherGroups;
+    const timeKey = resolveLayerKey(entry.times, time, timeGroups);
+    if (timeKey != null) {
+        const timeRaw = entry.times[timeKey];
         const timeEntry = typeof timeRaw === 'string' ? { url: timeRaw } : timeRaw;
-        if (weather && timeEntry.weathers && timeEntry.weathers[weather]) {
-            return timeEntry.weathers[weather] || null;
+        const weatherKey = resolveLayerKey(timeEntry.weathers, weather, weatherGroups);
+        if (weatherKey != null) {
+            const weatherRaw = timeEntry.weathers[weatherKey];
+            const weatherEntry = typeof weatherRaw === 'string' ? { url: weatherRaw } : weatherRaw;
+            return (weatherEntry && weatherEntry.url) || (typeof weatherRaw === 'string' ? weatherRaw : null) || null;
         }
         return timeEntry.url || null;
     }

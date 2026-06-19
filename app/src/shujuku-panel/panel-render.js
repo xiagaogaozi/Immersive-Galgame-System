@@ -2,7 +2,7 @@ const LONG_TEXT = 80;
 
 export function getDbPanelStyles() {
     return `
-#igs-db-panel{position:absolute;top:60px;right:16px;width:min(760px,calc(100% - 32px));max-height:calc(100% - 80px);background:rgba(20,20,22,.94);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(32px) saturate(180%);border-radius:18px;box-shadow:0 12px 48px rgba(0,0,0,.65);display:flex;flex-direction:column;z-index:10;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#f4f4f6;overflow:hidden;user-select:none;}
+#igs-db-panel{position:absolute;top:48px;right:12px;width:min(440px,calc(100% - 24px));max-height:calc(100% - 130px);background:var(--igs-db-bg,rgba(20,20,22,.94));border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(32px) saturate(180%);border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.65);display:flex;flex-direction:column;z-index:10;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#f4f4f6;overflow:hidden;user-select:none;}
 .igs-shujuku-header{display:flex;align-items:center;gap:8px;padding:13px 16px 10px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;cursor:grab;}
 .igs-shujuku-header:active{cursor:grabbing;}
 .igs-shujuku-title{font-size:13px;font-weight:600;letter-spacing:.5px;flex:1;}
@@ -18,7 +18,7 @@ export function getDbPanelStyles() {
 .igs-shujuku-body{flex:1;overflow:auto;}
 .igs-shujuku-table-wrap{overflow:auto;}
 .igs-shujuku-table{width:100%;border-collapse:collapse;font-size:12px;}
-.igs-shujuku-table th{padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:rgba(255,255,255,.4);border-bottom:1px solid rgba(255,255,255,.1);position:sticky;top:0;background:rgba(18,18,22,.98);white-space:nowrap;}
+.igs-shujuku-table th{padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:rgba(255,255,255,.4);border-bottom:1px solid rgba(255,255,255,.1);position:sticky;top:0;background:var(--igs-db-bg,rgba(20,20,22,.98));white-space:nowrap;}
 .igs-shujuku-table td{padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top;max-width:220px;}
 .igs-shujuku-table tr:hover td{background:rgba(255,255,255,.025);}
 .igs-shujuku-cell{cursor:text;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.4;}

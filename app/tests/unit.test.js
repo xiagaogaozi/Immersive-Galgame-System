@@ -463,6 +463,37 @@ test('gate:scene:scene-assets-sprite-resolves-by-mood-group-reduction', () => {
     assert.equal(fallback.spriteUrl, 'https://example.com/default.png');
 });
 
+test('gate:scene:scene-bg-resolves-by-group-reduction-across-three-layers', () => {
+    const assets = {
+        scenes: {
+            '便利店': {
+                url: 'https://example.com/store.png',
+                words: ['世田谷区某便利店'],
+                times: {
+                    '夜晚': {
+                        url: 'https://example.com/store-night.png',
+                        weathers: { '雨天': { url: 'https://example.com/store-night-rain.png' } },
+                    },
+                },
+            },
+        },
+        timeGroups: [{ label: '夜晚', words: ['深夜', '晚上'] }],
+        weatherGroups: [{ label: '雨天', words: ['小雨', '大雨'] }],
+    };
+
+    // 场景名归约：AI 写细分词「世田谷区某便利店」→ 命中组「便利店」
+    const sceneOnly = lookupSceneAssetUrls({ scene: '世田谷区某便利店', time: '', weather: '' }, assets);
+    assert.equal(sceneOnly.backgroundUrl, 'https://example.com/store.png');
+
+    // 时间归约：AI 写「深夜」→ 归约到时间组「夜晚」
+    const sceneTime = lookupSceneAssetUrls({ scene: '世田谷区某便利店', time: '深夜', weather: '' }, assets);
+    assert.equal(sceneTime.backgroundUrl, 'https://example.com/store-night.png');
+
+    // 天气归约：AI 写「大雨」→ 归约到天气组「雨天」
+    const full = lookupSceneAssetUrls({ scene: '便利店', time: '晚上', weather: '大雨' }, assets);
+    assert.equal(full.backgroundUrl, 'https://example.com/store-night-rain.png');
+});
+
 test('gate:scene:settings-action-set-time-url-survives-colon-in-time-name', async () => {
     const draft = {
         bridge: {

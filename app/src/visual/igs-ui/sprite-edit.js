@@ -133,12 +133,19 @@ export function exitSpriteEditMode(overlay, current, save, ctx = {}) {
                 const charMoods = (sceneAssets.characters && sceneAssets.characters[em.character])
                     ? Object.keys(sceneAssets.characters[em.character])
                     : [];
-                const moods = charMoods.length ? charMoods : [em.mood || '默认'];
-                for (const m of moods) {
-                    layouts[`${em.mode}::${em.character}::${m}`] = { ...value };
+                if (charMoods.length) {
+                    for (const m of charMoods) {
+                        layouts[`${em.mode}::${em.character}::${m}`] = { ...value };
+                    }
+                } else {
+                    layouts[`${em.mode}::${em.character}`] = value;
                 }
+            } else if (em.mood) {
+                layouts[`${em.mode}::${em.character}::${em.mood}`] = value;
             } else {
-                layouts[`${em.mode}::${em.character}::${em.mood || '默认'}`] = value;
+                // 空 mood 必须存到 mode::char，与 resolveSpriteLayout 的 charKey 对齐，
+                // 否则重渲染查不回（v0.5.4/v0.13.1 回归）。
+                layouts[`${em.mode}::${em.character}`] = value;
             }
         }
         if (typeof ctx.saveReaderSettingsPatch === 'function') {

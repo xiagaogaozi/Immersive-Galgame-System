@@ -20,9 +20,9 @@ import { createMagicWandEntry } from '../host/magic-wand-entry.js';
 import { createExtensionPanel } from '../host/extension-panel.js';
 import { createReaderImageService } from '../generated-images/reader-image-service.js';
 import { createPromptInjector } from '../host/prompt-injector.js';
-import { buildMoodGroupsText, MOOD_GROUPS_PLACEHOLDER } from '../scene/mood-groups.js';
+import { buildMoodGroupsText, buildGroupsText, buildSceneGroupsText, MOOD_GROUPS_PLACEHOLDER, SCENE_GROUPS_PLACEHOLDER, TIME_GROUPS_PLACEHOLDER, WEATHER_GROUPS_PLACEHOLDER } from '../scene/mood-groups.js';
 
-const IGS_VERSION = '0.22.2';
+const IGS_VERSION = '0.22.3';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
@@ -344,10 +344,20 @@ export function bootstrapIGS(options = {}) {
     }
 
     function resolvePromptRuleContent(sceneAssets) {
-        const rule = String(sceneAssets.promptRule || '');
-        if (!rule.includes(MOOD_GROUPS_PLACEHOLDER)) return rule;
-        const groupsText = buildMoodGroupsText(sceneAssets.moodGroups);
-        return rule.split(MOOD_GROUPS_PLACEHOLDER).join(groupsText);
+        let rule = String(sceneAssets.promptRule || '');
+        if (rule.includes(MOOD_GROUPS_PLACEHOLDER)) {
+            rule = rule.split(MOOD_GROUPS_PLACEHOLDER).join(buildMoodGroupsText(sceneAssets.moodGroups));
+        }
+        if (rule.includes(SCENE_GROUPS_PLACEHOLDER)) {
+            rule = rule.split(SCENE_GROUPS_PLACEHOLDER).join(buildSceneGroupsText(sceneAssets.scenes));
+        }
+        if (rule.includes(TIME_GROUPS_PLACEHOLDER)) {
+            rule = rule.split(TIME_GROUPS_PLACEHOLDER).join(buildGroupsText(sceneAssets.timeGroups));
+        }
+        if (rule.includes(WEATHER_GROUPS_PLACEHOLDER)) {
+            rule = rule.split(WEATHER_GROUPS_PLACEHOLDER).join(buildGroupsText(sceneAssets.weatherGroups));
+        }
+        return rule;
     }
 
     function syncSceneAssetsInjectionWithRetry(attempt) {

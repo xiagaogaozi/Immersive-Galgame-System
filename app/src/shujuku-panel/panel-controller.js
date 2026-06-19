@@ -71,10 +71,10 @@ export function createDbPanelController(doc, global) {
         const container = overlayEl || doc.body;
         container.appendChild(root);
 
-        // apply glassOpacity from reader settings
+        // apply glassOpacity from reader settings (drives panel + sticky header bg)
         const opacity = readerSettings && typeof readerSettings.glassOpacity === 'number'
             ? readerSettings.glassOpacity : 0.94;
-        root.style.background = `rgba(20,20,22,${opacity})`;
+        root.style.setProperty('--igs-db-bg', `rgba(20,20,22,${opacity})`);
 
         // drag within container
         const header = root.querySelector('.igs-shujuku-header');

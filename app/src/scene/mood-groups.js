@@ -1,4 +1,7 @@
 export const MOOD_GROUPS_PLACEHOLDER = '{{mood_groups}}';
+export const SCENE_GROUPS_PLACEHOLDER = '{{scene_groups}}';
+export const TIME_GROUPS_PLACEHOLDER = '{{time_groups}}';
+export const WEATHER_GROUPS_PLACEHOLDER = '{{weather_groups}}';
 
 export const DEFAULT_MOOD_GROUPS = [
     { label: '喜悦', words: ['开心', '欢喜', '欣喜', '愉悦', '满足', '幸福', '甜蜜', '狂喜', '兴奋', '雀跃', '畅快', '陶醉', '得意', '骄傲', '自豪', '自信'] },
@@ -47,6 +50,27 @@ export function buildMoodGroupsText(groups) {
         const words = Array.isArray(group && group.words) ? group.words.filter(Boolean) : [];
         return `${label}组：${words.join('、')}`;
     }).filter((line) => line && line !== '组：').join('\n');
+}
+
+// 通用组文本：任意 [{label,words}] 列表，无默认池兜底（场景/时间/天气专用）。
+export function buildGroupsText(groups) {
+    const list = Array.isArray(groups) ? groups : [];
+    return list.map((group) => {
+        const label = String(group && group.label || '').trim();
+        const words = Array.isArray(group && group.words) ? group.words.filter(Boolean) : [];
+        return `${label}组：${words.join('、')}`;
+    }).filter((line) => line && line !== '组：').join('\n');
+}
+
+// 场景名词库是内嵌式（scenes[名].words），先转成 [{label,words}] 再生成组文本。
+export function buildSceneGroupsText(scenes) {
+    if (!scenes || typeof scenes !== 'object') return '';
+    const list = Object.keys(scenes).map((name) => {
+        const entry = scenes[name];
+        const words = entry && typeof entry === 'object' && Array.isArray(entry.words) ? entry.words : [];
+        return { label: name, words };
+    });
+    return buildGroupsText(list);
 }
 
 function cloneDefaultMoodGroups() {
