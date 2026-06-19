@@ -12,7 +12,6 @@
     "version",
     "bridge",
     "imageApi",
-    "readerMode",
     "readerSettings"
   ]
 }

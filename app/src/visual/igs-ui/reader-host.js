@@ -203,26 +203,15 @@ export function createIgsReaderHost(options = {}) {
     function openSettings(openOptions = {}) {
         const normalizedTab = normalizeSettingsTab(openOptions.tab);
         const fallbackMode = state.activeReader ? state.activeReader.mode : undefined;
-        const readerMode = normalizeReaderMode(
-            firstDefined(openOptions.mode, fallbackMode),
-            resolveBridgeConfigSnapshot({ mode: openOptions.mode }).bridge,
-        );
-
         if (state.activeSettings) {
             state.activeSettings.tab = normalizedTab;
-            if (readerMode !== state.activeSettings.readerMode) {
-                const snapshot = resolveBridgeConfigSnapshot({ mode: readerMode });
-                state.activeSettings.readerMode = readerMode;
-                state.activeSettings.draft = cloneData(snapshot);
-            }
             return rerenderSettings();
         }
 
-        const initialSnapshot = resolveBridgeConfigSnapshot({ mode: readerMode });
+        const initialSnapshot = resolveBridgeConfigSnapshot({ mode: 'default' });
         const controller = createSettingsController();
         const settingsState = {
             tab: normalizedTab,
-            readerMode,
             draft: cloneData(initialSnapshot),
             asyncState: {},
             controller,
@@ -411,16 +400,6 @@ export function createIgsReaderHost(options = {}) {
         if (!state.activeSettings) return { ok: false, reason: 'settings-not-open' };
         const draft = state.activeSettings.draft;
 
-        if (path === 'readerMode') {
-            // 「应用到模式」只切换设置面板的编辑目标，不再联动实际显示模式（openMode）。
-            const nextMode = value === 'default' ? 'default' : normalizeReaderMode(value, draft.bridge);
-            const snapshot = resolveBridgeConfigSnapshot({ mode: nextMode });
-            state.activeSettings.readerMode = nextMode;
-            draft.readerMode = nextMode;
-            draft.readerSettings = cloneData(snapshot.readerSettings);
-            return rerenderSettings();
-        }
-
         if (path === 'bridge.openMode') {
             const nextMode = normalizeReaderMode(value, draft.bridge);
             setPath(draft, path, nextMode);
@@ -457,20 +436,17 @@ export function createIgsReaderHost(options = {}) {
             : null;
         if (!save) return { ok: false, reason: 'missing-save-handler' };
 
-        const editMode = state.activeSettings.readerMode;
         const result = save({
             bridge: draft.bridge,
-            readerMode: editMode,
+            readerMode: 'default',
             readerSettings: draft.readerSettings,
         });
         if (!result || result.ok === false) {
             return result || { ok: false, reason: 'save-failed' };
         }
 
-        const snapshot = resolveBridgeConfigSnapshot({ mode: editMode });
+        const snapshot = resolveBridgeConfigSnapshot({ mode: 'default' });
         state.activeSettings.draft = cloneData(snapshot);
-        state.activeSettings.draft.readerMode = editMode;
-        state.activeSettings.readerMode = editMode;
         rerenderActiveReader();
         return result;
     }
@@ -1206,7 +1182,6 @@ export function createIgsReaderHost(options = {}) {
         const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
         const displayTheme = themeCustom ? vnTheme : activePreset;
         return renderTemplate(getSettingsTabTemplate('reader'), {
-            readerModeField: field('readerMode', '应用到模式', selectInput('readerMode', draft.readerMode, [['default', '默认（所有模式）'], ['pc', '电脑'], ['mobile', '手机'], ['web', '网页全屏'], ['fullscreen', '全屏']])),
             fontSizeField: field('readerSettings.fontSize', '字体大小', selectInput('readerSettings.fontSize', reader.fontSize, [12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30].map((n) => [n, `${n}px`]))),
             dialogWidthField: field('readerSettings.dialogWidth', '对话框宽度', selectInput('readerSettings.dialogWidth', reader.dialogWidth === null ? 'null' : reader.dialogWidth, [['null', '自动'], [200, '200px'], [280, '280px'], [360, '360px'], [440, '440px'], [520, '520px'], [600, '600px'], [680, '680px'], [760, '760px'], [840, '840px'], [920, '920px'], [1000, '1000px'], [1080, '1080px'], [1160, '1160px'], [1280, '1280px']])),
             dialogHeightField: field('readerSettings.dialogHeight', '对话框高度', selectInput('readerSettings.dialogHeight', reader.dialogHeight === null ? 'null' : reader.dialogHeight, [['null', '自适应'], [10, '10px'], [20, '20px'], [40, '40px'], [60, '60px'], [90, '90px'], [130, '130px'], [160, '160px'], [200, '200px'], [250, '250px'], [300, '300px'], [400, '400px'], [500, '500px'], [600, '600px']])),
@@ -1505,7 +1480,7 @@ export function createIgsReaderHost(options = {}) {
     function normalizeUnifiedSettings(snapshot, preferredMode) {
         const bridge = normalizeBridgeConfig(snapshot.bridge);
         const readerMode = normalizeReaderMode(firstDefined(snapshot.readerMode, preferredMode, bridge.openMode), bridge);
-        const readerSettings = normalizeReaderSettings(readerMode, snapshot.readerSettings, bridge.vnTheme);
+        const readerSettings = normalizeReaderSettings(snapshot.readerSettings, bridge.vnTheme);
 
         return {
             version: snapshot.version || options.version || '0.5.4',
@@ -1628,18 +1603,17 @@ export function createIgsReaderHost(options = {}) {
         return normalized;
     }
 
-    function normalizeReaderSettings(mode, settings, legacyTheme) {
-        const inlineMode = mode === 'pc' || mode === 'mobile';
+    function normalizeReaderSettings(settings, legacyTheme) {
         const currentVersion = READER_SETTINGS_SCHEMA_VERSION;
         const src = (settings && settings._v === currentVersion) ? cloneData(settings) : {};
         const base = {
             _v: currentVersion,
-            fontSize: inlineMode ? 15 : 18,
+            fontSize: 18,
             dialogWidth: null,
             dialogHeight: null,
             glassOpacity: 0.62,
-            toolbarScale: inlineMode ? 60 : 100,
-            inputScale: inlineMode ? 60 : 100,
+            toolbarScale: 100,
+            inputScale: 100,
             imgMode: 'adaptive',
             showStatusLine: false,
             imageCountOverride: null,

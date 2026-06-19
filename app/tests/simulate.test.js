@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.21.3');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.21.4');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -392,16 +392,13 @@ test('gate:simulation:igs-ui-settings-save-updates-reader-state', () => {
     });
 
     const opened = vn.openSettings({ tab: 'reader', mode: 'mobile' });
-    const switched = opened.controller.setValue('readerMode', 'mobile');
     const updated = opened.controller.setValue('readerSettings.fontSize', 20);
     const current = vn.getUnifiedSettings({ mode: 'mobile' });
-    const savedStorage = JSON.parse(storage.getItem('igs-reader-settings-v9-mobile'));
+    const savedStorage = JSON.parse(storage.getItem('igs-reader-settings-v9-default'));
 
-    assert.equal(switched.ok, true);
     assert.equal(updated.ok, true);
     assert.equal(current.readerSettings.fontSize, 20);
     assert.equal(savedStorage.fontSize, 20);
-    assert.equal(updated.snapshot.readerMode, 'mobile');
 
     vn.destroy();
 });
@@ -463,12 +460,6 @@ test('gate:simulation:igs-ui-toolbar-actions-open-settings-toggle-and-close', as
     assert.equal(modeResult.ok, true);
     assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
 
-    // 切「应用到模式」(readerMode) 只改设置面板的编辑目标，不再联动实际显示模式（保持 mobile）
-    const readerModeResult = settingsResult.controller.setValue('readerMode', 'web');
-    assert.equal(readerModeResult.ok, true);
-    assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
-    assert.equal(vn.getState().igsUi.activeSettings.readerMode, 'web');
-
     const toggleResult = await controller.invokeAction('toggle-bar');
     assert.equal(toggleResult.ok, true);
     assert.equal(toggleResult.collapsed, false);
@@ -495,7 +486,7 @@ test('gate:simulation:igs-ui-toolbar-actions-open-settings-toggle-and-close', as
     vn.destroy();
 });
 
-test('gate:simulation:reader-default-mode-writes-all-buckets-and-theme-per-mode', async () => {
+test('gate:simulation:reader-settings-shared-across-modes', async () => {
     const storage = createMemoryStorage();
     const vn = bootstrapIGS({
         global: { localStorage: storage },
@@ -507,21 +498,15 @@ test('gate:simulation:reader-default-mode-writes-all-buckets-and-theme-per-mode'
     });
 
     const opened = await vn.openLatestAvailable('pc');
-    const controller = opened.reader.controller;
-    const settings = (await controller.invokeAction('settings')).controller;
+    const settings = (await opened.reader.controller.invokeAction('settings')).controller;
 
-    // 选「默认」并改字体大小，应写入独立的 default 桶
-    settings.setValue('readerMode', 'default');
     settings.setValue('readerSettings.fontSize', 24);
-    const defaultBucket = JSON.parse(storage.getItem('igs-reader-settings-v9-default') || '{}');
-    assert.equal(defaultBucket.fontSize, 24, 'default bucket fontSize');
+    const bucket = JSON.parse(storage.getItem('igs-reader-settings-v9-default') || '{}');
+    assert.equal(bucket.fontSize, 24, 'writes to default bucket');
 
-    // 对话主题按模式存：切到 pc 改主题色后能在 pc 桶读到
-    settings.setValue('readerMode', 'pc');
-    settings.setValue('readerSettings.vnTheme.preset', 'custom');
-    settings.setValue('readerSettings.vnTheme.nameColor', '#ff0000');
-    const pcBucket = JSON.parse(storage.getItem('igs-reader-settings-v9-pc') || '{}');
-    assert.equal(pcBucket.vnTheme.nameColor, '#ff0000');
+    // same settings readable regardless of mode
+    assert.equal(vn.getUnifiedSettings({ mode: 'pc' }).readerSettings.fontSize, 24);
+    assert.equal(vn.getUnifiedSettings({ mode: 'mobile' }).readerSettings.fontSize, 24);
 
     vn.destroy();
 });

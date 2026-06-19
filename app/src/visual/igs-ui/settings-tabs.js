@@ -68,7 +68,6 @@ const IMAGE_TAB_TEMPLATE = `
 
 const READER_TAB_TEMPLATE = `
 <div class="igs-settings-grid">
-  {{readerModeField}}
   {{fontSizeField}}
   {{dialogWidthField}}
   {{dialogHeightField}}
