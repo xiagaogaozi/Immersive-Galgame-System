@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.20.3');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.20.4');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -510,13 +510,11 @@ test('gate:simulation:reader-default-mode-writes-all-buckets-and-theme-per-mode'
     const controller = opened.reader.controller;
     const settings = (await controller.invokeAction('settings')).controller;
 
-    // 选「默认」并改字体大小，应写入全部四个模式桶
+    // 选「默认」并改字体大小，应写入独立的 default 桶
     settings.setValue('readerMode', 'default');
     settings.setValue('readerSettings.fontSize', 24);
-    for (const mode of ['pc', 'mobile', 'web', 'fullscreen']) {
-        const bucket = JSON.parse(storage.getItem('igs-reader-settings-v9-' + mode) || '{}');
-        assert.equal(bucket.fontSize, 24, `mode ${mode} fontSize`);
-    }
+    const defaultBucket = JSON.parse(storage.getItem('igs-reader-settings-v9-default') || '{}');
+    assert.equal(defaultBucket.fontSize, 24, 'default bucket fontSize');
 
     // 对话主题按模式存：切到 pc 改主题色后能在 pc 桶读到
     settings.setValue('readerMode', 'pc');

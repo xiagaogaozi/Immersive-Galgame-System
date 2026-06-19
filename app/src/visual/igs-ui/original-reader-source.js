@@ -67,6 +67,7 @@ const ORIGINAL_READER_STYLE_TEXT = `
 .igs-controls{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
 #igs-overlay.igs-floating .igs-progress{flex-shrink:0;}
 #igs-overlay.igs-floating .igs-text{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;}
+#igs-overlay.igs-floating .igs-speaker,#igs-overlay.igs-floating .igs-divider{flex-shrink:0;}
 #igs-overlay.igs-floating .igs-controls{flex-shrink:0;}
 .igs-input{flex:1;min-width:0;height:32px;box-sizing:border-box;padding:0 12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;color:#fff;font-size:14px;line-height:18px;outline:none;font-family:inherit;}
 .igs-input:focus{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);}

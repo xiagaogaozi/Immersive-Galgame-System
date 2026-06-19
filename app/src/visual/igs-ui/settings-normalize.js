@@ -5,6 +5,7 @@ import { TOOLBAR_ACTIONS, VN_THEME_PRESETS } from './reader-host-constants.js';
 import { esc, normalizeFiniteNumber } from './reader-value-utils.js';
 
 export function normalizeReaderMode(mode, bridge) {
+    if (mode === 'default') return 'default';
     const resolved = resolveLegacyReaderMode(mode, '', bridge || {});
     return LEGACY_READER_MODES.includes(resolved) ? resolved : 'pc';
 }

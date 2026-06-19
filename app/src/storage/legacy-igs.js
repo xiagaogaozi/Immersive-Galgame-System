@@ -4,7 +4,7 @@ export const LEGACY_VN_KEYS = Object.freeze({
     displayMode: 'igs-display-mode',
 });
 
-export const LEGACY_READER_MODES = Object.freeze(['pc', 'mobile', 'web', 'fullscreen']);
+export const LEGACY_READER_MODES = Object.freeze(['pc', 'mobile', 'web', 'fullscreen', 'default']);
 
 export function readLegacyIgsSettings(storageLike, preferredMode) {
     const result = {

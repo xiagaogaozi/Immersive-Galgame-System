@@ -413,10 +413,8 @@ export function createIgsReaderHost(options = {}) {
 
         if (path === 'readerMode') {
             // 「应用到模式」只切换设置面板的编辑目标，不再联动实际显示模式（openMode）。
-            // value === 'default' 表示编辑所有模式共用的一套阅读设置（持久化时写入四个桶）。
             const nextMode = value === 'default' ? 'default' : normalizeReaderMode(value, draft.bridge);
-            const displayMode = nextMode === 'default' ? 'pc' : nextMode;
-            const snapshot = resolveBridgeConfigSnapshot({ mode: displayMode });
+            const snapshot = resolveBridgeConfigSnapshot({ mode: nextMode });
             state.activeSettings.readerMode = nextMode;
             draft.readerMode = nextMode;
             draft.readerSettings = cloneData(snapshot.readerSettings);
@@ -426,10 +424,6 @@ export function createIgsReaderHost(options = {}) {
         if (path === 'bridge.openMode') {
             const nextMode = normalizeReaderMode(value, draft.bridge);
             setPath(draft, path, nextMode);
-            const snapshot = resolveBridgeConfigSnapshot({ mode: nextMode });
-            state.activeSettings.readerMode = nextMode;
-            draft.readerMode = nextMode;
-            draft.readerSettings = cloneData(snapshot.readerSettings);
             const persisted = persistSettingsDraft();
             if (persisted.ok === false) return persisted;
             return rerenderSettings();
@@ -464,34 +458,16 @@ export function createIgsReaderHost(options = {}) {
         if (!save) return { ok: false, reason: 'missing-save-handler' };
 
         const editMode = state.activeSettings.readerMode;
-        // 「默认」编辑模式：把当前 readerSettings 写进全部四个模式桶（所有模式共用一套阅读设置）。
-        // 选具体模式时只写该模式桶。default 不是真实存储桶，仅作编辑分发开关。
-        let result;
-        if (editMode === 'default') {
-            for (const mode of LEGACY_READER_MODES) {
-                result = save({
-                    bridge: draft.bridge,
-                    readerMode: mode,
-                    readerSettings: draft.readerSettings,
-                });
-                if (!result || result.ok === false) {
-                    return result || { ok: false, reason: 'save-failed' };
-                }
-            }
-        } else {
-            result = save({
-                bridge: draft.bridge,
-                readerMode: editMode,
-                readerSettings: draft.readerSettings,
-            });
-            if (!result || result.ok === false) {
-                return result || { ok: false, reason: 'save-failed' };
-            }
+        const result = save({
+            bridge: draft.bridge,
+            readerMode: editMode,
+            readerSettings: draft.readerSettings,
+        });
+        if (!result || result.ok === false) {
+            return result || { ok: false, reason: 'save-failed' };
         }
 
-        // 重新加载草稿：default 模式以 pc 桶作展示基准，否则取当前模式桶。
-        const displayMode = editMode === 'default' ? 'pc' : editMode;
-        const snapshot = resolveBridgeConfigSnapshot({ mode: displayMode });
+        const snapshot = resolveBridgeConfigSnapshot({ mode: editMode });
         state.activeSettings.draft = cloneData(snapshot);
         state.activeSettings.draft.readerMode = editMode;
         state.activeSettings.readerMode = editMode;
