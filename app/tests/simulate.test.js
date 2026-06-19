@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { bootstrapIGS, createMemoryStorage, createPresetRegistry, PRESET_STORE_KEY } from '../src/index.js';
 import { createShujukuClient } from '../src/data/shujuku/client.js';
+import { renderDbPanelInner, getDbPanelStyles } from '../src/shujuku-panel/panel-render.js';
 import { createResourceCache } from '../src/media/resource-cache.js';
 import { buildIgsTextPayload } from '../src/scene/message-source.js';
 import { VISUAL_MODES } from '../src/visual/visual-mode.js';
@@ -183,7 +184,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.22.7');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.22.8');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -1781,6 +1782,39 @@ test('gate:simulation:bad-import-keeps-last-working-refresh', async () => {
     assert.equal(result.scene.textPipelineErrors.length, 0);
 
     vn.destroy();
+});
+
+test('gate:simulation:db-panel renders editable empty cells on td and scrollable flex layout', () => {
+    const state = {
+        status: 'ready',
+        activeUid: 'sheet_1',
+        errorMsg: '',
+        externalPending: false,
+        tables: [{
+            uid: 'sheet_1',
+            name: '主角信息表',
+            columns: ['row_id', '名称', '数量'],
+            // 第二行为新增空行（除 row_id 外全空）——问题4 的真实场景
+            rows: [['1', '望月', '5'], ['2', '', '']],
+        }],
+    };
+    const html = renderDbPanelInner(state);
+
+    // 空格子的 data-db-edit 必须挂在 <td> 上（不是内层 span）——否则空 span 塌缩成 0×0 点不到
+    assert.match(html, /<td data-db-edit="1:1"><span class="igs-shujuku-cell"><\/span><\/td>/);
+    assert.match(html, /<td data-db-edit="1:2"><span class="igs-shujuku-cell"><\/span><\/td>/);
+    // row_id 列只读，不可编辑
+    assert.match(html, /<td class="igs-db-ro-cell"><span class="igs-shujuku-cell igs-db-ro">2<\/span><\/td>/);
+    // 不再有中间 wrap 层，body 直接包 table（方案A：body 为唯一滚动容器）
+    assert.doesNotMatch(html, /igs-shujuku-table-wrap/);
+
+    const css = getDbPanelStyles();
+    // inner 必须是填满面板的 flex 列，否则 body 的 flex:1+min-height:0 无父级高度约束、表格撑破面板
+    assert.match(css, /#igs-db-inner\{[^}]*flex:1[^}]*min-height:0[^}]*flex-direction:column/);
+    // body 为纵向滚动容器且 min-height:0
+    assert.match(css, /\.igs-shujuku-body\{[^}]*flex:1[^}]*min-height:0[^}]*overflow-y:auto/);
+    // 面板毛玻璃对齐工具栏 blur(48px)
+    assert.match(css, /#igs-db-panel\{[^}]*backdrop-filter:blur\(48px\) saturate\(220%\)/);
 });
 
 function readJson(relativePath) {

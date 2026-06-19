@@ -48,7 +48,7 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-sprite-edit-bar button:hover{background:rgba(255,255,255,.22);}
 #igs-sprite-edit-bar .igs-se-save{background:rgba(92,170,255,.25);border-color:rgba(92,170,255,.5);}
 #igs-click-layer{position:absolute;inset:0;cursor:pointer;z-index:3;}
-.igs-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.62);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(32px) saturate(180%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
+.igs-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:rgba(20,20,22,.62);border:1px solid rgba(255,255,255,.14);-webkit-backdrop-filter:blur(48px) saturate(220%);backdrop-filter:blur(48px) saturate(220%);border-radius:22px;box-shadow:0 12px 48px rgba(0,0,0,.5);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
 .igs-dialog.igs-hidden{opacity:0;transform:translateX(-50%) translateY(20px);pointer-events:none;}
 #igs-overlay.igs-floating #igs-click-layer{cursor:grab;touch-action:none;}
 #igs-overlay.igs-floating.is-dragging #igs-click-layer{cursor:grabbing;}

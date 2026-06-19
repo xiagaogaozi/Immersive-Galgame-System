@@ -7,6 +7,7 @@ export function createDbPanelController(doc, global) {
     let modalRoot = null;
     let client = null;
     let igsWriting = false;
+    let suppressTabClick = false;
     const state = { tables: [], activeUid: '', status: 'loading', errorMsg: '', externalPending: false };
 
     const externalCallback = () => {
@@ -71,14 +72,17 @@ export function createDbPanelController(doc, global) {
         const container = overlayEl || doc.body;
         container.appendChild(root);
 
-        // apply glassOpacity from reader settings (drives panel + sticky header bg)
+        // apply glassOpacity from reader settings (drives panel bg + sticky header bg)
         const opacity = readerSettings && typeof readerSettings.glassOpacity === 'number'
-            ? readerSettings.glassOpacity : 0.94;
+            ? readerSettings.glassOpacity : 0.62;
         root.style.setProperty('--igs-db-bg', `rgba(20,20,22,${opacity})`);
+        // sticky 表头需足够不透明，否则滚动时下方行会透过表头；在面板浓度之上叠到至少 0.92。
+        root.style.setProperty('--igs-db-head-bg', `rgba(24,24,27,${Math.max(0.92, opacity)})`);
 
         // drag within container
         const header = root.querySelector('.igs-shujuku-header');
         if (header) attachDrag(header, root, container);
+        attachTabsDragScroll(root);
 
         root.addEventListener('click', onClick);
         root.addEventListener('focusout', onFocusOut);
@@ -115,7 +119,11 @@ export function createDbPanelController(doc, global) {
             }
         }
         const tab = event.target.closest('[data-db-tab]');
-        if (tab) { state.activeUid = tab.getAttribute('data-db-tab'); render(); return; }
+        if (tab) {
+            // 拖动标签栏后抑制本次 click，避免误切换标签
+            if (suppressTabClick) { suppressTabClick = false; return; }
+            state.activeUid = tab.getAttribute('data-db-tab'); render(); return;
+        }
 
         const editCell = event.target.closest('[data-db-edit]');
         if (editCell) { activateInline(editCell); return; }
@@ -130,11 +138,15 @@ export function createDbPanelController(doc, global) {
         if (!table) return;
         const row = table.rows[ri];
         if (!row) return;
+        const span = cell.querySelector('.igs-shujuku-cell');
+        if (!span) return;
         const input = doc.createElement('input');
         input.className = 'igs-shujuku-cell-input';
         input.value = String(row[ci] ?? '');
         input.setAttribute('data-db-commit', `${ri}:${ci}`);
-        cell.replaceWith(input);
+        // 替换 td 内的 span，保留 td 本身（维持列结构）；防止再次触发 td 的编辑激活。
+        cell.removeAttribute('data-db-edit');
+        span.replaceWith(input);
         input.focus();
         input.select();
     }
@@ -223,6 +235,53 @@ export function createDbPanelController(doc, global) {
     function closeModal() { if (modalRoot) { modalRoot.remove(); modalRoot = null; } }
 
     function activeTable() { return state.tables.find(t => t.uid === state.activeUid) || state.tables[0] || null; }
+
+    function attachTabsDragScroll(panel) {
+        if (!panel) return;
+        let strip = null;
+        let active = false;
+        let moved = false;
+        let startX = 0;
+        let startScroll = 0;
+        let pointerId = null;
+
+        panel.addEventListener('pointerdown', (e) => {
+            const s = e.target.closest('.igs-shujuku-tabs');
+            if (!s) return;
+            // 仅当内容溢出时才进入拖动滚动
+            if (s.scrollWidth <= s.clientWidth + 1) return;
+            strip = s;
+            active = true;
+            moved = false;
+            startX = e.clientX;
+            startScroll = s.scrollLeft;
+            pointerId = e.pointerId;
+            try { if (pointerId != null && s.setPointerCapture) s.setPointerCapture(pointerId); } catch (err) { /* ignore */ }
+        });
+        panel.addEventListener('pointermove', (e) => {
+            if (!active || !strip) return;
+            const dx = e.clientX - startX;
+            if (!moved && Math.abs(dx) < 4) return;
+            moved = true;
+            strip.classList.add('igs-db-dragging');
+            strip.scrollLeft = startScroll - dx;
+            if (e.cancelable) e.preventDefault();
+        });
+        const end = () => {
+            if (!active) return;
+            active = false;
+            if (strip) {
+                try { if (pointerId != null && strip.releasePointerCapture) strip.releasePointerCapture(pointerId); } catch (err) { /* ignore */ }
+                strip.classList.remove('igs-db-dragging');
+            }
+            // 拖动后抑制紧随的 click，避免误切标签
+            if (moved) suppressTabClick = true;
+            strip = null;
+            pointerId = null;
+        };
+        panel.addEventListener('pointerup', end);
+        panel.addEventListener('pointercancel', end);
+    }
 
     function attachDrag(handle, panel, container) {
         handle.addEventListener('mousedown', (e) => {

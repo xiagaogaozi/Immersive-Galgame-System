@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.22.7`：修复 v0.22.6 矫枉过正——上一版 floating（pc/mobile）模式直接忽略「对话框高度」，导致 PC/手机端怎么调都无效。现 floating 模式下 dialogHeight 改用 `.igs-dialog` 的 `min-height`（把气泡撑到目标高度，内容更多时自然增长）+ `max-height` clamp 到浮窗可用高度（约 86%），不再写死 `height`（固定 height 比内容小时会把输入框挤出气泡）。Playwright 真机验证：dialogHeight 60→600 气泡高度跟随、输入框恒在气泡内不溢出、气泡始终在视口内。
+- 当前项目版本 `v0.22.8`：修复数据库面板四个问题（Playwright 真机验证）。①标签栏溢出后电脑/手机都无法滚动、看不到后面的标签：加标签栏拖动滚动（pointer 事件，鼠标按住拖+手机触摸拖，拖动后抑制误触发切换），保持单行不折行、滚动条隐藏。②行数>8 时看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（body 的实际 flex 父级）无 flex 样式，table 把它撑破溢出面板、`flex:1+min-height:0` 失去高度约束；现给 inner 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器、表头 sticky 钉住（背景调至不透明防透色），去掉多余 table-wrap 层、横向滚动条隐藏。③新增行后空格子无法编辑：真因是 `data-db-edit` 挂在内层 span 上，空 span `display:-webkit-box` 无内容时塌缩成 0×0 无点击区；现移到 `<td>`（有 padding/列宽，空格子也可点）。④对话框+数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 由 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`，透明度仍由「毛玻璃浓度」可调。新增 DB 面板渲染回归单测。
+- `v0.22.7`：修复 v0.22.6 矫枉过正——上一版 floating（pc/mobile）模式直接忽略「对话框高度」，导致 PC/手机端怎么调都无效。现 floating 模式下 dialogHeight 改用 `.igs-dialog` 的 `min-height`（把气泡撑到目标高度，内容更多时自然增长）+ `max-height` clamp 到浮窗可用高度（约 86%），不再写死 `height`（固定 height 比内容小时会把输入框挤出气泡）。Playwright 真机验证：dialogHeight 60→600 气泡高度跟随、输入框恒在气泡内不溢出、气泡始终在视口内。
 - `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text`；v0.22.6 改为忽略 dialogHeight（v0.22.7 修正为改气泡 min-height）。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
 - `v0.22.5`：修复移动端阅读器被压成一小块（立绘/输入框看似溢出的真因）——宿主移动端 body 为 position:fixed 且尺寸受限，成为 `#igs-overlay` 的 fixed 包含块，`width/height:100%` 取到 body 尺寸而非视口；现 overlay 改挂 documentElement、尺寸用 `100vw/100vh`（保留 100dvh 兜底）。顺带清理 igs-compat / reader-state 两处老桶残留读取，统一回退 default 桶。
 - `v0.22.4`：修复 v0.21.4 删分桶的总根源回归——`saveUnifiedSettings` 曾按 readerMode 分桶存、`getUnifiedSettingsSnapshot` 却固定读 default 桶，导致移动端保存的设置（含立绘 spriteLayouts）读不回（立绘保存后回初始位置、输入框/发送按钮被挤出的真因）；现统一存取 default 桶，老用户 default 空时回退旧桶。立绘预览图放大改挂 `#igs-unified-settings`（absolute 填满），修复移动端宿主 body 高度坍缩导致预览只占顶部一条、看不到关闭区的问题。新增 2 个回归单测。
@@ -164,6 +165,15 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.22.8 - 2026-06-20
+
+- 修复数据库面板四个问题，全部 Playwright 真机验证。
+- ①标签栏溢出无法滚动（电脑+手机都点不到后面的标签）：加标签栏拖动滚动（pointer 事件统一处理鼠标拖+触摸拖），保持单行、滚动条隐藏；拖动超阈值后抑制本次 click 避免误切标签。
+- ②行数>8 看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（`.igs-shujuku-body` 的真实 flex 父级）无任何 flex 样式，table 把它撑到内容高度并溢出面板，`body{flex:1;min-height:0}` 因父级无高度约束而失效。现给 `#igs-db-inner` 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器；表头 `position:sticky` 背景调到不透明（`--igs-db-head-bg`）防止滚动透色；移除多余的 `.igs-shujuku-table-wrap` 嵌套层，横向滚动条隐藏。
+- ③新增行后空格子无法编辑（增行有效果但点不动）：真因是 `data-db-edit`/`data-db-expand` 挂在内层 `<span>`，空 span 为 `display:-webkit-box` 无内容时塌缩成 0×0、无点击区域，`closest('[data-db-edit]')` 命不中。现把属性移到 `<td>`（有 padding 与列宽，空格子也有可点区），编辑时只替换 td 内的 span 保留列结构。
+- ④对话框与数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 从 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`（对齐 `.igs-ctrl-bar`），背景透明度仍由「毛玻璃浓度」实时控制；补 `-webkit-backdrop-filter` 前缀。
+- 新增 `gate:simulation:db-panel` 回归单测，锁定空格子 `data-db-edit` 在 `<td>` 上、inner flex 列布局、body 滚动容器、blur(48px) 毛玻璃。此前 DB 面板无任何测试覆盖，是这些 bug 漏过验收的原因。
 
 ### v0.22.7 - 2026-06-20
 
