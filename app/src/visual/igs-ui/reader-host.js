@@ -1275,10 +1275,11 @@ export function createIgsReaderHost(options = {}) {
         if (typeof doc.addEventListener === 'function') {
             doc.addEventListener('keydown', keydownHandler, true);
         }
+        const dbController = createDbPanelController(doc, options.global);
         return {
             root,
             doc,
-            dbController: createDbPanelController(doc, options.global),
+            dbController,
             dispose() {
                 if (typeof doc.removeEventListener === 'function') {
                     doc.removeEventListener('keydown', keydownHandler, true);
