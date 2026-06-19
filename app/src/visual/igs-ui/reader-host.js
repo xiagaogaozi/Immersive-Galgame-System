@@ -1227,7 +1227,9 @@ export function createIgsReaderHost(options = {}) {
         if (existing) existing.remove();
 
         const root = doc.createElement('div');
-        doc.body.appendChild(root);
+        // 挂到 documentElement 而非 body：宿主移动端把 body 设为 position:fixed 且尺寸受限，
+        // 会成为 overlay fixed 定位的包含块，导致 100% 取到 body 尺寸而非视口（阅读器被压成一小块）。
+        (doc.documentElement || doc.body).appendChild(root);
         root.addEventListener('click', async (event) => {
             const button = event.target.closest('[data-act]');
             if (!button) return;

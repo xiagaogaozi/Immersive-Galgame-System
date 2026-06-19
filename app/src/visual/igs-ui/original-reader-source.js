@@ -33,7 +33,7 @@ export const ORIGINAL_READER_TOOLBAR_BUTTONS = Object.freeze([
 ]);
 
 const ORIGINAL_READER_STYLE_TEXT = `
-#igs-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;height:100dvh;z-index:900;background:#000;overflow:hidden;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#fff;}
+#igs-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;z-index:900;background:#000;overflow:hidden;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#fff;}
 #igs-overlay.igs-floating,#igs-overlay.igs-mode-web,#igs-overlay.igs-mode-fullscreen{z-index:2147483000;}
 #igs-overlay.igs-fading{opacity:0;transition:opacity .25s;}
 #igs-bg{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, #2a2a3a 0%, #0c0c11 80%);background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:brightness(.88);}

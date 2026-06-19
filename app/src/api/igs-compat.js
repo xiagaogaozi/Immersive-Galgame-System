@@ -30,7 +30,13 @@ export function createIgsCompatApi(app) {
             const bridge = cloneData(app.getState().config || {});
             const readerMode = resolveReaderMode(options, legacy, bridge);
             const readerSettingsByMode = legacy.readerSettingsByMode || {};
-            const readerSettings = cloneData(readerSettingsByMode[readerMode] || legacy.readerSettings || {});
+            // 全模式共用 default 桶；老用户 default 空时回退旧分桶。
+            const hasKeys = (obj) => obj && typeof obj === 'object' && Object.keys(obj).length > 0;
+            const readerSettings = cloneData(
+                hasKeys(readerSettingsByMode['default']) ? readerSettingsByMode['default']
+                    : hasKeys(readerSettingsByMode[readerMode]) ? readerSettingsByMode[readerMode]
+                    : legacy.readerSettings || {}
+            );
 
             return {
                 version: app.version,

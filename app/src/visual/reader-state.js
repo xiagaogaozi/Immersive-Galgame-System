@@ -15,6 +15,8 @@ export function createReaderState(input = {}) {
     const mergedSettings = mergeSettings(
         legacy.readerSettingsByMode && legacy.readerSettingsByMode[mode],
         legacy.readerSettings,
+        // default 桶为权威，放在旧 mode 桶之后覆盖它（全模式共用一套设置）。
+        legacy.readerSettingsByMode && legacy.readerSettingsByMode['default'],
         input.visualSettings,
         input.layoutSettings,
         input.readerSettings,

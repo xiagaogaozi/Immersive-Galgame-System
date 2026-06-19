@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.22.4`：修复 v0.21.4 删分桶的总根源回归——`saveUnifiedSettings` 曾按 readerMode 分桶存、`getUnifiedSettingsSnapshot` 却固定读 default 桶，导致移动端保存的设置（含立绘 spriteLayouts）读不回（立绘保存后回初始位置、输入框/发送按钮被挤出的真因）；现统一存取 default 桶，老用户 default 空时回退旧桶。立绘预览图放大改挂 `#igs-unified-settings`（absolute 填满），修复移动端宿主 body 高度坍缩导致预览只占顶部一条、看不到关闭区的问题。新增 2 个回归单测。
+- 当前项目版本 `v0.22.5`：修复移动端阅读器被压成一小块（立绘/输入框看似溢出的真因）——宿主移动端 body 为 position:fixed 且尺寸受限，成为 `#igs-overlay` 的 fixed 包含块，`width/height:100%` 取到 body 尺寸而非视口；现 overlay 改挂 documentElement、尺寸用 `100vw/100vh`（保留 100dvh 兜底）。顺带清理 igs-compat / reader-state 两处老桶残留读取，统一回退 default 桶。
+- `v0.22.4`：修复 v0.21.4 删分桶的总根源回归——`saveUnifiedSettings` 曾按 readerMode 分桶存、`getUnifiedSettingsSnapshot` 却固定读 default 桶，导致移动端保存的设置（含立绘 spriteLayouts）读不回（立绘保存后回初始位置、输入框/发送按钮被挤出的真因）；现统一存取 default 桶，老用户 default 空时回退旧桶。立绘预览图放大改挂 `#igs-unified-settings`（absolute 填满），修复移动端宿主 body 高度坍缩导致预览只占顶部一条、看不到关闭区的问题。新增 2 个回归单测。
 - `v0.22.3`：修复4个问题——①场景/时间/天气背景查表改为「精确→组归约→默认」三级兜底（对齐情绪词逻辑，AI 写细分词可命中组名 URL）；新增 `{{scene_groups}}`/`{{time_groups}}`/`{{weather_groups}}` 占位符（默认模板已含，可 DIY 删除）；②立绘保存后回初始位置回归（空 mood 存 `mode::char` 与读取侧对齐）；③数据库表格色跟随 glassOpacity（CSS 变量驱动表头 sticky 背景）；④数据库面板默认右上角缩小。
 - `v0.22.2`：新增数据库前端面板——阅读器工具栏增加数据库按钮，独立悬浮窗，Tab 多表切换，完整 CRUD（内联编辑/长文本弹层/增行/删行），实时回调监听外部更新，冲突检测；热修 dispose 中 dbController ReferenceError；面板约束到阅读器内、可拖动、透明度跟随设置。
 - `v0.21.5`：热修复 v0.21.4——同步修正遗漏的6处旧3参数调用（normalizeReaderSettings）和 settingsState.readerMode 引用，恢复阅读器全部功能。
