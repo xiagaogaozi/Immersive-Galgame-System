@@ -96,6 +96,7 @@ import {
 } from './settings-normalize.js';
 import { clearReaderModeRuntime, exitDocumentFullscreen } from './reader-runtime.js';
 import { enterSpriteEditMode } from './sprite-edit.js';
+import { createDbPanelController } from '../../shujuku-panel/panel-controller.js';
 import { handleSettingsAction as runSettingsAction } from './settings-actions.js';
 import { loadScenePresets } from '../../scene/scene-preset-store.js';
 import { LEGACY_READER_MODES } from '../../storage/legacy-igs.js';
@@ -504,6 +505,11 @@ export function createIgsReaderHost(options = {}) {
         if (normalizedAction === 'sprite-edit') {
             const overlay = state.activeReader.dom && state.activeReader.dom.overlay;
             if (overlay) enterSpriteEditMode(overlay, state.activeReader, buildSpriteEditContext());
+            return { ok: true };
+        }
+        if (normalizedAction === 'db-panel') {
+            const db = state.activeReader.dom && state.activeReader.dom.dbController;
+            if (db) db.toggle();
             return { ok: true };
         }
 
@@ -1269,10 +1275,12 @@ export function createIgsReaderHost(options = {}) {
         return {
             root,
             doc,
+            dbController: createDbPanelController(doc, options.global),
             dispose() {
                 if (typeof doc.removeEventListener === 'function') {
                     doc.removeEventListener('keydown', keydownHandler, true);
                 }
+                dbController.close();
             },
         };
     }

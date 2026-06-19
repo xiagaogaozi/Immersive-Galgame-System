@@ -1,4 +1,5 @@
 export const ORIGINAL_READER_ICONS = Object.freeze({
+    db: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:block"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>',
     prev: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="15 18 9 12 15 6"/></svg>',
     next: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="9 18 15 12 9 6"/></svg>',
     regen: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
@@ -16,6 +17,7 @@ export const ORIGINAL_READER_ICONS = Object.freeze({
 });
 
 export const ORIGINAL_READER_TOOLBAR_BUTTONS = Object.freeze([
+    { id: 'db-panel', title: '数据库', html: ORIGINAL_READER_ICONS.db },
     { id: 'prev-turn', title: '上一轮', html: ORIGINAL_READER_ICONS.prevTurn },
     { id: 'first-page', title: '第一页', html: ORIGINAL_READER_ICONS.firstPage },
     { id: 'prev', title: '上一页', html: ORIGINAL_READER_ICONS.prev },
