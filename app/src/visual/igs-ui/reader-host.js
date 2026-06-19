@@ -1156,7 +1156,9 @@ export function createIgsReaderHost(options = {}) {
             const sceneAssets = bridge.sceneAssets || {};
             const disabled = !sceneAssets.enabled;
             const subTab = asyncState.sceneSubTab === 'characters' ? 'characters' : 'scenes';
-            const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {});
+            const scenesHtml = renderSceneAssetList(sceneAssets.scenes || {}, {
+                expandedSlots: asyncState.expandedSceneSlots instanceof Set ? asyncState.expandedSceneSlots : new Set(),
+            });
             const charsHtml = renderCharacterAssetList(sceneAssets.characters || {}, {
                 moodGroups: sceneAssets.moodGroups || [],
                 expandedSlots: asyncState.expandedSpriteSlots instanceof Set ? asyncState.expandedSpriteSlots : new Set(),
@@ -1557,6 +1559,17 @@ export function createIgsReaderHost(options = {}) {
             const v = normalized.scenes[key];
             if (typeof v === 'string') normalized.scenes[key] = { url: v, times: {} };
             else if (v && typeof v === 'object' && !v.times) normalized.scenes[key].times = {};
+            const sceneObj = normalized.scenes[key];
+            for (const tKey of Object.keys(sceneObj.times || {})) {
+                const tv = sceneObj.times[tKey];
+                if (typeof tv === 'string') sceneObj.times[tKey] = { url: tv, weathers: {} };
+                else if (tv && typeof tv === 'object' && !tv.weathers) sceneObj.times[tKey].weathers = {};
+                const timeObj = sceneObj.times[tKey];
+                for (const wKey of Object.keys(timeObj.weathers || {})) {
+                    const wv = timeObj.weathers[wKey];
+                    if (typeof wv === 'string') timeObj.weathers[wKey] = { url: wv, words: [] };
+                }
+            }
         }
         if (!normalized.characters || typeof normalized.characters !== 'object' || Array.isArray(normalized.characters)) {
             normalized.characters = {};

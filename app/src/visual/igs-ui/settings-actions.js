@@ -180,6 +180,10 @@ export async function handleSettingsAction(action, ctx) {
         if (newName && newName !== oldName) {
             settingsState.draft.bridge.sceneAssets = settingsState.draft.bridge.sceneAssets || {};
             const scenes = settingsState.draft.bridge.sceneAssets.scenes || {};
+            if (Object.prototype.hasOwnProperty.call(scenes, newName)) {
+                if (globalObj.alert) globalObj.alert(`场景「${newName}」已存在（同名），已阻止`);
+                return rerenderSettings();
+            }
             scenes[newName] = scenes[oldName] || { url: '', times: {} };
             delete scenes[oldName];
             settingsState.draft.bridge.sceneAssets.scenes = scenes;
@@ -249,6 +253,10 @@ export async function handleSettingsAction(action, ctx) {
                 const scenes = settingsState.draft.bridge.sceneAssets && settingsState.draft.bridge.sceneAssets.scenes || {};
                 const scene = scenes[sceneName];
                 if (scene && scene.times) {
+                    if (Object.prototype.hasOwnProperty.call(scene.times, newTime)) {
+                        if (globalObj.alert) globalObj.alert(`时间「${newTime}」已存在（同名），已阻止`);
+                        return rerenderSettings();
+                    }
                     scene.times[newTime] = scene.times[oldTime] || { url: '', weathers: {} };
                     delete scene.times[oldTime];
                     const persisted = persistSettingsDraft();
@@ -295,7 +303,7 @@ export async function handleSettingsAction(action, ctx) {
                 if (typeof timeEntry === 'object') {
                     timeEntry.weathers = timeEntry.weathers || {};
                     const existingKeys = Object.keys(timeEntry.weathers);
-                    timeEntry.weathers['天气' + (existingKeys.length + 1)] = '';
+                    timeEntry.weathers['天气' + (existingKeys.length + 1)] = { url: '', words: [] };
                     const persisted = persistSettingsDraft();
                     if (persisted.ok === false) return persisted;
                 }
@@ -345,7 +353,12 @@ export async function handleSettingsAction(action, ctx) {
                     if (scene && scene.times && scene.times[timeName]) {
                         const t = scene.times[timeName];
                         if (t && t.weathers) {
-                            t.weathers[newWeather] = t.weathers[oldWeather] || '';
+                            if (Object.prototype.hasOwnProperty.call(t.weathers, newWeather)) {
+                                if (globalObj.alert) globalObj.alert(`天气「${newWeather}」已存在（同名），已阻止`);
+                                return rerenderSettings();
+                            }
+                            const old = t.weathers[oldWeather];
+                            t.weathers[newWeather] = typeof old === 'string' ? { url: old, words: [] } : (old || { url: '', words: [] });
                             delete t.weathers[oldWeather];
                             const persisted = persistSettingsDraft();
                             if (persisted.ok === false) return persisted;
@@ -375,7 +388,14 @@ export async function handleSettingsAction(action, ctx) {
                     const scene = scenes[sceneName];
                     if (scene && scene.times && scene.times[timeName]) {
                         const t = scene.times[timeName];
-                        if (t && t.weathers) t.weathers[weatherName] = url;
+                        if (t && t.weathers) {
+                        const existing = t.weathers[weatherName];
+                        if (existing && typeof existing === 'object') {
+                            existing.url = url;
+                        } else {
+                            t.weathers[weatherName] = { url, words: [] };
+                        }
+                    }
                     }
                     persistSettingsDraft();
                 }
@@ -797,7 +817,194 @@ export async function handleSettingsAction(action, ctx) {
         return rerenderSettings();
     }
 
+    if (normalizedAction.startsWith('scene-toggle-bg:')) {
+        const key = 'bg\x00' + decodeSeg(normalizedAction.slice('scene-toggle-bg:'.length));
+        if (!(settingsState.asyncState.expandedSceneSlots instanceof Set)) settingsState.asyncState.expandedSceneSlots = new Set();
+        const set = settingsState.asyncState.expandedSceneSlots;
+        if (set.has(key)) set.delete(key); else set.add(key);
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-toggle-time:')) {
+        const rest = normalizedAction.slice('scene-toggle-time:'.length);
+        const c = rest.indexOf(':');
+        if (c > 0) {
+            const key = 'time\x00' + decodeSeg(rest.slice(0, c)) + '\x00' + decodeSeg(rest.slice(c + 1));
+            if (!(settingsState.asyncState.expandedSceneSlots instanceof Set)) settingsState.asyncState.expandedSceneSlots = new Set();
+            const set = settingsState.asyncState.expandedSceneSlots;
+            if (set.has(key)) set.delete(key); else set.add(key);
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-toggle-weather:')) {
+        const rest = normalizedAction.slice('scene-toggle-weather:'.length);
+        const c1 = rest.indexOf(':'); const c2 = c1 >= 0 ? rest.indexOf(':', c1 + 1) : -1;
+        if (c1 > 0 && c2 > c1) {
+            const key = 'weather\x00' + decodeSeg(rest.slice(0, c1)) + '\x00' + decodeSeg(rest.slice(c1 + 1, c2)) + '\x00' + decodeSeg(rest.slice(c2 + 1));
+            if (!(settingsState.asyncState.expandedSceneSlots instanceof Set)) settingsState.asyncState.expandedSceneSlots = new Set();
+            const set = settingsState.asyncState.expandedSceneSlots;
+            if (set.has(key)) set.delete(key); else set.add(key);
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-add-bg-word:')) {
+        const sceneName = decodeSeg(normalizedAction.slice('scene-add-bg-word:'.length));
+        const globalObj = options.global || globalThis;
+        const word = (globalObj.prompt && globalObj.prompt(`向场景「${sceneName}」添加词：`, '') || '').trim();
+        if (word) {
+            const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
+            const dup = findSceneWord(scenes, word);
+            if (dup) {
+                const proceed = typeof globalObj.confirm === 'function'
+                    ? globalObj.confirm(`「${word}」已存在于${dup.label}的词库。是否删除重复词并加入场景「${sceneName}」的词库？`)
+                    : true;
+                if (!proceed) return rerenderSettings();
+                removeSceneWordEntry(scenes, dup);
+            }
+            const s = scenes[sceneName];
+            if (s && typeof s === 'object') { if (!Array.isArray(s.words)) s.words = []; s.words.push(word); }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-remove-bg-word:')) {
+        const rest = normalizedAction.slice('scene-remove-bg-word:'.length);
+        const c = rest.indexOf(':');
+        if (c > 0) {
+            const sceneName = decodeSeg(rest.slice(0, c)); const word = decodeSeg(rest.slice(c + 1));
+            const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
+            const s = scenes[sceneName];
+            if (s && Array.isArray(s.words)) {
+                const globalObj = options.global || globalThis;
+                if (s.words.length <= 1) { if (globalObj.alert) globalObj.alert('至少保留 1 个词'); return rerenderSettings(); }
+                s.words = s.words.filter((w) => w !== word);
+            }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-add-time-word:')) {
+        const rest = normalizedAction.slice('scene-add-time-word:'.length);
+        const c = rest.indexOf(':');
+        if (c > 0) {
+            const sceneName = decodeSeg(rest.slice(0, c)); const timeName = decodeSeg(rest.slice(c + 1));
+            const globalObj = options.global || globalThis;
+            const word = (globalObj.prompt && globalObj.prompt(`向时间「${timeName}」添加词：`, '') || '').trim();
+            if (word) {
+                const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
+                const dup = findSceneWord(scenes, word);
+                if (dup) {
+                    const proceed = typeof globalObj.confirm === 'function'
+                        ? globalObj.confirm(`「${word}」已存在于${dup.label}的词库。是否删除重复词并加入时间「${timeName}」的词库？`)
+                        : true;
+                    if (!proceed) return rerenderSettings();
+                    removeSceneWordEntry(scenes, dup);
+                }
+                const t = scenes[sceneName] && scenes[sceneName].times && scenes[sceneName].times[timeName];
+                if (t && typeof t === 'object') { if (!Array.isArray(t.words)) t.words = []; t.words.push(word); }
+                const persisted = persistSettingsDraft();
+                if (persisted.ok === false) return persisted;
+            }
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-remove-time-word:')) {
+        const rest = normalizedAction.slice('scene-remove-time-word:'.length);
+        const c1 = rest.indexOf(':'); const c2 = c1 >= 0 ? rest.indexOf(':', c1 + 1) : -1;
+        if (c1 > 0 && c2 > c1) {
+            const sceneName = decodeSeg(rest.slice(0, c1)); const timeName = decodeSeg(rest.slice(c1 + 1, c2)); const word = decodeSeg(rest.slice(c2 + 1));
+            const t = ((settingsState.draft.bridge.sceneAssets || {}).scenes || {})[sceneName];
+            const timeObj = t && t.times && t.times[timeName];
+            if (timeObj && Array.isArray(timeObj.words)) {
+                const globalObj = options.global || globalThis;
+                if (timeObj.words.length <= 1) { if (globalObj.alert) globalObj.alert('至少保留 1 个词'); return rerenderSettings(); }
+                timeObj.words = timeObj.words.filter((w) => w !== word);
+            }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-add-weather-word:')) {
+        const rest = normalizedAction.slice('scene-add-weather-word:'.length);
+        const c1 = rest.indexOf(':'); const c2 = c1 >= 0 ? rest.indexOf(':', c1 + 1) : -1;
+        if (c1 > 0 && c2 > c1) {
+            const sceneName = decodeSeg(rest.slice(0, c1)); const timeName = decodeSeg(rest.slice(c1 + 1, c2)); const weatherName = decodeSeg(rest.slice(c2 + 1));
+            const globalObj = options.global || globalThis;
+            const word = (globalObj.prompt && globalObj.prompt(`向天气「${weatherName}」添加词：`, '') || '').trim();
+            if (word) {
+                const scenes = (settingsState.draft.bridge.sceneAssets || {}).scenes || {};
+                const dup = findSceneWord(scenes, word);
+                if (dup) {
+                    const proceed = typeof globalObj.confirm === 'function'
+                        ? globalObj.confirm(`「${word}」已存在于${dup.label}的词库。是否删除重复词并加入天气「${weatherName}」的词库？`)
+                        : true;
+                    if (!proceed) return rerenderSettings();
+                    removeSceneWordEntry(scenes, dup);
+                }
+                const s = scenes[sceneName]; const tObj = s && s.times && s.times[timeName];
+                const wObj = tObj && tObj.weathers && tObj.weathers[weatherName];
+                if (wObj && typeof wObj === 'object') { if (!Array.isArray(wObj.words)) wObj.words = []; wObj.words.push(word); }
+                const persisted = persistSettingsDraft();
+                if (persisted.ok === false) return persisted;
+            }
+        }
+        return rerenderSettings();
+    }
+
+    if (normalizedAction.startsWith('scene-remove-weather-word:')) {
+        const rest = normalizedAction.slice('scene-remove-weather-word:'.length);
+        const c1 = rest.indexOf(':'); const c2 = c1 >= 0 ? rest.indexOf(':', c1 + 1) : -1; const c3 = c2 >= 0 ? rest.indexOf(':', c2 + 1) : -1;
+        if (c1 > 0 && c2 > c1 && c3 > c2) {
+            const sceneName = decodeSeg(rest.slice(0, c1)); const timeName = decodeSeg(rest.slice(c1 + 1, c2)); const weatherName = decodeSeg(rest.slice(c2 + 1, c3)); const word = decodeSeg(rest.slice(c3 + 1));
+            const s = ((settingsState.draft.bridge.sceneAssets || {}).scenes || {})[sceneName];
+            const tObj = s && s.times && s.times[timeName];
+            const wObj = tObj && tObj.weathers && tObj.weathers[weatherName];
+            if (wObj && Array.isArray(wObj.words)) {
+                const globalObj = options.global || globalThis;
+                if (wObj.words.length <= 1) { if (globalObj.alert) globalObj.alert('至少保留 1 个词'); return rerenderSettings(); }
+                wObj.words = wObj.words.filter((w) => w !== word);
+            }
+            const persisted = persistSettingsDraft();
+            if (persisted.ok === false) return persisted;
+        }
+        return rerenderSettings();
+    }
+
     return { ok: false, reason: 'unknown-settings-action', action: normalizedAction };
+}
+
+function findSceneWord(scenes, word) {
+    for (const [sn, sv] of Object.entries(scenes || {})) {
+        const s = typeof sv === 'string' ? {} : (sv || {});
+        if (Array.isArray(s.words) && s.words.includes(word)) return { type: 'bg', keys: [sn], label: `场景「${sn}」` };
+        for (const [tn, tv] of Object.entries(s.times || {})) {
+            const t = typeof tv === 'string' ? {} : (tv || {});
+            if (Array.isArray(t.words) && t.words.includes(word)) return { type: 'time', keys: [sn, tn], label: `时间「${tn}」` };
+            for (const [wn, wv] of Object.entries(t.weathers || {})) {
+                const w = typeof wv === 'string' ? {} : (wv || {});
+                if (Array.isArray(w.words) && w.words.includes(word)) return { type: 'weather', keys: [sn, tn, wn], label: `天气「${wn}」` };
+            }
+        }
+    }
+    return null;
+}
+
+function removeSceneWordEntry(scenes, entry) {
+    const [sn, tn, wn] = entry.keys;
+    let arr = null;
+    if (entry.type === 'bg') arr = scenes[sn] && scenes[sn].words;
+    else if (entry.type === 'time') arr = scenes[sn] && scenes[sn].times && scenes[sn].times[tn] && scenes[sn].times[tn].words;
+    else arr = scenes[sn] && scenes[sn].times && scenes[sn].times[tn] && scenes[sn].times[tn].weathers && scenes[sn].times[tn].weathers[wn] && scenes[sn].times[tn].weathers[wn].words;
+    if (Array.isArray(arr)) { const i = arr.indexOf(entry.word); if (i >= 0) arr.splice(i, 1); }
 }
 
 function pickPresetFile(doc) {

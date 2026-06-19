@@ -67,24 +67,82 @@ export function modelPicker(path, value, models, action, placeholder, disabled) 
     return `<div class="igs-settings-model"><div class="igs-settings-model-row"><input data-path="${esc(path)}" value="${esc(value || '')}" placeholder="${esc(placeholder || '')}"${disabledAttr(disabled)}><button type="button" class="igs-settings-action igs-settings-inline-action" data-action="${esc(action)}"${disabledAttr(disabled)}>拉取模型</button></div><select data-model-sync="${esc(path)}"${items.length && !disabled ? '' : ' disabled'}>${options}</select></div>`;
 }
 
-export function renderSceneAssetList(scenes) {
+export function renderSceneAssetList(scenes, options = {}) {
+    const expandedSlots = options.expandedSlots instanceof Set ? options.expandedSlots : new Set();
     const pencil = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
     const trash = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+    const chevronDown = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+    const chevronUp = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+    const icons = { pencil, trash };
     const entries = Object.entries(scenes || {});
     if (!entries.length) return '<div class="igs-scene-empty">暂无背景图配置</div>';
     return entries.map(([sceneName, sceneVal]) => {
         const sceneObj = typeof sceneVal === 'string' ? { url: sceneVal, times: {} } : (sceneVal || { url: '', times: {} });
+        const sceneWords = Array.isArray(sceneObj.words) ? sceneObj.words : [];
+        const bgExpanded = expandedSlots.has('bg\x00' + sceneName);
         const timeEntries = Object.entries(sceneObj.times || {});
         const timeRows = timeEntries.map(([timeName, timeVal]) => {
             const timeObj = typeof timeVal === 'string' ? { url: timeVal, weathers: {} } : (timeVal || { url: '', weathers: {} });
+            const timeWords = Array.isArray(timeObj.words) ? timeObj.words : [];
+            const timeExpanded = expandedSlots.has('time\x00' + sceneName + '\x00' + timeName);
             const weatherEntries = Object.entries(timeObj.weathers || {});
-            const weatherRows = weatherEntries.map(([weatherName, weatherUrl]) => {
-                return `<div class="igs-btn-mgr-row igs-scene-mood-row" style="margin-left:32px"><span class="igs-btn-mgr-label">${esc(weatherName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-weather:${encSeg(sceneName)}:${encSeg(timeName)}:${encSeg(weatherName)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-weather-bg="${esc(sceneName)}" data-scene-time="${esc(timeName)}" data-scene-weather="${esc(weatherName)}" value="${esc(weatherUrl || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-weather:${encSeg(sceneName)}:${encSeg(timeName)}:${encSeg(weatherName)}" title="删除">${trash}</button></div>`;
+            const weatherRows = weatherEntries.map(([weatherName, weatherVal]) => {
+                const weatherObj = typeof weatherVal === 'string' ? { url: weatherVal, words: [] } : (weatherVal || { url: '', words: [] });
+                const weatherWords = Array.isArray(weatherObj.words) ? weatherObj.words : [];
+                const wExpanded = expandedSlots.has('weather\x00' + sceneName + '\x00' + timeName + '\x00' + weatherName);
+                const wBody = wExpanded ? renderSceneSlotExpansion('weather', [sceneName, timeName, weatherName], weatherObj.url || '', weatherWords, icons) : '';
+                return `<div class="igs-sprite-slot"><div class="igs-btn-mgr-row igs-scene-mood-row" style="margin-left:32px">`
+                    + `<span class="igs-btn-mgr-label">${esc(weatherName)}</span>`
+                    + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-weather:${encSeg(sceneName)}:${encSeg(timeName)}:${encSeg(weatherName)}" title="重命名">${pencil}</button>`
+                    + `<input class="igs-scene-url-input" data-scene-weather-bg="${esc(sceneName)}" data-scene-time="${esc(timeName)}" data-scene-weather="${esc(weatherName)}" value="${esc(weatherObj.url || '')}" placeholder="URL 或 data:image/...">`
+                    + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-weather:${encSeg(sceneName)}:${encSeg(timeName)}:${encSeg(weatherName)}" title="删除">${trash}</button>`
+                    + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-toggle-weather:${encSeg(sceneName)}:${encSeg(timeName)}:${encSeg(weatherName)}" title="展开/折叠">${wExpanded ? chevronUp : chevronDown}</button>`
+                    + `</div>${wBody}</div>`;
             }).join('');
-            return `<div class="igs-scene-char-group" style="margin-left:16px"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label">${esc(timeName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-time:${encSeg(sceneName)}:${encSeg(timeName)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-time-bg="${esc(sceneName)}" data-scene-time="${esc(timeName)}" value="${esc(timeObj.url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-add-weather:${encSeg(sceneName)}:${encSeg(timeName)}" title="添加天气">+</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-time:${encSeg(sceneName)}:${encSeg(timeName)}" title="删除">${trash}</button></div>${weatherRows}</div>`;
+            const timeBody = timeExpanded ? renderSceneSlotExpansion('time', [sceneName, timeName], timeObj.url || '', timeWords, icons) : '';
+            return `<div class="igs-scene-char-group" style="margin-left:16px"><div class="igs-sprite-slot"><div class="igs-btn-mgr-row">`
+                + `<span class="igs-btn-mgr-label">${esc(timeName)}</span>`
+                + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-time:${encSeg(sceneName)}:${encSeg(timeName)}" title="重命名">${pencil}</button>`
+                + `<input class="igs-scene-url-input" data-scene-time-bg="${esc(sceneName)}" data-scene-time="${esc(timeName)}" value="${esc(timeObj.url || '')}" placeholder="URL 或 data:image/...">`
+                + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-add-weather:${encSeg(sceneName)}:${encSeg(timeName)}" title="添加天气">+</button>`
+                + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-time:${encSeg(sceneName)}:${encSeg(timeName)}" title="删除">${trash}</button>`
+                + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-toggle-time:${encSeg(sceneName)}:${encSeg(timeName)}" title="展开/折叠">${timeExpanded ? chevronUp : chevronDown}</button>`
+                + `</div>${timeBody}</div>${weatherRows}</div>`;
         }).join('');
-        return `<div class="igs-scene-char-group"><div class="igs-btn-mgr-row"><span class="igs-btn-mgr-label" style="font-weight:600">${esc(sceneName)}</span><button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-bg:${encSeg(sceneName)}" title="重命名">${pencil}</button><input class="igs-scene-url-input" data-scene-bg="${esc(sceneName)}" value="${esc(sceneObj.url || '')}" placeholder="URL 或 data:image/..."><button type="button" class="igs-btn-mgr-icon" data-action="scene-add-time:${encSeg(sceneName)}" title="添加时间">+</button><button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-bg:${encSeg(sceneName)}" title="删除场景">${trash}</button></div>${timeRows}</div>`;
+        const bgBody = bgExpanded ? renderSceneSlotExpansion('bg', [sceneName], sceneObj.url || '', sceneWords, icons) : '';
+        return `<div class="igs-scene-char-group"><div class="igs-sprite-slot"><div class="igs-btn-mgr-row">`
+            + `<span class="igs-btn-mgr-label" style="font-weight:600">${esc(sceneName)}</span>`
+            + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-rename-bg:${encSeg(sceneName)}" title="重命名">${pencil}</button>`
+            + `<input class="igs-scene-url-input" data-scene-bg="${esc(sceneName)}" value="${esc(sceneObj.url || '')}" placeholder="URL 或 data:image/...">`
+            + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-add-time:${encSeg(sceneName)}" title="添加时间">+</button>`
+            + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-remove-bg:${encSeg(sceneName)}" title="删除场景">${trash}</button>`
+            + `<button type="button" class="igs-btn-mgr-icon" data-action="scene-toggle-bg:${encSeg(sceneName)}" title="展开/折叠">${bgExpanded ? chevronUp : chevronDown}</button>`
+            + `</div>${bgBody}</div>${timeRows}</div>`;
     }).join('');
+}
+
+function renderSceneSlotExpansion(type, keys, url, words, icons) {
+    const [sceneName, timeName, weatherName] = keys;
+    const trimmedUrl = String(url || '').trim();
+    const thumb = trimmedUrl
+        ? `<img class="igs-sprite-thumb" src="${esc(trimmedUrl)}" loading="lazy" alt="" data-action="sprite-preview:${encSeg(trimmedUrl)}" onerror="this.classList.add('igs-sprite-thumb-broken')">`
+        : `<div class="igs-sprite-thumb igs-sprite-thumb-empty">未配置</div>`;
+    let addAction, removePrefix;
+    if (type === 'bg') {
+        addAction = `scene-add-bg-word:${encSeg(sceneName)}`;
+        removePrefix = `scene-remove-bg-word:${encSeg(sceneName)}`;
+    } else if (type === 'time') {
+        addAction = `scene-add-time-word:${encSeg(sceneName)}:${encSeg(timeName)}`;
+        removePrefix = `scene-remove-time-word:${encSeg(sceneName)}:${encSeg(timeName)}`;
+    } else {
+        addAction = `scene-add-weather-word:${encSeg(sceneName)}:${encSeg(timeName)}:${encSeg(weatherName)}`;
+        removePrefix = `scene-remove-weather-word:${encSeg(sceneName)}:${encSeg(timeName)}:${encSeg(weatherName)}`;
+    }
+    const tags = words.map((word) =>
+        `<span class="igs-mood-word-tag">${esc(word)}<button type="button" class="igs-mood-word-del" data-action="${removePrefix}:${encSeg(word)}" title="删除词">×</button></span>`
+    ).join('');
+    const wordsHtml = `<div class="igs-sprite-words"><div class="igs-mood-word-list">${tags || '<div class="igs-scene-empty">暂无词</div>'}<button type="button" class="igs-btn-mgr-icon" data-action="${addAction}" title="添加词">+</button></div></div>`;
+    return `<div class="igs-sprite-slot-body">${thumb}${wordsHtml}</div>`;
 }
 
 export function renderCharacterAssetList(characters, options = {}) {
