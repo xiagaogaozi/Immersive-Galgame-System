@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text` 覆盖了 CSS 的 `flex:1 1 auto + min-height:0`，且原有 `overlayHeight*0.24` clamp 不可靠；现 floating 模式忽略 dialogHeight、min-height 归 0 交给 flex 自适应，dialogHeight 仅在 web/fullscreen 生效。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
+- 当前项目版本 `v0.22.7`：修复 v0.22.6 矫枉过正——上一版 floating（pc/mobile）模式直接忽略「对话框高度」，导致 PC/手机端怎么调都无效。现 floating 模式下 dialogHeight 改用 `.igs-dialog` 的 `min-height`（把气泡撑到目标高度，内容更多时自然增长）+ `max-height` clamp 到浮窗可用高度（约 86%），不再写死 `height`（固定 height 比内容小时会把输入框挤出气泡）。Playwright 真机验证：dialogHeight 60→600 气泡高度跟随、输入框恒在气泡内不溢出、气泡始终在视口内。
+- `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text`；v0.22.6 改为忽略 dialogHeight（v0.22.7 修正为改气泡 min-height）。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
 - `v0.22.5`：修复移动端阅读器被压成一小块（立绘/输入框看似溢出的真因）——宿主移动端 body 为 position:fixed 且尺寸受限，成为 `#igs-overlay` 的 fixed 包含块，`width/height:100%` 取到 body 尺寸而非视口；现 overlay 改挂 documentElement、尺寸用 `100vw/100vh`（保留 100dvh 兜底）。顺带清理 igs-compat / reader-state 两处老桶残留读取，统一回退 default 桶。
 - `v0.22.4`：修复 v0.21.4 删分桶的总根源回归——`saveUnifiedSettings` 曾按 readerMode 分桶存、`getUnifiedSettingsSnapshot` 却固定读 default 桶，导致移动端保存的设置（含立绘 spriteLayouts）读不回（立绘保存后回初始位置、输入框/发送按钮被挤出的真因）；现统一存取 default 桶，老用户 default 空时回退旧桶。立绘预览图放大改挂 `#igs-unified-settings`（absolute 填满），修复移动端宿主 body 高度坍缩导致预览只占顶部一条、看不到关闭区的问题。新增 2 个回归单测。
 - `v0.22.3`：修复4个问题——①场景/时间/天气背景查表改为「精确→组归约→默认」三级兜底（对齐情绪词逻辑，AI 写细分词可命中组名 URL）；新增 `{{scene_groups}}`/`{{time_groups}}`/`{{weather_groups}}` 占位符（默认模板已含，可 DIY 删除）；②立绘保存后回初始位置回归（空 mood 存 `mode::char` 与读取侧对齐）；③数据库表格色跟随 glassOpacity（CSS 变量驱动表头 sticky 背景）；④数据库面板默认右上角缩小。
@@ -163,6 +164,13 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.22.7 - 2026-06-20
+
+- 修复 v0.22.6 矫枉过正导致的回归：上一版为根治「对话框高度撑破输入框」，直接让 floating（pc/mobile）模式忽略 `dialogHeight`，结果 PC/手机端「对话框高度」怎么调都无效。
+- 正确方案：floating 模式下 `dialogHeight` 改用 `.igs-dialog` 的 `min-height` 把气泡撑到目标高度（内容更多时自然增长），并用 `max-height` clamp 到浮窗可用高度（约 86%）。不再写死 `height`——固定 `height` 比固定行内容还小时会把底部输入框挤出气泡（即 v0.22.6 之前的溢出 bug）。`.igs-text` 仍保持 `min-height:0` 交给 flex 填充滚动。
+- Playwright 真机验证：pc(900×540)/mobile(480×680) 下 `dialogHeight` 60→600 全程气泡高度跟随（300→300px、600→clamp 464/584px），短/长正文下输入框恒在气泡内（inBelow=-15/-13）、气泡始终在视口内。
+- `dialogHeight=null`（自适应）与 web/fullscreen 模式行为不变。
 
 ### v0.22.6 - 2026-06-20
 

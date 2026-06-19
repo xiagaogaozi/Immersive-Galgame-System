@@ -7,6 +7,7 @@ import {
     ensureImageLoadingSpinner,
     ensureImageEmptyPlaceholder,
     getOwnerWindow,
+    readElementHeight,
     readElementWidth,
     removeImageEmptyPlaceholder,
     removeImageLoadingSpinner,
@@ -254,16 +255,15 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     const inlineMode = snapshot.mode === 'pc' || snapshot.mode === 'mobile';
     const win = getOwnerWindow(root);
     const overlayWidth = readElementWidth(root, win && win.innerWidth);
+    const overlayHeight = readElementHeight(root, win && win.innerHeight);
 
     if (textEl) {
         textEl.style.fontSize = `${readerSettings.fontSize}px`;
         textEl.style.lineHeight = computeLineHeight(readerSettings.fontSize);
-        // floating（pc/mobile）对话框是固定上限的弹性盒（max-height + flex column），
-        // 正文交给 CSS 的 flex:1 1 auto + min-height:0 自适应滚动；这里若再写死 min-height
-        // 会把底部 .igs-controls（输入框/发送按钮）挤出对话框。dialogHeight 仅在非 floating 生效。
-        if (inlineMode) {
-            textEl.style.minHeight = '0';
-        } else if (readerSettings.dialogHeight == null) {
+        // floating（pc/mobile）：正文恒交给 CSS 的 flex:1 1 auto + min-height:0 填充/滚动，
+        // 对话框高度由下方 dialog.style.height 控制气泡盒本身（输入框留在变高后气泡底部）。
+        // 非 floating（web/fullscreen）：对话框无固定上限，dialogHeight 直接撑正文 min-height。
+        if (inlineMode || readerSettings.dialogHeight == null) {
             textEl.style.minHeight = '0';
         } else {
             textEl.style.minHeight = `${readerSettings.dialogHeight}px`;
@@ -271,6 +271,24 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     }
 
     if (dialog) {
+        if (inlineMode) {
+            if (readerSettings.dialogHeight == null) {
+                dialog.style.minHeight = '';
+                dialog.style.maxHeight = '';
+            } else {
+                // floating 气泡：用 min-height 把气泡撑到 dialogHeight（内容更多时自然增长），
+                // 再用 max-height clamp 到浮窗可用高度。不强制 height——固定 height 比内容还小时
+                // 会把输入框挤出气泡。这样既能调高对话框，输入框又始终留在气泡底部。
+                const maxBubble = Math.max(140, Math.floor((overlayHeight || 0) * 0.86) || readerSettings.dialogHeight);
+                const target = Math.min(readerSettings.dialogHeight, maxBubble);
+                dialog.style.minHeight = `${target}px`;
+                dialog.style.maxHeight = `${maxBubble}px`;
+            }
+        } else {
+            dialog.style.minHeight = '';
+            dialog.style.maxHeight = '';
+        }
+
         if (readerSettings.dialogWidth == null) {
             dialog.style.width = '';
         } else if (inlineMode) {
