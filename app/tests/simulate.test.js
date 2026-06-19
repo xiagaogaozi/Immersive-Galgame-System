@@ -183,7 +183,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.22.3');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.22.4');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -507,6 +507,53 @@ test('gate:simulation:reader-settings-shared-across-modes', async () => {
     // same settings readable regardless of mode
     assert.equal(vn.getUnifiedSettings({ mode: 'pc' }).readerSettings.fontSize, 24);
     assert.equal(vn.getUnifiedSettings({ mode: 'mobile' }).readerSettings.fontSize, 24);
+
+    vn.destroy();
+});
+
+test('gate:simulation:reader-settings-saved-in-mobile-mode-read-back', async () => {
+    // 回归锁：saveUnifiedSettings 曾按 readerMode 分桶存、却固定读 default 桶，
+    // 导致移动端保存（含 spriteLayouts）读不回。统一到 default 桶后，
+    // 在 mobile 模式打开 reader、保存设置，必须能读回。
+    const storage = createMemoryStorage();
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: '旁白一句。' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('mobile');
+    const settings = (await opened.reader.controller.invokeAction('settings')).controller;
+    settings.setValue('readerSettings.fontSize', 28);
+
+    // default 桶被写入，且任意模式读回一致
+    const bucket = JSON.parse(storage.getItem('igs-reader-settings-v9-default') || '{}');
+    assert.equal(bucket.fontSize, 28, 'writes to default bucket even in mobile mode');
+    assert.equal(vn.getUnifiedSettings({ mode: 'mobile' }).readerSettings.fontSize, 28);
+    assert.equal(vn.getUnifiedSettings({ mode: 'pc' }).readerSettings.fontSize, 28);
+
+    vn.destroy();
+});
+
+test('gate:simulation:legacy-mode-bucket-migrates-to-default-read', () => {
+    // 回归锁：老用户数据只存在旧的 mobile/pc 分桶、default 桶为空时，
+    // getUnifiedSettings 必须回退读到旧桶（含 spriteLayouts），不能因 default 为 {} 而丢设置。
+    const layouts = { 'mobile::小林海斗': { posX: 30, posY: 80, scale: 120 } };
+    const storage = createMemoryStorage();
+    storage.setItem('igs-reader-settings-v9-default', JSON.stringify({}));
+    storage.setItem('igs-reader-settings-v9-mobile', JSON.stringify({ fontSize: 22, spriteLayouts: layouts }));
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: { getCurrentMessage: async () => ({ id: 1, text: 'x' }), typeAndSend: async () => ({ ok: true }) },
+    });
+
+    const rs = vn.getUnifiedSettings({ mode: 'mobile' }).readerSettings;
+    assert.equal(rs.fontSize, 22, 'falls back to mobile bucket when default empty');
+    assert.deepEqual(rs.spriteLayouts, layouts);
 
     vn.destroy();
 });

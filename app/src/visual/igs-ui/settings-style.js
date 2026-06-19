@@ -99,8 +99,8 @@ const SETTINGS_STYLE_TEXT = `
 .igs-sprite-thumb-empty{display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,.32);cursor:default}
 .igs-sprite-thumb-broken{position:relative}
 .igs-sprite-words{flex:1;min-width:0}
-.igs-sprite-preview-overlay{position:fixed;inset:0;z-index:2147483600;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px}
-.igs-sprite-preview-img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 12px 48px rgba(0,0,0,.6)}
+.igs-sprite-preview-overlay{position:absolute;inset:0;z-index:2147483600;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;box-sizing:border-box}
+.igs-sprite-preview-img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 12px 48px rgba(0,0,0,.6)}
 @media (max-width:640px){#igs-unified-settings{--igs-settings-width:min(760px,calc(var(--igs-settings-vw) - 24px));--igs-settings-height:min(760px,calc(var(--igs-settings-vh) - 24px));padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}.igs-settings-shell{width:var(--igs-settings-width);height:var(--igs-settings-height);border-radius:18px}.igs-settings-grid,.igs-settings-api-group,.igs-source-filter-grid{grid-template-columns:1fr}.igs-segmented{height:40px}.igs-segmented-btn{font-size:11px;padding:0 4px;gap:4px}}
 `.trim();
 

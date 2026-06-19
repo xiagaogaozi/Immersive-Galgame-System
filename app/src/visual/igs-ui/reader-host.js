@@ -1336,7 +1336,7 @@ export function createIgsReaderHost(options = {}) {
                 if (actName.startsWith('sprite-preview:')) {
                     event.preventDefault();
                     const url = decodeURIComponent(actName.slice('sprite-preview:'.length));
-                    showSpritePreviewOverlay(root.ownerDocument || getRootDocument(options.global), url);
+                    showSpritePreviewOverlay(root, url);
                     return;
                 }
                 event.preventDefault();
@@ -1727,9 +1727,14 @@ export function createIgsReaderHost(options = {}) {
     }
 }
 
-function showSpritePreviewOverlay(doc, url) {
-    if (!doc || !url) return;
-    const existing = doc.getElementById('igs-sprite-preview-overlay');
+function showSpritePreviewOverlay(root, url) {
+    if (!root || !url) return;
+    // 挂到设置面板的全屏容器 #igs-unified-settings（position:fixed + 视口变量，已知正常全屏），
+    // 而非 doc.body —— 移动端宿主把 body 设为 position:fixed 且高度坍缩，挂 body 会被裁成顶部一条。
+    const host = (root.id === 'igs-unified-settings' ? root : root.querySelector && root.querySelector('#igs-unified-settings'))
+        || root;
+    const doc = root.ownerDocument || root;
+    const existing = host.querySelector ? host.querySelector('#igs-sprite-preview-overlay') : null;
     if (existing) existing.remove();
     const overlay = doc.createElement('div');
     overlay.id = 'igs-sprite-preview-overlay';
@@ -1739,7 +1744,7 @@ function showSpritePreviewOverlay(doc, url) {
     img.src = url;
     overlay.appendChild(img);
     overlay.addEventListener('click', () => overlay.remove());
-    doc.body.appendChild(overlay);
+    host.appendChild(overlay);
 }
 
 function applyToastToReader(current, allowed, message) {

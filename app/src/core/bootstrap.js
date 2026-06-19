@@ -22,7 +22,7 @@ import { createReaderImageService } from '../generated-images/reader-image-servi
 import { createPromptInjector } from '../host/prompt-injector.js';
 import { buildMoodGroupsText, buildGroupsText, buildSceneGroupsText, MOOD_GROUPS_PLACEHOLDER, SCENE_GROUPS_PLACEHOLDER, TIME_GROUPS_PLACEHOLDER, WEATHER_GROUPS_PLACEHOLDER } from '../scene/mood-groups.js';
 
-const IGS_VERSION = '0.22.3';
+const IGS_VERSION = '0.22.4';
 const SCENE_ASSETS_INJECTION_INITIAL_DELAY_MS = 3000;
 const SCENE_ASSETS_INJECTION_RETRY_MS = 1500;
 const SCENE_ASSETS_INJECTION_MAX_ATTEMPTS = 5;
@@ -275,11 +275,17 @@ export function bootstrapIGS(options = {}) {
             bridge,
         );
         const readerSettingsByMode = cloneData(state.legacyIgs && state.legacyIgs.readerSettingsByMode || {});
+        // 优先 default 桶；老用户 default 为空时回退到旧的 pc/mobile 分桶或顶层 readerSettings。
+        const hasKeys = (obj) => obj && typeof obj === 'object' && Object.keys(obj).length > 0;
+        const resolvedReaderSettings = hasKeys(readerSettingsByMode['default']) ? readerSettingsByMode['default']
+            : hasKeys(readerSettingsByMode['pc']) ? readerSettingsByMode['pc']
+            : hasKeys(readerSettingsByMode['mobile']) ? readerSettingsByMode['mobile']
+            : state.legacyIgs.readerSettings || {};
         return {
             version: app.version,
             bridge,
             imageApi: cloneData(bridge.imageApi || {}),
-            readerSettings: cloneData(readerSettingsByMode['default'] || readerSettingsByMode['pc'] || state.legacyIgs.readerSettings || {}),
+            readerSettings: cloneData(resolvedReaderSettings),
         };
     }
 
@@ -301,18 +307,20 @@ export function bootstrapIGS(options = {}) {
             nextBridge,
         );
         const readerSettingsByMode = cloneData(currentLegacy.readerSettingsByMode || {});
-        for (const mode of ['pc', 'mobile', 'web', 'fullscreen']) {
+        // v0.21.4 起全模式共用一套设置，统一存取 'default' 桶。
+        // 历史上保存按 readerMode 分桶、读取却固定读 'default'，导致移动端存了读不回。
+        for (const mode of ['default', 'pc', 'mobile', 'web', 'fullscreen']) {
             if (!readerSettingsByMode[mode]) readerSettingsByMode[mode] = {};
         }
         if (payload.readerSettings && typeof payload.readerSettings === 'object') {
-            readerSettingsByMode[readerMode] = cloneData(payload.readerSettings);
+            readerSettingsByMode['default'] = cloneData(payload.readerSettings);
         }
         const nextLegacy = {
             ok: true,
             bridge: nextBridge,
             displayMode,
             readerMode,
-            readerSettings: cloneData(readerSettingsByMode[readerMode] || {}),
+            readerSettings: cloneData(readerSettingsByMode['default'] || {}),
             readerSettingsByMode,
         };
         const writeResult = storageLike
