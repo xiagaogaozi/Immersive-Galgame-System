@@ -152,7 +152,7 @@ export function createIgsReaderHost(options = {}) {
             resolveBridgeConfigSnapshot({ mode: openOptions.mode }).bridge,
         );
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
-        const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings, unified.bridge.vnTheme);
+        const readerSettings = normalizeReaderSettings(unified.readerSettings, unified.bridge.vnTheme);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
         readerSettings._sentencePaging = Boolean(unified.bridge.sentencePaging);
         readerSettings._vnTheme = readerSettings.vnTheme || null;
@@ -232,7 +232,6 @@ export function createIgsReaderHost(options = {}) {
         return {
             ok: true,
             tab: state.activeSettings.tab,
-            readerMode: state.activeSettings.readerMode,
             snapshot: cloneData(snapshot),
             domMounted: Boolean(state.activeSettings.dom),
             controller: state.activeSettings.controller,
@@ -284,7 +283,6 @@ export function createIgsReaderHost(options = {}) {
             } : null,
             activeSettings: state.activeSettings ? {
                 tab: state.activeSettings.tab,
-                readerMode: state.activeSettings.readerMode,
                 snapshot: cloneData(state.activeSettings.snapshot),
             } : null,
         };
@@ -568,7 +566,7 @@ export function createIgsReaderHost(options = {}) {
         );
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         state.activeReader.mode = nextMode;
-        const readerSettings = normalizeReaderSettings(nextMode, unified.readerSettings, unified.bridge.vnTheme);
+        const readerSettings = normalizeReaderSettings(unified.readerSettings, unified.bridge.vnTheme);
         readerSettings._sceneAssets = unified.bridge.sceneAssets || null;
         readerSettings._sentencePaging = Boolean(unified.bridge.sentencePaging);
         readerSettings._vnTheme = readerSettings.vnTheme || null;
@@ -1022,7 +1020,7 @@ export function createIgsReaderHost(options = {}) {
     }
 
     function buildSettingsSnapshot(settingsState) {
-        const draft = normalizeUnifiedSettings(settingsState.draft, settingsState.readerMode);
+        const draft = normalizeUnifiedSettings(settingsState.draft);
         const tab = normalizeSettingsTab(settingsState.tab);
         const body = renderSettingsBody(tab, draft, settingsState.asyncState);
         const tabsHtml = SETTINGS_TAB_DEFS.map(([id, label]) => {
@@ -1031,7 +1029,6 @@ export function createIgsReaderHost(options = {}) {
 
         return {
             tab,
-            readerMode: settingsState.readerMode,
             selectors: Array.from(SETTINGS_PANEL_REQUIRED_SELECTORS),
             tabs: SETTINGS_TAB_DEFS.map(([id, label]) => ({
                 id,
@@ -1709,7 +1706,7 @@ export function createIgsReaderHost(options = {}) {
         const result = save({ bridge: unified.bridge, readerMode: unified.readerMode, readerSettings: { ...unified.readerSettings, ...patch } });
         if (!result || result.ok === false) return;
         const refreshed = resolveBridgeConfigSnapshot({ mode });
-        const readerSettings = normalizeReaderSettings(mode, refreshed.readerSettings, refreshed.bridge.vnTheme);
+        const readerSettings = normalizeReaderSettings(refreshed.readerSettings, refreshed.bridge.vnTheme);
         readerSettings._sceneAssets = refreshed.bridge.sceneAssets || null;
         readerSettings._sentencePaging = Boolean(refreshed.bridge.sentencePaging);
         readerSettings._vnTheme = readerSettings.vnTheme || null;

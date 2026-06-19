@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.21.4`：删除「应用到模式」——阅读器设置改为全模式共用一套，移除分桶存储逻辑，统一写入/读取 default 桶；移除 readerModeField UI 及相关设置面板切换逻辑。
+- 当前项目版本 `v0.21.5`：热修复 v0.21.4——同步修正遗漏的6处旧3参数调用（normalizeReaderSettings）和 settingsState.readerMode 引用，恢复阅读器全部功能。
+- `v0.21.4`：删除「应用到模式」——阅读器设置改为全模式共用一套，移除分桶存储逻辑，统一写入/读取 default 桶；移除 readerModeField UI 及相关设置面板切换逻辑。
 - `v0.21.3`：背景场景各层行内加小标题 badge（场景/时间/天气），放在名称前方，去掉独立分隔 div。
 - `v0.21.2`：背景场景词库架构重设计——时间/天气词库改为全局组（timeGroups/weatherGroups，对齐立绘 moodGroups）；新增时间/天气时 prompt 输入名称并自动建组；重命名时间/天气全局同步所有场景/时间层；词重复检测分层（bg/time/weather 各自池）；场景/时间/天气列表加层级小标题；天气 words 去除嵌入式，迁移到全局 weatherGroups；旧数据自动迁移。
 - `v0.21.1`：修复3个bug——词库同名检测删词失效（findSceneWord 漏传 word 字段）；背景场景/角色立绘重命名后展开状态折叠（Set 未同步旧 key）；重命名后条目位置移到底部（改用 reorderKey 原位重建对象）。
