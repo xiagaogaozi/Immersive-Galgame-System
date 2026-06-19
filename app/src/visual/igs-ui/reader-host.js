@@ -509,7 +509,10 @@ export function createIgsReaderHost(options = {}) {
         }
         if (normalizedAction === 'db-panel') {
             const db = state.activeReader.dom && state.activeReader.dom.dbController;
-            if (db) db.toggle();
+            if (db) db.toggle(
+                state.activeReader.dom.overlay,
+                state.activeReader.snapshot && state.activeReader.snapshot.readerSettings,
+            );
             return { ok: true };
         }
 

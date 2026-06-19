@@ -49,7 +49,7 @@ export function createDbPanelController(doc, global) {
         render();
     }
 
-    function open() {
+    function open(overlayEl, readerSettings) {
         if (root) return;
 
         // conflict detection
@@ -67,7 +67,18 @@ export function createDbPanelController(doc, global) {
             + `<span class="igs-shujuku-title">数据库</span>`
             + `<button class="igs-shujuku-close" data-db-act="close" title="关闭">×</button>`
             + `</div><div id="igs-db-inner"></div>`;
-        doc.body.appendChild(root);
+
+        const container = overlayEl || doc.body;
+        container.appendChild(root);
+
+        // apply glassOpacity from reader settings
+        const opacity = readerSettings && typeof readerSettings.glassOpacity === 'number'
+            ? readerSettings.glassOpacity : 0.94;
+        root.style.background = `rgba(20,20,22,${opacity})`;
+
+        // drag within container
+        const header = root.querySelector('.igs-shujuku-header');
+        if (header) attachDrag(header, root, container);
 
         root.addEventListener('click', onClick);
         root.addEventListener('focusout', onFocusOut);
@@ -89,7 +100,7 @@ export function createDbPanelController(doc, global) {
         if (client) client.unregisterCallback(externalCallback);
     }
 
-    function toggle() { root ? close() : open(); }
+    function toggle(overlayEl, readerSettings) { root ? close() : open(overlayEl, readerSettings); }
 
     async function onClick(event) {
         const act = event.target.closest('[data-db-act]');
@@ -191,7 +202,7 @@ export function createDbPanelController(doc, global) {
             + `<button class="igs-db-modal-cancel">取消</button>`
             + `<button class="igs-db-modal-save">保存</button>`
             + `</div></div>`;
-        doc.body.appendChild(modalRoot);
+        (root && root.parentElement || doc.body).appendChild(modalRoot);
         const textarea = modalRoot.querySelector('textarea');
         modalRoot.querySelector('.igs-db-modal-cancel').addEventListener('click', closeModal);
         modalRoot.querySelector('.igs-db-modal-save').addEventListener('click', async () => {
@@ -212,6 +223,35 @@ export function createDbPanelController(doc, global) {
     function closeModal() { if (modalRoot) { modalRoot.remove(); modalRoot = null; } }
 
     function activeTable() { return state.tables.find(t => t.uid === state.activeUid) || state.tables[0] || null; }
+
+    function attachDrag(handle, panel, container) {
+        handle.addEventListener('mousedown', (e) => {
+            if (e.button !== 0 || e.target.closest('[data-db-act]')) return;
+            e.preventDefault();
+            const cRect = container.getBoundingClientRect();
+            const pRect = panel.getBoundingClientRect();
+            const startLeft = pRect.left - cRect.left;
+            const startTop = pRect.top - cRect.top;
+            const startX = e.clientX;
+            const startY = e.clientY;
+            panel.style.right = 'auto';
+            panel.style.left = `${startLeft}px`;
+            panel.style.top = `${startTop}px`;
+
+            function onMove(e) {
+                const maxLeft = container.clientWidth - panel.offsetWidth;
+                const maxTop = container.clientHeight - panel.offsetHeight;
+                panel.style.left = `${Math.max(0, Math.min(maxLeft, startLeft + e.clientX - startX))}px`;
+                panel.style.top = `${Math.max(0, Math.min(maxTop, startTop + e.clientY - startY))}px`;
+            }
+            function onUp() {
+                doc.removeEventListener('mousemove', onMove);
+                doc.removeEventListener('mouseup', onUp);
+            }
+            doc.addEventListener('mousemove', onMove);
+            doc.addEventListener('mouseup', onUp);
+        });
+    }
 
     return { open, close, toggle };
 }
