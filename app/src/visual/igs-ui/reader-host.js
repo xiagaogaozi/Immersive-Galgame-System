@@ -814,7 +814,8 @@ export function createIgsReaderHost(options = {}) {
         const scene = cloneData(payload.scene || (payload.render && payload.render.scene) || {});
         const render = payload.render || {};
         const stage = render.stage || {};
-        const extracted = buildIgsTextPayload(payload.message || payload.raw || '', {
+        const liveMessage = (payload.message && payload.message.raw) || payload.message || payload.raw || '';
+        const extracted = buildIgsTextPayload(liveMessage, {
             sourceFilter: payload.sourceFilter,
             virtualRegex: payload.virtualRegex,
             visibleText: payload.visibleText,
@@ -828,7 +829,7 @@ export function createIgsReaderHost(options = {}) {
             extracted.formattedText,
             extracted.visibleText,
             extracted.cleanedRaw,
-            getMessagePrimaryText(payload.message),
+            getMessagePrimaryText(liveMessage),
             payload.raw,
         );
         const segments = Array.isArray(payload.textSegments) && payload.textSegments.length
