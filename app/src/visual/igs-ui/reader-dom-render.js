@@ -375,8 +375,14 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     }
     if (toolbar) {
         toolbar.setAttribute('data-igs-toolbar-dock', toolbarDock);
-        toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
-        toolbar.style.transformOrigin = toolbarDock === 'top' ? 'right top' : 'right bottom';
+        // 顶部固定栏铺满整条，不做缩放（缩放是悬浮小条用的，全宽栏缩放会从角落缩成异形）。
+        if (toolbarDock === 'top') {
+            toolbar.style.transform = '';
+            toolbar.style.transformOrigin = '';
+        } else {
+            toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
+            toolbar.style.transformOrigin = 'right bottom';
+        }
         // The shared glass material is applied through CSS variables on the overlay.
         toolbar.style.background = '';
     }
