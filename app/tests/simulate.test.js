@@ -247,7 +247,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.23.2');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.23.3');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -491,6 +491,104 @@ test('gate:simulation:igs-ui-enter-sends-and-shift-enter-does-not', async () => 
     assert.equal(shiftResult.sent, false);
     assert.equal(enterResult.sent, true);
     assert.deepEqual(sent, ['第二行']);
+
+    vn.destroy();
+});
+
+test('gate:simulation:igs-ui-background-click-does-not-page-dialog-click-still-pages', async () => {
+    const document = createFakeDocument();
+    const latestMessage = {
+        id: 44,
+        text: '[角色: 艾莉]\n艾莉: 第一段。\n第二段。',
+    };
+    const vn = bootstrapIGS({
+        global: { document },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const overlay = document.getElementById('igs-overlay');
+    const clickLayer = overlay.querySelector('#igs-click-layer');
+    const dialog = overlay.querySelector('#igs-dialog');
+
+    assert.equal(opened.reader.snapshot.content.progress, '1 / 2');
+    clickLayer.click();
+    assert.equal(vn.getState().igsUi.activeReader.snapshot.content.progress, '1 / 2');
+
+    dialog.style.left = '0px';
+    dialog.style.width = '200px';
+    dialog.dispatchEvent({ type: 'click', target: dialog, clientX: 160 });
+    assert.equal(vn.getState().igsUi.activeReader.snapshot.content.progress, '2 / 2');
+
+    vn.destroy();
+});
+
+test('gate:simulation:igs-ui-option-bubble-trigger-excludes-dialog-toolbar-and-input', async () => {
+    const document = createFakeDocument();
+    const latestMessage = {
+        id: 45,
+        text: '[角色: 艾莉]\n艾莉: 最后一段。',
+    };
+    const vn = bootstrapIGS({
+        global: {
+            document,
+            AutoCardUpdaterAPI: {
+                exportTableAsJson() {
+                    return {
+                        sheet_options: {
+                            uid: 'sheet_options',
+                            name: '选项表',
+                            orderNo: 1,
+                            content: [
+                                ['row_id', '选项'],
+                                ['1', '留在广场'],
+                                ['2', '前往酒店'],
+                            ],
+                        },
+                    };
+                },
+            },
+        },
+        autoAttachMagicWand: false,
+        config: {
+            optionBubble: {
+                enabled: true,
+                position: 'top-left',
+                clickAction: 'fill',
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const overlay = document.getElementById('igs-overlay');
+    const clickLayer = overlay.querySelector('#igs-click-layer');
+    const dialog = overlay.querySelector('#igs-dialog');
+    const input = overlay.querySelector('#igs-input');
+    const toolbar = overlay.querySelector('#igs-ctrl-bar');
+    const optionBubbles = overlay.querySelector('#igs-option-bubbles');
+
+    assert.equal(opened.reader.snapshot.content.progress, '1 / 1');
+    optionBubbles.setAttribute('hidden', '');
+    dialog.dispatchEvent({ type: 'click', target: input, clientX: 120 });
+    assert.equal(optionBubbles.hasAttribute('hidden'), true);
+
+    dialog.dispatchEvent({ type: 'click', target: dialog, clientX: 120 });
+    assert.equal(optionBubbles.hasAttribute('hidden'), true);
+
+    toolbar.dispatchEvent({ type: 'click', target: toolbar, clientX: 120 });
+    assert.equal(optionBubbles.hasAttribute('hidden'), true);
+
+    clickLayer.click();
+    assert.equal(optionBubbles.hasAttribute('hidden'), false);
+    assert.equal(optionBubbles.querySelectorAll('.igs-option-bubble').length, 2);
 
     vn.destroy();
 });
@@ -2067,6 +2165,16 @@ function createFakeElement(tagName, ownerDocument) {
             if (name === 'id') return element.id || null;
             if (name === 'class') return element.className || null;
             return element.attributes.has(name) ? element.attributes.get(name) : null;
+        },
+        hasAttribute(name) {
+            if (name === 'id') return Boolean(element.id);
+            if (name === 'class') return Boolean(element.className);
+            return element.attributes.has(name);
+        },
+        removeAttribute(name) {
+            element.attributes.delete(name);
+            if (name === 'id') element.id = '';
+            if (name === 'class') element.className = '';
         },
         addEventListener(type, handler) {
             if (!listeners.has(type)) listeners.set(type, []);

@@ -575,7 +575,6 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             }
             // 最后一页且启用选项气泡时，点击空白处切换气泡显隐（消费本次点击，不翻页）。
             if (typeof ctx.handleBlankClick === 'function' && ctx.handleBlankClick()) return;
-            if (typeof ctx.handleReaderAction === 'function') ctx.handleReaderAction('next');
         });
     }
     if (dialog) {
@@ -588,8 +587,6 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             )) {
                 return;
             }
-            // README 声明“点击对话框空白处显示选项气泡”；dialog 内空白点击也应先走气泡逻辑。
-            if (typeof ctx.handleBlankClick === 'function' && ctx.handleBlankClick()) return;
             const rect = typeof dialog.getBoundingClientRect === 'function'
                 ? dialog.getBoundingClientRect()
                 : { left: 0, width: 0 };
