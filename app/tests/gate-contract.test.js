@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 
 import { bootstrapIGS } from '../src/index.js';
 import { dispatchImportBundle } from '../src/registry/import-dispatcher.js';
+import { IGS_TRANSPARENT_GLASS_BG, applyTransparentGlassMaterial } from '../src/styles/glass-material.js';
 import { checkStyleContract } from '../src/styles/style-contract.js';
 import { readLegacyIgsSettings } from '../src/storage/legacy-igs.js';
 import { createReaderState } from '../src/visual/reader-state.js';
@@ -56,6 +57,23 @@ test('gate:style-contract:requires stable slots and reader bridge attributes', (
     assert.deepEqual(result.missingData, []);
 });
 
+test('gate:style-contract:transparent glass material keeps fill alpha separate from density', () => {
+    const applied = new Map();
+    applyTransparentGlassMaterial({
+        style: {
+            setProperty(name, value) {
+                applied.set(name, value);
+            },
+        },
+    }, 0.62);
+
+    assert.equal(applied.get('--igs-glass-opacity'), '0.62');
+    assert.equal(applied.get('--igs-glass-density'), '0.62');
+    assert.equal(applied.get('--igs-glass-fill-alpha'), '0.12');
+    assert.equal(applied.get('--igs-transparent-glass-bg'), IGS_TRANSPARENT_GLASS_BG);
+    assert.equal(applied.get('--igs-glass-bg'), IGS_TRANSPARENT_GLASS_BG);
+});
+
 test('gate:visual-slots-contract:stage-model', () => {
     const fixture = readJson('fixtures/visual/stage-model.json');
     const readerState = createReaderState(fixture.standard.readerStateInput);
@@ -100,11 +118,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0.23.5/);
+    assert.match(bundle, /IGS version: 0.23.6/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Immersive Galgame System');
-    assert.equal(manifest.version, '0.23.5');
+    assert.equal(manifest.version, '0.23.6');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -378,6 +396,10 @@ test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
     assert.ok(toolbarLayerIndex >= 0);
     assert.ok(toolbarIndex > toolbarLayerIndex);
     assert.match(source.styleText, /#igs-dialog-layer,#igs-toolbar-layer,#igs-option-layer,#igs-db-layer\{position:absolute;inset:0;pointer-events:none;\}/);
+    assert.match(source.styleText, /--igs-glass-fill-alpha:\.12/);
+    assert.match(source.styleText, /--igs-glass-density:\.12/);
+    assert.match(source.styleText, /--igs-transparent-glass-bg:rgba\(20,20,22,\.12\)/);
+    assert.match(source.styleText, /--igs-glass-bg:var\(--igs-transparent-glass-bg\)/);
     assert.match(source.styleText, /--igs-dialog-bg:var\(--igs-glass-bg\)/);
     assert.match(source.styleText, /--igs-toolbar-bg:var\(--igs-glass-bg\)/);
     assert.match(source.styleText, /--igs-choice-bg:var\(--igs-glass-bg\)/);
@@ -396,6 +418,13 @@ test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
     assert.doesNotMatch(source.html, />‹</);
     assert.doesNotMatch(source.html, />⚙</);
     assert.match(source.html, /id="igs-controls-shujuku_v120-guard"/);
+
+    const rendererText = readText('src/visual/igs-ui/reader-dom-render.js');
+    const dbControllerText = readText('src/shujuku-panel/panel-controller.js');
+    assert.match(rendererText, /applyTransparentGlassMaterial\(root, readerSettings\.glassOpacity\)/);
+    assert.doesNotMatch(rendererText, /setProperty\('--igs-glass-bg',\s*`rgba\(20,20,22,\$\{/);
+    assert.match(dbControllerText, /applyTransparentGlassMaterial\(root, readerSettings && readerSettings\.glassOpacity\)/);
+    assert.doesNotMatch(dbControllerText, /setProperty\('--igs-glass-bg',\s*`rgba\(20,20,22,\$\{/);
 });
 
 test('gate:igs-ui:settings-shell-keeps-original-tabs', () => {
@@ -452,6 +481,10 @@ test('gate:api:public-api-exposes-text-preset-groups', () => {
 
 function readJson(relativePath) {
     return JSON.parse(fs.readFileSync(path.join(appRoot, relativePath), 'utf8'));
+}
+
+function readText(relativePath) {
+    return fs.readFileSync(path.join(appRoot, relativePath), 'utf8');
 }
 
 function createLoaderDocumentLike(options = {}) {

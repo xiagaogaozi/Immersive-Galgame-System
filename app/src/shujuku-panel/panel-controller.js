@@ -1,4 +1,5 @@
 import { createShujukuClient } from '../data/shujuku/client.js';
+import { applyTransparentGlassMaterial } from '../styles/glass-material.js';
 import { parseTables } from './panel-model.js';
 import { getDbPanelStyles, renderDbPanelInner } from './panel-render.js';
 
@@ -143,10 +144,7 @@ export function createDbPanelController(doc, global) {
         const container = resolvePanelContainer(overlayEl);
         container.appendChild(root);
 
-        // apply glassOpacity from reader settings (drives panel bg + sticky header bg)
-        const opacity = readerSettings && typeof readerSettings.glassOpacity === 'number'
-            ? readerSettings.glassOpacity : 0.12;
-        root.style.setProperty('--igs-glass-bg', `rgba(20,20,22,${opacity})`);
+        applyTransparentGlassMaterial(root, readerSettings && readerSettings.glassOpacity);
 
         // drag within container
         const header = root.querySelector('.igs-shujuku-header');

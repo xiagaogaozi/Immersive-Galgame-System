@@ -12,7 +12,8 @@ import {
     removeImageEmptyPlaceholder,
     removeImageLoadingSpinner,
 } from './reader-dom-utils.js';
-import { computeLineHeight, normalizeOpacity, igsDebug } from './reader-value-utils.js';
+import { applyTransparentGlassMaterial } from '../../styles/glass-material.js';
+import { computeLineHeight, igsDebug } from './reader-value-utils.js';
 import {
     renderDialogueHtml,
     resolveActiveTheme,
@@ -318,11 +319,7 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     const win = getOwnerWindow(root);
     const overlayWidth = readElementWidth(root, win && win.innerWidth);
     const overlayHeight = readElementHeight(root, win && win.innerHeight);
-    const glassOpacity = normalizeOpacity(readerSettings.glassOpacity, .12);
-    if (root && root.style && typeof root.style.setProperty === 'function') {
-        root.style.setProperty('--igs-glass-opacity', String(glassOpacity));
-        root.style.setProperty('--igs-glass-bg', `rgba(20,20,22,${glassOpacity})`);
-    }
+    applyTransparentGlassMaterial(root, readerSettings.glassOpacity);
 
     if (textEl) {
         textEl.style.fontSize = `${readerSettings.fontSize}px`;
@@ -371,7 +368,7 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     if (toolbar) {
         toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
         toolbar.style.transformOrigin = 'right bottom';
-        // 工具栏/对话框/数据库面板统一用 glassOpacity，对齐通透质感（默认低 alpha）。
+        // The shared glass material is applied through CSS variables on the overlay.
         toolbar.style.background = '';
     }
 
