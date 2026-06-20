@@ -100,11 +100,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0.23.4/);
+    assert.match(bundle, /IGS version: 0.23.5/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Immersive Galgame System');
-    assert.equal(manifest.version, '0.23.4');
+    assert.equal(manifest.version, '0.23.5');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -395,6 +395,7 @@ test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
     assert.doesNotMatch(source.styleText, /transition:all/);
     assert.doesNotMatch(source.html, />‹</);
     assert.doesNotMatch(source.html, />⚙</);
+    assert.match(source.html, /id="igs-controls-shujuku_v120-guard"/);
 });
 
 test('gate:igs-ui:settings-shell-keeps-original-tabs', () => {

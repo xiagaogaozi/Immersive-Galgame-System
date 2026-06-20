@@ -122,7 +122,7 @@ const ORIGINAL_READER_HTML = `
   <div class="igs-divider" id="igs-divider"></div>
   <div class="igs-text" id="igs-text"></div>
   <div class="igs-status-line" id="igs-status-line"></div>
-  <div class="igs-controls">
+  <div class="igs-controls" id="igs-controls-shujuku_v120-guard">
     <div id="igs-send-status" aria-live="polite"><span class="igs-spinner"></span><span id="igs-send-status-text">已发送，等待 AI 回复…</span></div>
     <input class="igs-input" id="igs-input" type="text" placeholder="输入内容后按 Enter 发送">
     <button class="igs-send-btn" id="igs-send-btn" type="button">发送</button>

@@ -167,6 +167,9 @@ export function buildFallbackReaderOverlay(doc) {
 
     const controls = doc.createElement('div');
     controls.className = 'igs-controls';
+    // id 含 shujuku_v120- 子串以命中 Veridis 关键词过滤插件的输入框豁免，
+    // 避免其全局 input 监听器替换 #igs-input 里用户正在输入的文字。
+    controls.id = 'igs-controls-shujuku_v120-guard';
     dialog.appendChild(controls);
 
     const sendStatus = doc.createElement('div');
