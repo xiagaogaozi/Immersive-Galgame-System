@@ -27,6 +27,15 @@ const SENTENCE_PAGING_TERMINATOR = '。';
 
 const THOUGHT_RE_GLOBAL = /\[igs-thought:([^|\]]+)\|[^|\]]+\|([^\]]+)\]/gm;
 
+// 数据层正文里是否含 IGS 场景标签（给 AI 看的格式标记）。宿主前端会用正则把这些
+// 标签从渲染层 .mes_text 隐藏，所以「数据层有标签、DOM 无标签」是渲染清洗造成的
+// 结构性差异，绝不能当成关键词插件改词而用 DOM 覆盖数据层。
+const IGS_DIRECTIVE_TAG_RE = /\[igs-(?:scene|char|thought):/;
+
+function hasIgsDirectiveTags(text) {
+    return IGS_DIRECTIVE_TAG_RE.test(String(text || ''));
+}
+
 const HOST_UI_HTML_MARKERS = Object.freeze([
     'api connections',
     'rightnavholder',
@@ -317,9 +326,13 @@ export function buildIgsTextPayload(message, options = {}) {
     // DOM 差异优先：第三方关键词过滤插件（如 Veridis）只改渲染层 .mes_text，
     // 不一定回写 chat[n].mes。移动端宿主下数据层回写更会滞后，导致读到旧词。
     // 当 DOM 可见文本与数据层纯文本只是局部（词级）不同时，信任 DOM。
+    // 例外：数据层含 [igs-scene/char/thought:] 标签而 DOM 文本不含时，是宿主前端把标签
+    // 从渲染层清洗掉了，不是改词。此时用 DOM 覆盖会丢失全部对白/心理话标签，必须放弃覆盖。
     const domVisibleText = normalizeWhitespace(visibleText);
+    const domClobbersDirectiveTags = hasIgsDirectiveTags(raw) && !hasIgsDirectiveTags(domVisibleText);
     if (domVisibleText
         && !looksLikeHostUiHtml(domVisibleText)
+        && !domClobbersDirectiveTags
         && localizedTextDiffers(cleanedRaw, domVisibleText)) {
         formattedText = domVisibleText;
         sourceKind = 'dom-visible-override';

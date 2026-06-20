@@ -241,6 +241,49 @@ test('gate:scene:igs-message-source:keeps-data-text-when-dom-is-different-conten
     assert.match(payload.formattedText, /犹豫着要不要敲门/);
 });
 
+test('gate:scene:igs-message-source:keeps-data-directives-when-dom-strips-igs-tags', () => {
+    // 宿主前端用正则把 [igs-char/thought:] 标签从渲染层隐藏，DOM 可见文本因此不含标签。
+    // 此时即便 DOM 与数据层只是"词级"长度接近，也绝不能用 DOM 覆盖，否则全部对白/心理话丢失。
+    const dataLayer = [
+        '<content>',
+        '[igs-scene:厢房|早晨|晴天]',
+        '他烦躁地拨弄着头发。',
+        '[igs-thought:哪吒|烦躁|什么破头发，剪了算了。]',
+        '[igs-char:白墨|玩味|吒儿姐姐，起了么？]',
+        '</content>',
+    ].join('\n');
+    const domVisible = '他烦躁地拨弄着头发。\n什么破头发，剪了算了。\n吒儿姐姐，起了么？';
+    const sceneAssets = {
+        enabled: true,
+        promptRule: 'r',
+        characters: { 哪吒: { 烦躁: 'u' }, 白墨: { 玩味: 'u' } },
+    };
+    const payload = buildIgsTextPayload({ text: dataLayer, visibleText: domVisible }, { sceneAssets });
+
+    assert.equal(Boolean(payload.usedDomOverride), false);
+    assert.notEqual(payload.sourceKind, 'dom-visible-override');
+    // 心理话被转成星号、对白被转成 [名]：…，且 directives 解析齐全。
+    assert.match(payload.formattedText, /\*什么破头发，剪了算了。\*/);
+    assert.match(payload.formattedText, /\[白墨\]：吒儿姐姐，起了么？/);
+    const thoughts = payload.sceneDirectives.filter((d) => d.type === 'thought');
+    const chars = payload.sceneDirectives.filter((d) => d.type === 'char');
+    assert.equal(thoughts.length, 1);
+    assert.equal(chars.length, 1);
+});
+
+test('gate:scene:igs-message-source:still-overrides-dom-when-both-sides-have-igs-tags', () => {
+    // 数据层和 DOM 都含 igs 标签（插件只改了标签内的词），守卫不触发，DOM override 照常生效。
+    const dataLayer = '<content>[igs-char:哪吒|平静|这一步迈进了自相残杀的怪圈。]</content>';
+    const domVisible = '[igs-char:哪吒|平静|这一步迈进了互相杀的怪圈。]';
+    const payload = buildIgsTextPayload({ text: dataLayer, visibleText: domVisible }, {
+        sceneAssets: { enabled: true, promptRule: 'r', characters: { 哪吒: { 平静: 'u' } } },
+    });
+
+    assert.equal(payload.usedDomOverride, true);
+    assert.match(payload.formattedText, /互相杀/);
+    assert.equal(payload.formattedText.includes('自相残杀'), false);
+});
+
 test('gate:scene:igs-message-source:reader-segments-skip-scene-tags', () => {
     const payload = buildIgsTextPayload({
         text: '[角色: 艾莉]\n艾莉: 第一句。 第二句。',
