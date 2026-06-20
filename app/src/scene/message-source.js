@@ -334,7 +334,10 @@ export function buildIgsTextPayload(message, options = {}) {
         && !looksLikeHostUiHtml(domVisibleText)
         && !domClobbersDirectiveTags
         && localizedTextDiffers(cleanedRaw, domVisibleText)) {
-        formattedText = domVisibleText;
+        // DOM 文本可能仍含 [igs-char/thought:] 原始标签（宿主没清洗）。必须先跑正文格式化，
+        // 把标签转成气泡/心理话形态（[名]：… 与 *…*），否则阅读器把整段当旁白、丢失角色名。
+        const domFormatted = applyImmersiveGalgameSystemBodyFormat(domVisibleText, virtualRegex);
+        formattedText = normalizeWhitespace(domFormatted.formattedRaw || domVisibleText);
         sourceKind = 'dom-visible-override';
         formatSourceKind = 'dom-visible-override';
         usedDomOverride = true;

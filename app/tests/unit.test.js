@@ -242,8 +242,8 @@ test('gate:scene:igs-message-source:keeps-data-text-when-dom-is-different-conten
 });
 
 test('gate:scene:igs-message-source:keeps-data-directives-when-dom-strips-igs-tags', () => {
-    // 宿主前端用正则把 [igs-char/thought:] 标签从渲染层隐藏，DOM 可见文本因此不含标签。
-    // 此时即便 DOM 与数据层只是"词级"长度接近，也绝不能用 DOM 覆盖，否则全部对白/心理话丢失。
+    // 守卫场景：若宿主真的把 [igs-*:] 标签从渲染层清洗掉（DOM 无标签），即便长度量级接近，
+    // 也不能用 DOM 覆盖，否则全部对白/心理话标签丢失。此时回落数据层 strict 解析。
     const dataLayer = [
         '<content>',
         '[igs-scene:厢房|早晨|晴天]',
@@ -262,13 +262,42 @@ test('gate:scene:igs-message-source:keeps-data-directives-when-dom-strips-igs-ta
 
     assert.equal(Boolean(payload.usedDomOverride), false);
     assert.notEqual(payload.sourceKind, 'dom-visible-override');
-    // 心理话被转成星号、对白被转成 [名]：…，且 directives 解析齐全。
     assert.match(payload.formattedText, /\*什么破头发，剪了算了。\*/);
     assert.match(payload.formattedText, /\[白墨\]：吒儿姐姐，起了么？/);
     const thoughts = payload.sceneDirectives.filter((d) => d.type === 'thought');
     const chars = payload.sceneDirectives.filter((d) => d.type === 'char');
     assert.equal(thoughts.length, 1);
     assert.equal(chars.length, 1);
+});
+
+test('gate:scene:igs-message-source:dom-override-formats-igs-tags-into-bubbles', () => {
+    // 真机场景：宿主 DOM .mes_text 仍保留原始 [igs-char/thought:] 标签，且与数据层有词级差异
+    // 触发 DOM override。override 必须对 DOM 文本跑正文格式化，把标签转成 [名]：… 与 *…*，
+    // 否则阅读器把整段当旁白、角色名/分割线/标签心理话全部丢失。
+    const dataLayer = [
+        '<content>',
+        '[igs-thought:哪吒|烦躁|什么破头发，剪了算了。]',
+        '[igs-char:白墨|玩味|吒儿姐姐，起了么？]',
+        '</content>',
+    ].join('\n');
+    // DOM 文本含原始标签，但某个词被关键词插件改过（破头发→破头毛），构成词级差异。
+    const domVisible = [
+        '[igs-thought:哪吒|烦躁|什么破头毛，剪了算了。]',
+        '[igs-char:白墨|玩味|吒儿姐姐，起了么？]',
+    ].join('\n');
+    const sceneAssets = {
+        enabled: true,
+        promptRule: 'r',
+        characters: { 哪吒: { 烦躁: 'u' }, 白墨: { 玩味: 'u' } },
+    };
+    const payload = buildIgsTextPayload({ text: dataLayer, visibleText: domVisible }, { sceneAssets });
+
+    assert.equal(payload.usedDomOverride, true);
+    // DOM 文本里的标签被格式化成气泡/心理话形态，而非保留原始 [igs-*:] 标签。
+    assert.match(payload.formattedText, /\*什么破头毛，剪了算了。\*/);
+    assert.match(payload.formattedText, /\[白墨\]：吒儿姐姐，起了么？/);
+    assert.equal(payload.formattedText.includes('[igs-thought:'), false);
+    assert.equal(payload.formattedText.includes('[igs-char:'), false);
 });
 
 test('gate:scene:igs-message-source:still-overrides-dom-when-both-sides-have-igs-tags', () => {
@@ -282,6 +311,9 @@ test('gate:scene:igs-message-source:still-overrides-dom-when-both-sides-have-igs
     assert.equal(payload.usedDomOverride, true);
     assert.match(payload.formattedText, /互相杀/);
     assert.equal(payload.formattedText.includes('自相残杀'), false);
+    // 标签被格式化为对白气泡，不残留原始 igs 标签。
+    assert.match(payload.formattedText, /\[哪吒\]：/);
+    assert.equal(payload.formattedText.includes('[igs-char:'), false);
 });
 
 test('gate:scene:igs-message-source:reader-segments-skip-scene-tags', () => {

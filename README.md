@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.10`：修复场景素材模式下角色名/分割线不显示、`[igs-char:]` 与 `[igs-thought:]` 标签写的对白/心理话在阅读器丢失的问题。根因是 v0.23.4 引入的「DOM 差异优先」：宿主前端用正则把 `[igs-*:]` 标签从渲染层 `.mes_text` 隐藏，DOM 可见文本因此不含标签，却仍被判定为与数据层「词级差异」而采信 DOM，导致全部标签解析结果被丢弃。现增加守卫：数据层含 `[igs-scene/char/thought:]` 标签而 DOM 文本不含时，判定为渲染层清洗（非改词），放弃 DOM 覆盖、继续用数据层 strict 解析；新增 2 个回归测试覆盖「DOM 清洗标签时不覆盖」与「两侧均含标签时仍按词级覆盖」。
+- 当前项目版本 `v0.23.11`：彻底修复场景素材模式下角色名/分割线不显示、`[igs-char:]` 与 `[igs-thought:]` 标签写的对白/心理话在阅读器丢失的问题。真机 CDP 探针定位真实根因：宿主 DOM `.mes_text` **保留**了原始 `[igs-*:]` 标签且与数据层有词级差异，触发 `dom-visible-override`，但 override 分支直接 `formattedText = domVisibleText` **未跑正文格式化**，标签没被转成 `[名]：…` / `*…*` 形态，导致阅读器把整段当旁白、角色名/分割线/标签心理话全部丢失（v0.23.10 的标签清洗守卫方向只覆盖了一半场景，未解决真机问题）。现 override 分支对 DOM 文本补跑 `applyImmersiveGalgameSystemBodyFormat`，并保留 v0.23.10 的「DOM 清洗标签时不覆盖」守卫；3 个回归测试覆盖：DOM 含标签 override 后正确格式化、DOM 清洗标签时不覆盖、两侧均含标签仍按词级覆盖。
+- `v0.23.9`：修复阅读器设置保存回归。普通阅读器设置保存不再把当前 reader 强行切回 `bridge.openMode`，旧 readerSettings 缺 `_v` 时不再整包清空，心理页真正使用 `thoughtFont/thoughtColor/thoughtAlign`；新增回归测试覆盖打开后旧设置保留、显式 openMode 切换、角色名/分割线、心理页主题和 mode 不一致时的立绘布局。
 - `v0.23.9`：修复阅读器设置保存回归。普通阅读器设置保存不再把当前 reader 强行切回 `bridge.openMode`，旧 readerSettings 缺 `_v` 时不再整包清空，心理页真正使用 `thoughtFont/thoughtColor/thoughtAlign`；新增回归测试覆盖打开后旧设置保留、显式 openMode 切换、角色名/分割线、心理页主题和 mode 不一致时的立绘布局。
 - `v0.23.4`：修复手机版阅读器读不到关键词过滤插件（如 Veridis）改后正文的问题。根因有两处：①IGS 读正文时优先取数据层 `chat[n].mes`，而 Veridis 在移动端宿主下回写 `mes` 滞后甚至只改 `.mes_text` 渲染层不回写，导致读到改前旧词（PC 因 `saveChat` 同步回写而正常）；现 `buildIgsTextPayload` 增加「DOM 差异优先」：当 DOM 可见文本与数据层纯文本仅为词级差异（长度量级接近、编辑距离占比 ≤50%）时改用 DOM 文本，结构性不同则仍保留原文。②点「刷新」时只重扫图片和重解析配置，`visibleText` 仍是打开阅读器那一刻的旧 DOM 快照；现刷新会按消息 ID 重查 `.mes` 节点重抓最新渲染文本。新增 2 个单测覆盖词级覆盖与内容不同时不覆盖。
 - `v0.23.3`：修复最后一页输入框点击会穿透触发选项浮窗、背景图点击会翻页的问题。根因是 `#igs-dialog-layer` 为 `pointer-events:none`，但 `.igs-dialog` 没有显式恢复 `pointer-events:auto`，输入区真实点击可能穿透到 `#igs-click-layer`；同时 click-layer 的空白点击逻辑在选项触发后仍兜底执行下一页。现改为背景 click-layer 只处理恢复隐藏、关闭设置和选项浮窗触发，不再翻页；对话框点击只负责左右翻页且排除输入区/工具栏/设置；选项浮窗触发排除对话框、工具栏和输入框。
@@ -169,6 +170,15 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.11 - 2026-06-20
+
+- 彻底修复 v0.23.10 未解决的真机问题：场景素材模式下用 `[igs-char:]` / `[igs-thought:]` 标签写的对白和心理话在阅读器整段丢失、角色名与分割线不显示。
+- 真机 CDP 探针修正了 v0.23.10 的根因判断：宿主 SillyTavern 的 DOM `.mes_text` **并未清洗** `[igs-*:]` 标签（标签原样保留在渲染文本里），与数据层只是词级差异，因此 `dom-visible-override` 正常触发。真正的缺陷是 override 分支直接 `formattedText = domVisibleText`，**跳过了正文格式化** `applyImmersiveGalgameSystemBodyFormat`，导致 `[igs-thought:名|情|内容]` 没被转成 `*内容*`、`[igs-char:名|情|对白]` 没被转成 `[名]：对白`，阅读器的 `classifySegment` 按形态识别失败，把整段当旁白渲染（且残留原始标签文本）。
+- 修复：`buildIgsTextPayload` 的 DOM override 分支对 `domVisibleText` 补跑 `applyImmersiveGalgameSystemBodyFormat(domVisibleText, virtualRegex)` 再赋给 `formattedText`，标签转成气泡/心理话形态。保留 v0.23.10 的 `domClobbersDirectiveTags` 守卫（数据层有标签、DOM 无标签时不覆盖）作为另一半场景的兜底。
+- 用真机导出的真实 `mes`（2313 字，13 char + 4 thought）与 DOM 文本（2122 字，含标签）本地复跑修复后代码确认：`usedDomOverride=true`、所有 thought 转 `*…*`、所有 char 转 `[名]：…`、无残留原始标签、directives 解析齐全（13 char + 4 thought）。
+- 回归测试增至 3 个：`dom-override-formats-igs-tags-into-bubbles`（DOM 含标签 override 后正确格式化、不残留原始标签）、`keeps-data-directives-when-dom-strips-igs-tags`（DOM 清洗标签时不覆盖）、`still-overrides-dom-when-both-sides-have-igs-tags`（两侧均含标签仍按词级覆盖并格式化）。验证边界：Node gate / fake DOM / 真机 CDP 探针只读验证，不写入真实 shujuku，不调用真实 provider；本轮未留下技术债。
+- 版本同步到 `v0.23.11`，重新生成 dist、loader 和版本化酒馆助手脚本 JSON。
 
 ### v0.23.10 - 2026-06-20
 
