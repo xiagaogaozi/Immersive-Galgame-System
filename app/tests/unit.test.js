@@ -1599,6 +1599,16 @@ test('gate:choices:option-table finds 同名表 and extracts text column', () =>
     assert.deepEqual(items, ['报警', '找工具']);
 });
 
+test('gate:choices:option-table extracts wide option rows', () => {
+    const table = {
+        uid: 'sheet_2',
+        name: '选项表',
+        columns: ['row_id', '选项一', '选项二', '选项三', '选项四'],
+        rows: [['1', '报警', '找工具', '原地等待', '离开']],
+    };
+    assert.deepEqual(extractOptionTexts(table), ['报警', '找工具', '原地等待', '离开']);
+});
+
 test('gate:choices:option-table accepts 选项/行动选项 aliases', () => {
     assert.deepEqual(OPTION_TABLE_NAMES, ['选项', '选项表', '行动选项']);
     for (const name of ['选项', '行动选项']) {

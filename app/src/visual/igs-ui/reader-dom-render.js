@@ -31,6 +31,59 @@ export function createReaderButton(doc, id, title, html) {
     return button;
 }
 
+function addClasses(element, classNames) {
+    if (!element) return;
+    const current = String(element.className || '').split(/\s+/).filter(Boolean);
+    const next = new Set(current);
+    for (const name of String(classNames || '').split(/\s+/).filter(Boolean)) next.add(name);
+    element.className = Array.from(next).join(' ');
+}
+
+function ensureReaderLayer(doc, overlay, id, className, beforeNode = null) {
+    if (!doc || !overlay || typeof doc.createElement !== 'function') return null;
+    let layer = overlay.querySelector ? overlay.querySelector(`#${id}`) : null;
+    if (!layer) {
+        layer = doc.createElement('div');
+        layer.id = id;
+        layer.className = className;
+        if (beforeNode && beforeNode.parentNode === overlay && typeof overlay.insertBefore === 'function') {
+            overlay.insertBefore(layer, beforeNode);
+        } else if (typeof overlay.appendChild === 'function') {
+            overlay.appendChild(layer);
+        }
+    } else {
+        addClasses(layer, className);
+    }
+    return layer;
+}
+
+export function normalizeReaderStableLayers(overlay) {
+    if (!overlay || !overlay.ownerDocument) return overlay;
+    const doc = overlay.ownerDocument;
+    addClasses(overlay, 'igs-stage');
+
+    const bgBlur = overlay.querySelector ? overlay.querySelector('#igs-bg-blur') : null;
+    const bg = overlay.querySelector ? overlay.querySelector('#igs-bg') : null;
+    const sprite = overlay.querySelector ? overlay.querySelector('#igs-sprite') : null;
+    addClasses(bgBlur, 'igs-background-layer igs-background-blur-layer');
+    addClasses(bg, 'igs-background-layer');
+    addClasses(sprite, 'igs-character-layer');
+
+    const optionBubbles = overlay.querySelector ? overlay.querySelector('#igs-option-bubbles') : null;
+    const dialog = overlay.querySelector ? overlay.querySelector('#igs-dialog') : null;
+    const toolbar = overlay.querySelector ? overlay.querySelector('#igs-ctrl-bar') : null;
+    addClasses(toolbar, 'igs-toolbar');
+    const optionLayer = ensureReaderLayer(doc, overlay, 'igs-option-layer', 'igs-choice-layer', dialog || toolbar);
+    const dialogLayer = ensureReaderLayer(doc, overlay, 'igs-dialog-layer', 'igs-dialogue-layer', toolbar);
+    const toolbarLayer = ensureReaderLayer(doc, overlay, 'igs-toolbar-layer', 'igs-hud-layer');
+    ensureReaderLayer(doc, overlay, 'igs-db-layer', 'igs-system-layer');
+
+    if (optionBubbles && optionLayer && optionBubbles.parentNode !== optionLayer) optionLayer.appendChild(optionBubbles);
+    if (dialog && dialogLayer && dialog.parentNode !== dialogLayer) dialogLayer.appendChild(dialog);
+    if (toolbar && toolbarLayer && toolbar.parentNode !== toolbarLayer) toolbarLayer.appendChild(toolbar);
+    return overlay;
+}
+
 export function buildFallbackReaderOverlay(doc) {
     if (!doc || typeof doc.createElement !== 'function') return null;
     const overlay = doc.createElement('div');
@@ -52,6 +105,12 @@ export function buildFallbackReaderOverlay(doc) {
     clickLayer.id = 'igs-click-layer';
     overlay.appendChild(clickLayer);
 
+    const optionBubbles = doc.createElement('div');
+    optionBubbles.id = 'igs-option-bubbles';
+    optionBubbles.setAttribute('data-igs-pos', 'top-left');
+    optionBubbles.setAttribute('hidden', '');
+    overlay.appendChild(optionBubbles);
+
     const dialog = doc.createElement('div');
     dialog.id = 'igs-dialog';
     dialog.className = 'igs-dialog';
@@ -59,7 +118,7 @@ export function buildFallbackReaderOverlay(doc) {
 
     const ctrlBar = doc.createElement('div');
     ctrlBar.id = 'igs-ctrl-bar';
-    ctrlBar.className = 'igs-ctrl-bar';
+    ctrlBar.className = 'igs-ctrl-bar igs-toolbar';
     dialog.appendChild(ctrlBar);
 
     const barBtns = doc.createElement('div');
@@ -143,7 +202,7 @@ export function buildFallbackReaderOverlay(doc) {
     toast.setAttribute('aria-live', 'polite');
     dialog.appendChild(toast);
 
-    return overlay;
+    return normalizeReaderStableLayers(overlay);
 }
 
 export function buildFallbackSettingsOverlay(doc, snapshot, ctx = {}) {
@@ -303,14 +362,14 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
             const viewportWidth = Number(win && win.innerWidth) || readerSettings.dialogWidth;
             dialog.style.width = `${Math.max(260, Math.min(readerSettings.dialogWidth, Math.max(260, viewportWidth - 8)))}px`;
         }
-        dialog.style.background = `rgba(20,20,22,${glassOpacity})`;
+        dialog.style.background = '';
     }
 
     if (toolbar) {
         toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
         toolbar.style.transformOrigin = 'right bottom';
         // 工具栏/对话框/数据库面板统一用 glassOpacity，对齐通透质感（默认低 alpha）。
-        toolbar.style.background = `rgba(20,20,22,${glassOpacity})`;
+        toolbar.style.background = '';
     }
 
     if (controls) {
@@ -544,9 +603,9 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
     }
     if (dialog) {
         dialog.classList.toggle('igs-hidden', current.hidden);
-        if (snapshot.readerSettings.glassOpacity != null) {
-            dialog.style.background = `rgba(20,20,22,${snapshot.readerSettings.glassOpacity})`;
-        }
+    }
+    if (toolbar) {
+        toolbar.classList.toggle('igs-hidden', current.hidden);
     }
     applyToolbarState(root, current);
     applyReaderSettingsToDom(root, snapshot, current, { dialog, textEl, toolbar });

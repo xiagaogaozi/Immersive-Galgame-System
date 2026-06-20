@@ -107,6 +107,7 @@ import {
     applyToolbarState,
     buildFallbackReaderOverlay,
     buildFallbackSettingsOverlay,
+    normalizeReaderStableLayers,
 } from './reader-dom-render.js';
 
 export function createIgsReaderHost(options = {}) {
@@ -449,7 +450,7 @@ export function createIgsReaderHost(options = {}) {
         for (const text of items) {
             const bubble = doc.createElement('button');
             bubble.type = 'button';
-            bubble.className = 'igs-option-bubble';
+            bubble.className = 'igs-option-bubble igs-bubble';
             bubble.textContent = text;
             bubble.addEventListener('click', (event) => {
                 if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
@@ -1036,7 +1037,7 @@ export function createIgsReaderHost(options = {}) {
         const displayText = (!sceneAssetsEnabled && scene.speaker && currentText)
             ? `${scene.speaker}: ${currentText}`
             : (sceneAssetsEnabled ? segmentBody : currentText);
-        const overlayClasses = ['igs-mode-' + mode];
+        const overlayClasses = ['igs-stage', 'igs-mode-' + mode];
         if (mode === 'pc' || mode === 'mobile') overlayClasses.push('igs-floating');
         if (mode === 'mobile') overlayClasses.push('igs-floating-mobile');
 
@@ -1543,6 +1544,11 @@ export function createIgsReaderHost(options = {}) {
             const h = Math.round(dialog.getBoundingClientRect().height || 0);
             if (h > 0) overlay.style.setProperty('--igs-dialog-h', `${h}px`);
         }
+        const toolbar = overlay.querySelector('#igs-ctrl-bar');
+        if (toolbar && typeof toolbar.getBoundingClientRect === 'function') {
+            const h = Math.round(toolbar.getBoundingClientRect().height || 0);
+            if (h > 0) overlay.style.setProperty('--igs-toolbar-h', `${h}px`);
+        }
     }
 
     function hydrateReaderMount(container, snapshot) {
@@ -1553,6 +1559,7 @@ export function createIgsReaderHost(options = {}) {
             overlay = buildFallbackReaderOverlay(container.ownerDocument || getRootDocument(options.global));
             if (overlay) container.appendChild(overlay);
         }
+        normalizeReaderStableLayers(overlay);
         return {
             overlay,
             dialog: overlay ? overlay.querySelector('#igs-dialog') : null,

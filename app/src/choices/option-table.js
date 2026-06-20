@@ -21,17 +21,22 @@ export function findOptionTable(tables) {
 // 从一张表里提取选项文本：取首个非 row_id 列的每行内容，去空去重。
 export function extractOptionTexts(table) {
     if (!table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) return [];
-    let textCol = table.columns.findIndex((c) => !isRowIdColumn(c));
-    if (textCol < 0) textCol = table.columns.length > 1 ? 1 : 0;
+    let textCols = table.columns
+        .map((column, index) => ({ column, index }))
+        .filter((item) => !isRowIdColumn(item.column))
+        .map((item) => item.index);
+    if (!textCols.length) textCols = table.columns.length > 1 ? [1] : [0];
     const seen = new Set();
     const out = [];
     for (const row of table.rows) {
-        const value = String((Array.isArray(row) ? row[textCol] : '') ?? '').trim();
-        if (!value) continue;
-        const key = value.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push(value);
+        for (const textCol of textCols) {
+            const value = String((Array.isArray(row) ? row[textCol] : '') ?? '').trim();
+            if (!value) continue;
+            const key = value.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(value);
+        }
     }
     return out;
 }

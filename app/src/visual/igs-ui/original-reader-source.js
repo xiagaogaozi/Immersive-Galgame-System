@@ -33,7 +33,7 @@ export const ORIGINAL_READER_TOOLBAR_BUTTONS = Object.freeze([
 ]);
 
 const ORIGINAL_READER_STYLE_TEXT = `
-#igs-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;z-index:900;background:#000;overflow:hidden;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#fff;}
+#igs-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;z-index:900;background:#000;overflow:hidden;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#fff;--igs-glass-bg:rgba(20,20,22,.12);--igs-glass-border:rgba(255,255,255,.10);--igs-glass-blur:blur(48px) saturate(220%);--igs-glass-radius:18px;--igs-glass-shadow:0 4px 24px rgba(0,0,0,.20);--igs-dialog-bg:var(--igs-glass-bg);--igs-dialog-border:var(--igs-glass-border);--igs-dialog-blur:var(--igs-glass-blur);--igs-dialog-radius:var(--igs-glass-radius);--igs-dialog-shadow:var(--igs-glass-shadow);--igs-toolbar-bg:var(--igs-glass-bg);--igs-toolbar-border:var(--igs-glass-border);--igs-toolbar-blur:var(--igs-glass-blur);--igs-toolbar-radius:var(--igs-glass-radius);--igs-toolbar-shadow:var(--igs-glass-shadow);--igs-choice-bg:var(--igs-glass-bg);--igs-choice-border:var(--igs-glass-border);--igs-choice-blur:var(--igs-glass-blur);--igs-choice-radius:var(--igs-glass-radius);--igs-choice-shadow:var(--igs-glass-shadow);--igs-db-bg:var(--igs-glass-bg);--igs-db-border:var(--igs-glass-border);--igs-db-blur:var(--igs-glass-blur);--igs-db-radius:var(--igs-glass-radius);--igs-db-shadow:var(--igs-glass-shadow);--igs-toolbar-h:50px;}
 #igs-overlay.igs-floating,#igs-overlay.igs-mode-web,#igs-overlay.igs-mode-fullscreen{z-index:2147483000;}
 #igs-overlay.igs-fading{opacity:0;transition:opacity .25s;}
 #igs-bg{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, #2a2a3a 0%, #0c0c11 80%);background-position:center;background-size:cover;background-repeat:no-repeat;transition:opacity .3s ease;filter:brightness(.88);}
@@ -42,6 +42,11 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-sprite{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:40%;height:85%;background-size:100%;background-repeat:no-repeat;background-position:50% 100%;pointer-events:none;z-index:2;display:none;}
 #igs-sprite.igs-sprite-editing{pointer-events:all;cursor:grab;outline:2px dashed rgba(255,255,255,.5);outline-offset:-2px;}
 #igs-sprite.igs-sprite-editing.is-dragging{cursor:grabbing;}
+#igs-dialog-layer,#igs-toolbar-layer,#igs-option-layer,#igs-db-layer{position:absolute;inset:0;pointer-events:none;}
+#igs-dialog-layer{z-index:4;}
+#igs-option-layer{z-index:5;}
+#igs-toolbar-layer{z-index:7;inset:auto auto 24px 50%;width:min(880px,calc(100vw - 32px));height:var(--igs-dialog-h,160px);transform:translateX(-50%);}
+#igs-db-layer{z-index:10;}
 #igs-sprite-edit-bar{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;z-index:10;background:rgba(16,16,20,.88);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(20px);border-radius:16px;padding:8px 14px;white-space:nowrap;}
 #igs-sprite-edit-bar .igs-se-hint{font-size:12px;color:rgba(255,255,255,.55);margin-right:4px;}
 #igs-sprite-edit-bar button{padding:5px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;font-family:inherit;}
@@ -51,23 +56,27 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-option-bubbles{position:absolute;z-index:6;display:flex;flex-direction:column;gap:8px;max-width:min(70%,420px);max-height:60%;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;pointer-events:auto;}
 #igs-option-bubbles::-webkit-scrollbar{display:none;}
 #igs-option-bubbles[hidden]{display:none;}
-#igs-option-bubbles[data-igs-pos="top-left"]{left:16px;bottom:calc(24px + var(--igs-dialog-h,220px) + 12px);align-items:flex-start;}
-#igs-option-bubbles[data-igs-pos="top-center"]{left:50%;transform:translateX(-50%);bottom:calc(24px + var(--igs-dialog-h,220px) + 12px);align-items:center;}
-#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-left"]{left:12px;bottom:calc(14px + var(--igs-dialog-h,220px) + 10px);}
-#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-center"]{bottom:calc(14px + var(--igs-dialog-h,220px) + 10px);}
-.igs-option-bubble{pointer-events:auto;cursor:pointer;border:1px solid rgba(255,255,255,.10);background:var(--igs-glass-bg,rgba(20,20,22,.12));-webkit-backdrop-filter:blur(48px) saturate(220%);backdrop-filter:blur(48px) saturate(220%);border-radius:18px;padding:10px 16px;color:#f4f4f6;font-size:14px;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.92),0 0 8px rgba(0,0,0,.7);box-shadow:0 4px 24px rgba(0,0,0,.20);max-width:100%;word-break:break-word;transition:background .15s,transform .1s;}
+#igs-option-bubbles[data-igs-pos="top-left"]{left:16px;bottom:calc(24px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 12px);align-items:flex-start;}
+#igs-option-bubbles[data-igs-pos="top-center"]{left:50%;transform:translateX(-50%);bottom:calc(24px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 12px);align-items:center;}
+#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-left"]{left:12px;bottom:calc(14px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 10px);}
+#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-center"]{bottom:calc(14px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 10px);}
+.igs-option-bubble{pointer-events:auto;cursor:pointer;border:1px solid var(--igs-choice-border,rgba(255,255,255,.10));background:var(--igs-choice-bg,var(--igs-glass-bg,rgba(20,20,22,.12)));-webkit-backdrop-filter:var(--igs-choice-blur,blur(48px) saturate(220%));backdrop-filter:var(--igs-choice-blur,blur(48px) saturate(220%));border-radius:var(--igs-choice-radius,18px);padding:10px 16px;color:#f4f4f6;font-size:14px;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.92),0 0 8px rgba(0,0,0,.7);box-shadow:var(--igs-choice-shadow,0 4px 24px rgba(0,0,0,.20));max-width:100%;word-break:break-word;transition:background .15s,transform .1s;}
 .igs-option-bubble:hover{background:rgba(60,60,66,.32);}
 .igs-option-bubble:active{transform:scale(.97);}
-.igs-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:var(--igs-glass-bg,rgba(20,20,22,.12));border:1px solid rgba(255,255,255,.10);-webkit-backdrop-filter:blur(48px) saturate(220%);backdrop-filter:blur(48px) saturate(220%);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.20);padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
+.igs-dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(880px,calc(100vw - 32px));background:var(--igs-dialog-bg,var(--igs-glass-bg,rgba(20,20,22,.12)));border:1px solid var(--igs-dialog-border,rgba(255,255,255,.10));-webkit-backdrop-filter:var(--igs-dialog-blur,blur(48px) saturate(220%));backdrop-filter:var(--igs-dialog-blur,blur(48px) saturate(220%));border-radius:var(--igs-dialog-radius,18px);box-shadow:var(--igs-dialog-shadow,0 4px 24px rgba(0,0,0,.20));padding:22px 26px 18px;z-index:4;overflow:visible;transition:opacity .3s,transform .3s;}
 .igs-dialog.igs-hidden{opacity:0;transform:translateX(-50%) translateY(20px);pointer-events:none;}
 #igs-overlay.igs-floating #igs-click-layer{cursor:grab;touch-action:none;}
 #igs-overlay.igs-floating.is-dragging #igs-click-layer{cursor:grabbing;}
 #igs-overlay.igs-floating .igs-dialog{box-sizing:border-box;left:12px;right:12px;bottom:14px;width:auto;transform:none;display:flex;flex-direction:column;max-height:min(46%,220px);overflow:visible;padding:16px 18px 14px;}
 #igs-overlay.igs-floating .igs-dialog.igs-hidden{transform:translateY(20px);}
 #igs-overlay.igs-floating-mobile .igs-dialog{left:10px;right:10px;bottom:12px;max-height:min(42%,190px);padding:14px 14px 12px;}
-.igs-ctrl-bar{position:absolute;top:-50px;right:0;display:flex;gap:6px;z-index:5;padding:6px;background:rgba(20,20,22,.12);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(48px) saturate(220%);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.20);}
-.igs-icon-btn{width:36px;height:36px;border:1px solid transparent;cursor:pointer;background:transparent;color:rgba(255,255,255,.52);font-size:15px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;transition:all .18s;outline:none;}
+#igs-overlay.igs-floating #igs-toolbar-layer{left:12px;right:12px;bottom:14px;width:auto;transform:none;}
+#igs-overlay.igs-floating-mobile #igs-toolbar-layer{left:10px;right:10px;bottom:12px;}
+.igs-ctrl-bar{position:absolute;top:-50px;right:0;display:flex;gap:6px;z-index:5;padding:6px;background:var(--igs-toolbar-bg,var(--igs-glass-bg,rgba(20,20,22,.12)));border:1px solid var(--igs-toolbar-border,rgba(255,255,255,.10));-webkit-backdrop-filter:var(--igs-toolbar-blur,blur(48px) saturate(220%));backdrop-filter:var(--igs-toolbar-blur,blur(48px) saturate(220%));border-radius:var(--igs-toolbar-radius,18px);box-shadow:var(--igs-toolbar-shadow,0 4px 24px rgba(0,0,0,.20));pointer-events:auto;transition:opacity .3s;}
+.igs-ctrl-bar.igs-hidden{opacity:0;pointer-events:none;}
+.igs-icon-btn{width:36px;height:36px;border:1px solid transparent;cursor:pointer;background:transparent;color:rgba(255,255,255,.52);font-size:15px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;transition:background .18s,border-color .18s,color .18s,transform .12s;outline:none;}
 .igs-icon-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.96);}
+.igs-icon-btn:active{transform:scale(.96);}
 #igs-bar-btns{display:none;gap:6px;align-items:center;}
 #igs-bar-pinned{display:flex;gap:6px;align-items:center;}
 .igs-progress{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:0;letter-spacing:1px;}
@@ -99,23 +108,15 @@ const ORIGINAL_READER_STYLE_TEXT = `
 `.trim();
 
 const ORIGINAL_READER_HTML = `
-<div id="igs-bg-blur"></div>
-<div id="igs-bg"></div>
-<div id="igs-sprite"></div>
+<div id="igs-bg-blur" class="igs-background-layer igs-background-blur-layer"></div>
+<div id="igs-bg" class="igs-background-layer"></div>
+<div id="igs-sprite" class="igs-character-layer"></div>
 <div id="igs-click-layer"></div>
-<div id="igs-option-bubbles" data-igs-pos="top-left" hidden></div>
+<div id="igs-option-layer" class="igs-choice-layer">
+  <div id="igs-option-bubbles" data-igs-pos="top-left" hidden></div>
+</div>
+<div id="igs-dialog-layer" class="igs-dialogue-layer">
 <div class="igs-dialog" id="igs-dialog">
-  <div class="igs-ctrl-bar" id="igs-ctrl-bar">
-    <div id="igs-bar-btns">
-      ${ORIGINAL_READER_TOOLBAR_BUTTONS.map((button) => (
-        `<button class="igs-icon-btn" id="igs-btn-${button.id}" data-act="${button.id}" title="${button.title}" type="button">${button.html}</button>`
-      )).join('')}
-    </div>
-    <div id="igs-settings" aria-hidden="true"></div>
-    <div id="igs-bar-pinned"></div>
-    <button class="igs-icon-btn" data-act="toggle-bar" title="收纳/展开按钮" type="button">${ORIGINAL_READER_ICONS.toggleBar}</button>
-    <button class="igs-icon-btn" data-act="close" title="退出" type="button">${ORIGINAL_READER_ICONS.close}</button>
-  </div>
   <div class="igs-progress" id="igs-progress"></div>
   <div class="igs-speaker" id="igs-speaker"></div>
   <div class="igs-divider" id="igs-divider"></div>
@@ -128,6 +129,21 @@ const ORIGINAL_READER_HTML = `
   </div>
   <div id="igs-toast" aria-live="polite"></div>
 </div>
+</div>
+<div id="igs-toolbar-layer" class="igs-hud-layer">
+  <div class="igs-ctrl-bar igs-toolbar" id="igs-ctrl-bar">
+    <div id="igs-bar-btns">
+      ${ORIGINAL_READER_TOOLBAR_BUTTONS.map((button) => (
+        `<button class="igs-icon-btn" id="igs-btn-${button.id}" data-act="${button.id}" title="${button.title}" type="button">${button.html}</button>`
+      )).join('')}
+    </div>
+    <div id="igs-settings" aria-hidden="true"></div>
+    <div id="igs-bar-pinned"></div>
+    <button class="igs-icon-btn" data-act="toggle-bar" title="收纳/展开按钮" type="button">${ORIGINAL_READER_ICONS.toggleBar}</button>
+    <button class="igs-icon-btn" data-act="close" title="退出" type="button">${ORIGINAL_READER_ICONS.close}</button>
+  </div>
+</div>
+<div id="igs-db-layer" class="igs-system-layer"></div>
 `.trim();
 
 export const ORIGINAL_READER_REQUIRED_SELECTORS = Object.freeze([
@@ -136,8 +152,17 @@ export const ORIGINAL_READER_REQUIRED_SELECTORS = Object.freeze([
     '#igs-bg-blur',
     '#igs-sprite',
     '#igs-click-layer',
+    '#igs-dialog-layer',
+    '.igs-dialogue-layer',
+    '#igs-toolbar-layer',
+    '.igs-hud-layer',
+    '#igs-option-layer',
+    '.igs-choice-layer',
+    '#igs-db-layer',
+    '.igs-system-layer',
     '.igs-dialog',
     '.igs-ctrl-bar',
+    '.igs-toolbar',
     '#igs-bar-btns',
     '#igs-settings',
     '.igs-controls',

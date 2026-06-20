@@ -100,11 +100,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0.22.10/);
+    assert.match(bundle, /IGS version: 0.23.0/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Immersive Galgame System');
-    assert.equal(manifest.version, '0.22.10');
+    assert.equal(manifest.version, '0.23.0');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -373,11 +373,21 @@ test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
     assert.match(source.html, /data-act="toggle-bar"/);
     assert.match(source.html, /data-act="close"/);
     assert.match(source.html, /viewBox="0 0 24 24"/);
+    const toolbarLayerIndex = source.html.indexOf('id="igs-toolbar-layer"');
+    const toolbarIndex = source.html.indexOf('id="igs-ctrl-bar"');
+    assert.ok(toolbarLayerIndex >= 0);
+    assert.ok(toolbarIndex > toolbarLayerIndex);
+    assert.match(source.styleText, /#igs-dialog-layer,#igs-toolbar-layer,#igs-option-layer,#igs-db-layer\{position:absolute;inset:0;pointer-events:none;\}/);
+    assert.match(source.styleText, /--igs-dialog-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-toolbar-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-choice-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-db-bg:var\(--igs-glass-bg\)/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating\.is-dragging #igs-click-layer\{cursor:grabbing;\}/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating #igs-click-layer\{cursor:grab;touch-action:none;\}/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating \.igs-progress\{flex-shrink:0;\}/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating \.igs-text\{min-height:0;overflow-y:auto;margin-bottom:12px;flex:1 1 auto;\}/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating \.igs-controls\{flex-shrink:0;\}/);
+    assert.doesNotMatch(source.styleText, /transition:all/);
     assert.doesNotMatch(source.html, />‹</);
     assert.doesNotMatch(source.html, />⚙</);
 });

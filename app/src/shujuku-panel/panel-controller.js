@@ -2,6 +2,10 @@ import { createShujukuClient } from '../data/shujuku/client.js';
 import { parseTables } from './panel-model.js';
 import { getDbPanelStyles, renderDbPanelInner } from './panel-render.js';
 
+export function toShujukuApiRowIndex(rowIndex) {
+    return Number.isInteger(rowIndex) ? rowIndex + 1 : NaN;
+}
+
 export function createDbPanelController(doc, global) {
     let root = null;
     let modalRoot = null;
@@ -34,6 +38,14 @@ export function createDbPanelController(doc, global) {
             inner.innerHTML = renderDbPanelInner(state);
             restoreTabScroll();
         }
+    }
+
+    function resolvePanelContainer(overlayEl) {
+        if (overlayEl && overlayEl.querySelector) {
+            const layer = overlayEl.querySelector('#igs-db-layer');
+            if (layer) return layer;
+        }
+        return overlayEl || doc.body;
     }
 
     function rememberTabScroll() {
@@ -82,19 +94,19 @@ export function createDbPanelController(doc, global) {
         ensureStyle();
         root = doc.createElement('div');
         root.id = 'igs-db-panel';
+        root.className = 'igs-shujuku-panel';
         root.innerHTML = `<div class="igs-shujuku-header">`
             + `<span class="igs-shujuku-title">数据库</span>`
             + `<button class="igs-shujuku-close" data-db-act="close" title="关闭">×</button>`
             + `</div><div id="igs-db-inner"></div>`;
 
-        const container = overlayEl || doc.body;
+        const container = resolvePanelContainer(overlayEl);
         container.appendChild(root);
 
         // apply glassOpacity from reader settings (drives panel bg + sticky header bg)
         const opacity = readerSettings && typeof readerSettings.glassOpacity === 'number'
             ? readerSettings.glassOpacity : 0.12;
-        root.style.setProperty('--igs-db-bg', `rgba(20,20,22,${opacity})`);
-        root.style.setProperty('--igs-db-head-bg', `rgba(20,20,22,${opacity})`);
+        root.style.setProperty('--igs-glass-bg', `rgba(20,20,22,${opacity})`);
 
         // drag within container
         const header = root.querySelector('.igs-shujuku-header');
@@ -186,7 +198,7 @@ export function createDbPanelController(doc, global) {
         igsWriting = true;
         row[ci] = newVal;
         render();
-        const result = await client.updateCell(table.name, ri, colName, newVal);
+        const result = await client.updateCell(table.name, toShujukuApiRowIndex(ri), colName, newVal);
         igsWriting = false;
         if (!result.ok) { row[ci] = oldVal; render(); }
         else await client.refresh();
@@ -211,7 +223,7 @@ export function createDbPanelController(doc, global) {
         const label = rowId != null && rowId !== '' ? `row_id=${rowId}` : `第 ${rowIndex + 1} 行`;
         if (!win.confirm(`确认删除 ${label} 的行？`)) return;
         igsWriting = true;
-        const result = await client.deleteRow(table.name, rowIndex);
+        const result = await client.deleteRow(table.name, toShujukuApiRowIndex(rowIndex));
         igsWriting = false;
         if (result.ok) await loadData();
     }
@@ -244,7 +256,7 @@ export function createDbPanelController(doc, global) {
             igsWriting = true;
             row[ci] = newVal;
             render();
-            const result = await client.updateCell(table.name, ri, colName, newVal);
+            const result = await client.updateCell(table.name, toShujukuApiRowIndex(ri), colName, newVal);
             igsWriting = false;
             if (!result.ok) { row[ci] = origVal; render(); }
             else await client.refresh();
@@ -264,6 +276,13 @@ export function createDbPanelController(doc, global) {
         let startX = 0;
         let startScroll = 0;
         let pointerId = null;
+
+        panel.addEventListener('scroll', (e) => {
+            const target = e.target;
+            if (target && target.classList && target.classList.contains('igs-shujuku-tabs')) {
+                state.tabScrollLeft = Math.max(0, Number(target.scrollLeft) || 0);
+            }
+        }, true);
 
         panel.addEventListener('pointerdown', (e) => {
             const s = e.target.closest('.igs-shujuku-tabs');
@@ -296,7 +315,13 @@ export function createDbPanelController(doc, global) {
                 strip.classList.remove('igs-db-dragging');
             }
             // 拖动后抑制紧随的 click，避免误切标签
-            if (moved) suppressTabClick = true;
+            if (moved) {
+                suppressTabClick = true;
+                const win = doc.defaultView || globalThis;
+                if (win && typeof win.setTimeout === 'function') {
+                    win.setTimeout(() => { suppressTabClick = false; }, 0);
+                }
+            }
             strip = null;
             pointerId = null;
         };

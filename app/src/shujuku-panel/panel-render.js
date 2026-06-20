@@ -2,7 +2,7 @@ const LONG_TEXT = 80;
 
 export function getDbPanelStyles() {
     return `
-#igs-db-panel{position:absolute;top:48px;right:12px;width:min(440px,calc(100% - 24px));max-height:calc(100% - 130px);background:var(--igs-db-bg,rgba(20,20,22,.12));border:1px solid rgba(255,255,255,.10);-webkit-backdrop-filter:blur(48px) saturate(220%);backdrop-filter:blur(48px) saturate(220%);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.20);display:flex;flex-direction:column;z-index:10;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#f4f4f6;overflow:hidden;user-select:none;}
+#igs-db-panel{position:absolute;top:48px;right:12px;width:min(440px,calc(100% - 24px));max-height:calc(100% - 130px);background:var(--igs-db-bg,var(--igs-glass-bg,rgba(20,20,22,.12)));border:1px solid var(--igs-db-border,rgba(255,255,255,.10));-webkit-backdrop-filter:var(--igs-db-blur,blur(48px) saturate(220%));backdrop-filter:var(--igs-db-blur,blur(48px) saturate(220%));border-radius:var(--igs-db-radius,18px);box-shadow:var(--igs-db-shadow,0 4px 24px rgba(0,0,0,.20));display:flex;flex-direction:column;z-index:10;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;color:#f4f4f6;overflow:hidden;user-select:none;pointer-events:auto;}
 .igs-shujuku-header{display:flex;align-items:center;gap:8px;padding:13px 16px 10px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;cursor:grab;}
 .igs-shujuku-header:active{cursor:grabbing;}
 .igs-shujuku-title{font-size:13px;font-weight:600;letter-spacing:.5px;flex:1;}
@@ -11,7 +11,7 @@ export function getDbPanelStyles() {
 #igs-db-inner{flex:1;min-height:0;display:flex;flex-direction:column;}
 .igs-shujuku-warning{padding:5px 16px;background:rgba(255,180,0,.1);border-bottom:1px solid rgba(255,180,0,.2);font-size:11px;color:#ffd166;display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .igs-shujuku-warning button{border:none;background:rgba(255,180,0,.16);color:#ffd166;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:11px;}
-.igs-shujuku-tabs{display:flex;gap:2px;padding:8px 14px 0;flex-shrink:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;}
+.igs-shujuku-tabs{display:flex;gap:2px;padding:8px 14px 0;box-sizing:border-box;width:100%;max-width:100%;flex-shrink:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;touch-action:pan-x;overscroll-behavior:contain;}
 .igs-shujuku-tabs.igs-db-dragging{cursor:grabbing;}
 .igs-shujuku-tabs::-webkit-scrollbar{display:none;}
 .igs-shujuku-tab{padding:4px 12px;border-radius:7px 7px 0 0;border:1px solid transparent;font-size:12px;cursor:pointer;background:transparent;color:rgba(255,255,255,.4);white-space:nowrap;flex-shrink:0;}

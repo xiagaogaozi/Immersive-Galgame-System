@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { bootstrapIGS, createMemoryStorage, createPresetRegistry, PRESET_STORE_KEY } from '../src/index.js';
 import { createShujukuClient } from '../src/data/shujuku/client.js';
+import { toShujukuApiRowIndex } from '../src/shujuku-panel/panel-controller.js';
 import { renderDbPanelInner, getDbPanelStyles } from '../src/shujuku-panel/panel-render.js';
 import { createResourceCache } from '../src/media/resource-cache.js';
 import { buildIgsTextPayload } from '../src/scene/message-source.js';
@@ -120,6 +121,12 @@ test('gate:simulation:shujuku client writes row indexes, not row_id values', asy
     ]);
 });
 
+test('gate:simulation:db-panel converts rendered rows to shujuku api row indexes', () => {
+    assert.equal(toShujukuApiRowIndex(0), 1);
+    assert.equal(toShujukuApiRowIndex(3), 4);
+    assert.equal(Number.isNaN(toShujukuApiRowIndex(NaN)), true);
+});
+
 test('gate:simulation:resource cache preserves local resource entry', () => {
     const pack = readJson('fixtures/media/resource-pack.json');
     const cache = createResourceCache();
@@ -205,7 +212,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.22.10');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.23.0');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -910,15 +917,24 @@ test('gate:simulation:igs-ui-hidden-state-can-be-restored-and-toast-shows-bounda
     await opened.reader.controller.invokeAction('hide');
     let overlay = document.getElementById('igs-overlay');
     let dialog = overlay.querySelector('#igs-dialog');
+    let toolbar = overlay.querySelector('#igs-ctrl-bar');
+    let optionBubbles = overlay.querySelector('#igs-option-bubbles');
     let clickLayer = overlay.querySelector('#igs-click-layer');
 
+    assert.equal(dialog.parentNode && dialog.parentNode.id, 'igs-dialog-layer');
+    assert.equal(toolbar.parentNode && toolbar.parentNode.id, 'igs-toolbar-layer');
+    assert.equal(optionBubbles.parentNode && optionBubbles.parentNode.id, 'igs-option-layer');
+    assert.ok(overlay.querySelector('#igs-db-layer'));
     assert.equal(dialog.classList.contains('igs-hidden'), true);
+    assert.equal(toolbar.classList.contains('igs-hidden'), true);
     clickLayer.click();
 
     overlay = document.getElementById('igs-overlay');
     dialog = overlay.querySelector('#igs-dialog');
+    toolbar = overlay.querySelector('#igs-ctrl-bar');
     assert.equal(vn.getState().igsUi.activeReader.hidden, false);
     assert.equal(dialog.classList.contains('igs-hidden'), false);
+    assert.equal(toolbar.classList.contains('igs-hidden'), false);
 
     await opened.reader.controller.invokeAction('prev');
     assert.match(overlay.querySelector('#igs-toast').textContent, /第一段/);
@@ -1837,9 +1853,11 @@ test('gate:simulation:db-panel renders editable empty cells on td and scrollable
     // body 为纵向滚动容器且 min-height:0
     assert.match(css, /\.igs-shujuku-body\{[^}]*flex:1[^}]*min-height:0[^}]*overflow-y:auto/);
     // 面板毛玻璃对齐工具栏 blur(48px)
-    assert.match(css, /#igs-db-panel\{[^}]*backdrop-filter:blur\(48px\) saturate\(220%\)/);
+    assert.match(css, /#igs-db-panel\{[^}]*backdrop-filter:var\(--igs-db-blur,blur\(48px\) saturate\(220%\)\)/);
     // 面板材质对齐工具栏轻阴影，表头不再强制 0.92 厚底。
-    assert.match(css, /#igs-db-panel\{[^}]*box-shadow:0 4px 24px rgba\(0,0,0,\.20\)/);
+    assert.match(css, /#igs-db-panel\{[^}]*box-shadow:var\(--igs-db-shadow,0 4px 24px rgba\(0,0,0,\.20\)\)/);
+    assert.match(css, /#igs-db-panel\{[^}]*pointer-events:auto/);
+    assert.match(css, /\.igs-shujuku-tabs\{[^}]*width:100%[^}]*max-width:100%[^}]*overflow-x:auto[^}]*overflow-y:hidden/);
     assert.doesNotMatch(css, /--igs-db-head-bg,rgba\(20,20,22,\.92\)/);
 });
 
