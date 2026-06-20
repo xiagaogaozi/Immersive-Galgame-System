@@ -75,6 +75,7 @@ const READER_TAB_TEMPLATE = `
   {{imageCountField}}
   {{inputScaleField}}
   {{toolbarScaleField}}
+  {{toolbarDockField}}
   {{imgModeField}}
   <div class="igs-settings-section">{{readerToggles}}</div>
   <div class="igs-source-filter igs-settings-full">

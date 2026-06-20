@@ -1307,6 +1307,7 @@ export function createIgsReaderHost(options = {}) {
             imageCountField: field('readerSettings.imageCountOverride', '检测图像数量', selectInput('readerSettings.imageCountOverride', reader.imageCountOverride === null ? 'null' : reader.imageCountOverride, [['null', '自动']].concat(Array.from({ length: 20 }, (_, index) => [index + 1, `${index + 1}张`])))),
             inputScaleField: field('readerSettings.inputScale', '输入框高度', selectInput('readerSettings.inputScale', reader.inputScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             toolbarScaleField: field('readerSettings.toolbarScale', '工具栏大小', selectInput('readerSettings.toolbarScale', reader.toolbarScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
+            toolbarDockField: field('readerSettings.toolbarDock', '工具栏位置', selectInput('readerSettings.toolbarDock', reader.toolbarDock || 'float', [['float', '悬浮'], ['top', '顶部固定']])),
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
             readerToggles: checkbox('readerSettings.glassBackdropFilter', reader.glassBackdropFilter, '启用背景滤镜')
                 + checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行')
@@ -1793,6 +1794,7 @@ export function createIgsReaderHost(options = {}) {
             glassOpacity: 0.62,
             glassBackdropFilter: false,
             toolbarScale: 100,
+            toolbarDock: 'float',
             inputScale: 100,
             imgMode: 'adaptive',
             showStatusLine: false,
@@ -1809,6 +1811,7 @@ export function createIgsReaderHost(options = {}) {
         normalized.glassOpacity = normalizeOpacity(normalized.glassOpacity, base.glassOpacity);
         normalized.glassBackdropFilter = normalizeBoolean(normalized.glassBackdropFilter, base.glassBackdropFilter);
         normalized.toolbarScale = normalizeFiniteNumber(normalized.toolbarScale, base.toolbarScale);
+        normalized.toolbarDock = normalized.toolbarDock === 'top' ? 'top' : 'float';
         normalized.inputScale = normalizeFiniteNumber(normalized.inputScale, base.inputScale);
         normalized.imgMode = normalized.imgMode === 'contain' ? 'contain' : 'adaptive';
         normalized.showStatusLine = normalizeBoolean(normalized.showStatusLine, false);

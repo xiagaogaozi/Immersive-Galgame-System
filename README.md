@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.13`：选项气泡宽度可配置。默认宽度跟随对话框实际渲染宽度（正上方居中=满宽，左/右上角=半宽），文字超宽才换行、不随文字长短抖动；新增「气泡宽度随文本变化」开关恢复旧的随文字行为；气泡位置新增「右上角」。同时修复 `getOptionBubbleConfig` 手动挑字段、把 `position=top-right` 与新开关静默丢弃的 bug。
+- 当前项目版本 `v0.23.14`：阅读器工具栏新增「顶部固定」位置（设置 → 阅读器 → 工具栏位置：悬浮 / 顶部固定）。选「顶部固定」时工具栏从悬浮气泡改为完全贴在页面顶部、横贯整条、方角无圆角阴影（沿用现有玻璃材质）；该模式下隐藏「收纳/展开」按钮、按钮区始终显示。默认仍为「悬浮」，老用户无感。
+- `v0.23.13`：选项气泡宽度可配置。默认宽度跟随对话框实际渲染宽度（正上方居中=满宽，左/右上角=半宽），文字超宽才换行、不随文字长短抖动；新增「气泡宽度随文本变化」开关恢复旧的随文字行为；气泡位置新增「右上角」。同时修复 `getOptionBubbleConfig` 手动挑字段、把 `position=top-right` 与新开关静默丢弃的 bug。
 - `v0.23.12`：阅读器选项气泡新增识别数据库表名「检定建议表」，作为「选项 / 选项表 / 行动选项」之外的又一别名（互斥出现，命中任一即作为选项来源）。改 `OPTION_TABLE_NAMES` 一处即生效，同步更新设置面板与 toast 文案、回归测试断言。
 - `v0.23.11`：彻底修复场景素材模式下角色名/分割线不显示、`[igs-char:]` 与 `[igs-thought:]` 标签写的对白/心理话在阅读器丢失的问题。真机 CDP 探针定位真实根因：宿主 DOM `.mes_text` **保留**了原始 `[igs-*:]` 标签且与数据层有词级差异，触发 `dom-visible-override`，但 override 分支直接 `formattedText = domVisibleText` **未跑正文格式化**，标签没被转成 `[名]：…` / `*…*` 形态，导致阅读器把整段当旁白、角色名/分割线/标签心理话全部丢失（v0.23.10 的标签清洗守卫方向只覆盖了一半场景，未解决真机问题）。现 override 分支对 DOM 文本补跑 `applyImmersiveGalgameSystemBodyFormat`，并保留 v0.23.10 的「DOM 清洗标签时不覆盖」守卫；3 个回归测试覆盖：DOM 含标签 override 后正确格式化、DOM 清洗标签时不覆盖、两侧均含标签仍按词级覆盖。
 - `v0.23.9`：修复阅读器设置保存回归。普通阅读器设置保存不再把当前 reader 强行切回 `bridge.openMode`，旧 readerSettings 缺 `_v` 时不再整包清空，心理页真正使用 `thoughtFont/thoughtColor/thoughtAlign`；新增回归测试覆盖打开后旧设置保留、显式 openMode 切换、角色名/分割线、心理页主题和 mode 不一致时的立绘布局。
@@ -172,6 +173,15 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.14 - 2026-06-21
+
+- 阅读器工具栏新增「顶部固定」位置，与现有「悬浮」并列（设置 → 阅读器 → 工具栏位置）。
+- 新增设置项 `readerSettings.toolbarDock`（`float` / `top`，默认 `float`）。选 `top` 时给 `#igs-overlay` 加 `.igs-toolbar-top`：工具栏层覆盖为贴顶横贯（`inset:0 0 auto 0`），`.igs-ctrl-bar` 改 `position:static`、满宽、方角、去 box-shadow、按钮区靠右；沿用现有 `--igs-toolbar-*` 玻璃材质变量，外观大体不变。
+- 顶部固定模式隐藏「收纳/展开」按钮（`[data-act="toggle-bar"]`），并在 `applyToolbarState` 中强制按钮区始终 `flex`，避免折叠后整条工具栏（含折叠按钮自身）消失而无法唤回。
+- `transformOrigin` 随位置切换：顶部模式 `right top`、悬浮模式仍 `right bottom`，配合工具栏缩放。
+- 测试：新增 `gate:simulation:igs-ui-toolbar-dock-top-fixes-bar-and-keeps-buttons-visible`（断言 overlay class、`data-igs-toolbar-dock` 属性、折叠态下按钮区仍显示）与 `gate:simulation:igs-ui-toolbar-dock-invalid-falls-back-to-float`（非法值回落）。验证边界：Node gate / fake DOM / fake shujuku，不写入真实 shujuku、不调用真实 provider。
+- 版本同步到 `v0.23.14`，重新生成 dist、loader 和版本化酒馆助手脚本 JSON。
 
 ### v0.23.13 - 2026-06-20
 

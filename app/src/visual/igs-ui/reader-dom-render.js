@@ -297,7 +297,8 @@ export function applyToolbarState(root, current) {
     }
 
     if (collapsible) {
-        collapsible.style.display = current.toolbarCollapsed ? 'none' : 'flex';
+        const dockTop = readerSettings.toolbarDock === 'top';
+        collapsible.style.display = (current.toolbarCollapsed && !dockTop) ? 'none' : 'flex';
         collapsible.style.gap = '6px';
         collapsible.style.alignItems = 'center';
     }
@@ -368,9 +369,14 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
         dialog.style.background = '';
     }
 
+    const toolbarDock = readerSettings.toolbarDock === 'top' ? 'top' : 'float';
+    if (root && root.classList) {
+        root.classList.toggle('igs-toolbar-top', toolbarDock === 'top');
+    }
     if (toolbar) {
+        toolbar.setAttribute('data-igs-toolbar-dock', toolbarDock);
         toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
-        toolbar.style.transformOrigin = 'right bottom';
+        toolbar.style.transformOrigin = toolbarDock === 'top' ? 'right top' : 'right bottom';
         // The shared glass material is applied through CSS variables on the overlay.
         toolbar.style.background = '';
     }

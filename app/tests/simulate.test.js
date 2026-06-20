@@ -729,6 +729,55 @@ test('gate:simulation:igs-ui-option-bubble-width-follows-text-and-top-right-posi
     vn.destroy();
 });
 
+test('gate:simulation:igs-ui-toolbar-dock-top-fixes-bar-and-keeps-buttons-visible', async () => {
+    const storage = createMemoryStorage();
+    storage.setItem('igs-reader-settings-v9-default', JSON.stringify({ toolbarDock: 'top' }));
+    const document = createFakeDocument({ innerWidth: 1280, innerHeight: 720 });
+    const globalObject = document.defaultView;
+    globalObject.localStorage = storage;
+    const vn = bootstrapIGS({
+        global: globalObject,
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: '旁白一。 旁白二。' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    assert.equal(opened.reader.snapshot.readerSettings.toolbarDock, 'top');
+
+    const overlay = document.getElementById('igs-overlay');
+    const toolbar = overlay.querySelector('#igs-ctrl-bar');
+    const collapsible = overlay.querySelector('#igs-bar-btns');
+
+    assert.equal(overlay.classList.contains('igs-toolbar-top'), true);
+    assert.equal(toolbar.getAttribute('data-igs-toolbar-dock'), 'top');
+    // 顶部固定模式下默认折叠态也不收起按钮区。
+    assert.equal(vn.getState().igsUi.activeReader.toolbarCollapsed, true);
+    assert.equal(collapsible.style.display, 'flex');
+
+    vn.destroy();
+});
+
+test('gate:simulation:igs-ui-toolbar-dock-invalid-falls-back-to-float', async () => {
+    const storage = createMemoryStorage();
+    storage.setItem('igs-reader-settings-v9-default', JSON.stringify({ toolbarDock: 'bogus' }));
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: '旁白。' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    assert.equal(opened.reader.snapshot.readerSettings.toolbarDock, 'float');
+
+    vn.destroy();
+});
+
 test('gate:simulation:igs-ui-toolbar-actions-open-settings-toggle-and-close', async () => {
     const latestMessage = {
         id: 8,
