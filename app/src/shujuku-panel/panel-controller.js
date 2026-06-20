@@ -144,7 +144,9 @@ export function createDbPanelController(doc, global) {
         const container = resolvePanelContainer(overlayEl);
         container.appendChild(root);
 
-        applyTransparentGlassMaterial(root, readerSettings && readerSettings.glassOpacity);
+        applyTransparentGlassMaterial(root, readerSettings && readerSettings.glassOpacity, {
+            backdropFilter: readerSettings && readerSettings.glassBackdropFilter,
+        });
 
         // drag within container
         const header = root.querySelector('.igs-shujuku-header');

@@ -319,7 +319,9 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     const win = getOwnerWindow(root);
     const overlayWidth = readElementWidth(root, win && win.innerWidth);
     const overlayHeight = readElementHeight(root, win && win.innerHeight);
-    applyTransparentGlassMaterial(root, readerSettings.glassOpacity);
+    applyTransparentGlassMaterial(root, readerSettings.glassOpacity, {
+        backdropFilter: readerSettings.glassBackdropFilter,
+    });
 
     if (textEl) {
         textEl.style.fontSize = `${readerSettings.fontSize}px`;

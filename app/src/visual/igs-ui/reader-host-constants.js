@@ -71,6 +71,7 @@ export const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.dialogWidth',
     'readerSettings.dialogHeight',
     'readerSettings.glassOpacity',
+    'readerSettings.glassBackdropFilter',
     'readerSettings.imageCountOverride',
     'readerSettings.inputScale',
     'readerSettings.toolbarScale',

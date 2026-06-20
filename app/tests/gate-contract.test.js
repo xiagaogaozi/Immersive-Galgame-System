@@ -7,7 +7,12 @@ import { pathToFileURL } from 'node:url';
 
 import { bootstrapIGS } from '../src/index.js';
 import { dispatchImportBundle } from '../src/registry/import-dispatcher.js';
-import { IGS_TRANSPARENT_GLASS_BG, applyTransparentGlassMaterial } from '../src/styles/glass-material.js';
+import {
+    IGS_FROSTED_GLASS_BACKDROP_FILTER,
+    IGS_TRANSPARENT_GLASS_BACKDROP_FILTER,
+    IGS_TRANSPARENT_GLASS_BG,
+    applyTransparentGlassMaterial,
+} from '../src/styles/glass-material.js';
 import { checkStyleContract } from '../src/styles/style-contract.js';
 import { readLegacyIgsSettings } from '../src/storage/legacy-igs.js';
 import { createReaderState } from '../src/visual/reader-state.js';
@@ -76,6 +81,24 @@ test('gate:style-contract:transparent glass material applies neutral density to 
     assert.equal(applied.get('--igs-toolbar-bg'), IGS_TRANSPARENT_GLASS_BG);
     assert.equal(applied.get('--igs-choice-bg'), IGS_TRANSPARENT_GLASS_BG);
     assert.equal(applied.get('--igs-db-bg'), IGS_TRANSPARENT_GLASS_BG);
+    assert.equal(applied.get('--igs-glass-blur'), IGS_TRANSPARENT_GLASS_BACKDROP_FILTER);
+    assert.equal(applied.get('--igs-dialog-blur'), IGS_TRANSPARENT_GLASS_BACKDROP_FILTER);
+    assert.equal(applied.get('--igs-toolbar-blur'), IGS_TRANSPARENT_GLASS_BACKDROP_FILTER);
+    assert.equal(applied.get('--igs-choice-blur'), IGS_TRANSPARENT_GLASS_BACKDROP_FILTER);
+    assert.equal(applied.get('--igs-db-blur'), IGS_TRANSPARENT_GLASS_BACKDROP_FILTER);
+    assert.equal(applied.get('--igs-db-head-bg'), IGS_TRANSPARENT_GLASS_BG);
+    assert.equal(applied.get('--igs-db-head-blur'), IGS_TRANSPARENT_GLASS_BACKDROP_FILTER);
+
+    applyTransparentGlassMaterial({
+        style: {
+            setProperty(name, value) {
+                applied.set(name, value);
+            },
+        },
+    }, 0.62, { backdropFilter: true });
+
+    assert.equal(applied.get('--igs-glass-blur'), IGS_FROSTED_GLASS_BACKDROP_FILTER);
+    assert.equal(applied.get('--igs-db-head-blur'), IGS_FROSTED_GLASS_BACKDROP_FILTER);
 });
 
 test('gate:visual-slots-contract:stage-model', () => {
@@ -122,11 +145,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0.23.7/);
+    assert.match(bundle, /IGS version: 0.23.8/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Immersive Galgame System');
-    assert.equal(manifest.version, '0.23.7');
+    assert.equal(manifest.version, '0.23.8');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -404,15 +427,23 @@ test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
     assert.match(source.styleText, /--igs-glass-density:\.62/);
     assert.match(source.styleText, /--igs-transparent-glass-bg:rgba\(20,20,22,\.62\)/);
     assert.match(source.styleText, /--igs-glass-bg:var\(--igs-transparent-glass-bg\)/);
+    assert.match(source.styleText, /--igs-glass-blur:none/);
     assert.match(source.styleText, /--igs-dialog-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-dialog-blur:var\(--igs-glass-blur\)/);
     assert.match(source.styleText, /--igs-toolbar-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-toolbar-blur:var\(--igs-glass-blur\)/);
     assert.match(source.styleText, /--igs-choice-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-choice-blur:var\(--igs-glass-blur\)/);
     assert.match(source.styleText, /--igs-choice-soft-shadow:0 2px 10px rgba\(0,0,0,\.14\)/);
     assert.match(source.styleText, /--igs-choice-shadow:var\(--igs-choice-soft-shadow\)/);
+    assert.match(source.styleText, /\.igs-option-bubble\{[^}]*backdrop-filter:var\(--igs-choice-blur,none\)/);
     assert.match(source.styleText, /\.igs-option-bubble\{[^}]*box-shadow:var\(--igs-choice-shadow,0 2px 10px rgba\(0,0,0,\.14\)\)/);
     assert.doesNotMatch(source.styleText, /\.igs-option-bubble\{[^}]*box-shadow:var\(--igs-choice-shadow,0 4px 24px/);
     assert.match(source.styleText, /\.igs-dialog\{[^}]*pointer-events:auto/);
+    assert.match(source.styleText, /\.igs-dialog\{[^}]*backdrop-filter:var\(--igs-dialog-blur,none\)/);
     assert.match(source.styleText, /--igs-db-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-db-head-bg:var\(--igs-db-bg\)/);
+    assert.match(source.styleText, /--igs-db-head-blur:var\(--igs-db-blur\)/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating\.is-dragging #igs-click-layer\{cursor:grabbing;\}/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating #igs-click-layer\{cursor:grab;touch-action:none;\}/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating \.igs-progress\{flex-shrink:0;\}/);
@@ -425,9 +456,9 @@ test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
 
     const rendererText = readText('src/visual/igs-ui/reader-dom-render.js');
     const dbControllerText = readText('src/shujuku-panel/panel-controller.js');
-    assert.match(rendererText, /applyTransparentGlassMaterial\(root, readerSettings\.glassOpacity\)/);
+    assert.match(rendererText, /applyTransparentGlassMaterial\(root, readerSettings\.glassOpacity, \{\s+backdropFilter: readerSettings\.glassBackdropFilter,\s+\}\)/);
     assert.doesNotMatch(rendererText, /setProperty\('--igs-glass-bg'/);
-    assert.match(dbControllerText, /applyTransparentGlassMaterial\(root, readerSettings && readerSettings\.glassOpacity\)/);
+    assert.match(dbControllerText, /applyTransparentGlassMaterial\(root, readerSettings && readerSettings\.glassOpacity, \{\s+backdropFilter: readerSettings && readerSettings\.glassBackdropFilter,\s+\}\)/);
     assert.doesNotMatch(dbControllerText, /setProperty\('--igs-glass-bg'/);
 });
 

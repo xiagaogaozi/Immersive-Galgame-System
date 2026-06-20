@@ -247,7 +247,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.23.7');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.23.8');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -455,16 +455,23 @@ test('gate:simulation:igs-ui-settings-save-updates-reader-state', () => {
         },
     });
 
-    const opened = vn.openSettings({ tab: 'reader', mode: 'mobile' });
-    const updated = opened.controller.setValue('readerSettings.fontSize', 20);
-    const current = vn.getUnifiedSettings({ mode: 'mobile' });
-    const savedStorage = JSON.parse(storage.getItem('igs-reader-settings-v9-default'));
+    try {
+        const opened = vn.openSettings({ tab: 'reader', mode: 'mobile' });
+        assert.equal(opened.controller.getSnapshot().draft.readerSettings.glassBackdropFilter, false);
+        const updated = opened.controller.setValue('readerSettings.fontSize', 20);
+        const toggled = opened.controller.toggle('readerSettings.glassBackdropFilter');
+        const current = vn.getUnifiedSettings({ mode: 'mobile' });
+        const savedStorage = JSON.parse(storage.getItem('igs-reader-settings-v9-default'));
 
-    assert.equal(updated.ok, true);
-    assert.equal(current.readerSettings.fontSize, 20);
-    assert.equal(savedStorage.fontSize, 20);
-
-    vn.destroy();
+        assert.equal(updated.ok, true);
+        assert.equal(toggled.ok, true);
+        assert.equal(current.readerSettings.fontSize, 20);
+        assert.equal(current.readerSettings.glassBackdropFilter, true);
+        assert.equal(savedStorage.fontSize, 20);
+        assert.equal(savedStorage.glassBackdropFilter, true);
+    } finally {
+        vn.destroy();
+    }
 });
 
 test('gate:simulation:igs-ui-enter-sends-and-shift-enter-does-not', async () => {
@@ -1985,8 +1992,9 @@ test('gate:simulation:db-panel renders editable empty cells on td and scrollable
     assert.match(css, /#igs-db-inner\{[^}]*flex:1[^}]*min-height:0[^}]*flex-direction:column/);
     // body 为纵向滚动容器且 min-height:0
     assert.match(css, /\.igs-shujuku-body\{[^}]*flex:1[^}]*min-height:0[^}]*overflow-y:auto/);
-    // 面板恢复旧版中性玻璃材质，避免低 alpha 单层底被下方画面染色。
-    assert.match(css, /#igs-db-panel\{[^}]*backdrop-filter:var\(--igs-db-blur,blur\(32px\) saturate\(180%\)\)/);
+    // 面板默认关闭背景滤镜，避免重新出现磨砂层；需要时由阅读器开关写入 --igs-db-blur。
+    assert.match(css, /#igs-db-panel\{[^}]*backdrop-filter:var\(--igs-db-blur,none\)/);
+    assert.match(css, /\.igs-shujuku-table th\{[^}]*backdrop-filter:var\(--igs-db-head-blur,var\(--igs-db-blur,none\)\)/);
     assert.match(css, /#igs-db-panel\{[^}]*box-shadow:var\(--igs-db-shadow,0 12px 48px rgba\(0,0,0,\.50\)\)/);
     assert.match(css, /#igs-db-panel\{[^}]*pointer-events:auto/);
     assert.match(css, /\.igs-shujuku-tabs\{[^}]*width:100%[^}]*max-width:100%[^}]*overflow-x:auto[^}]*overflow-y:hidden/);
