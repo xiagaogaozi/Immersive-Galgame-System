@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.11`：彻底修复场景素材模式下角色名/分割线不显示、`[igs-char:]` 与 `[igs-thought:]` 标签写的对白/心理话在阅读器丢失的问题。真机 CDP 探针定位真实根因：宿主 DOM `.mes_text` **保留**了原始 `[igs-*:]` 标签且与数据层有词级差异，触发 `dom-visible-override`，但 override 分支直接 `formattedText = domVisibleText` **未跑正文格式化**，标签没被转成 `[名]：…` / `*…*` 形态，导致阅读器把整段当旁白、角色名/分割线/标签心理话全部丢失（v0.23.10 的标签清洗守卫方向只覆盖了一半场景，未解决真机问题）。现 override 分支对 DOM 文本补跑 `applyImmersiveGalgameSystemBodyFormat`，并保留 v0.23.10 的「DOM 清洗标签时不覆盖」守卫；3 个回归测试覆盖：DOM 含标签 override 后正确格式化、DOM 清洗标签时不覆盖、两侧均含标签仍按词级覆盖。
+- 当前项目版本 `v0.23.12`：阅读器选项气泡新增识别数据库表名「检定建议表」，作为「选项 / 选项表 / 行动选项」之外的又一别名（互斥出现，命中任一即作为选项来源）。改 `OPTION_TABLE_NAMES` 一处即生效，同步更新设置面板与 toast 文案、回归测试断言。
+- `v0.23.11`：彻底修复场景素材模式下角色名/分割线不显示、`[igs-char:]` 与 `[igs-thought:]` 标签写的对白/心理话在阅读器丢失的问题。真机 CDP 探针定位真实根因：宿主 DOM `.mes_text` **保留**了原始 `[igs-*:]` 标签且与数据层有词级差异，触发 `dom-visible-override`，但 override 分支直接 `formattedText = domVisibleText` **未跑正文格式化**，标签没被转成 `[名]：…` / `*…*` 形态，导致阅读器把整段当旁白、角色名/分割线/标签心理话全部丢失（v0.23.10 的标签清洗守卫方向只覆盖了一半场景，未解决真机问题）。现 override 分支对 DOM 文本补跑 `applyImmersiveGalgameSystemBodyFormat`，并保留 v0.23.10 的「DOM 清洗标签时不覆盖」守卫；3 个回归测试覆盖：DOM 含标签 override 后正确格式化、DOM 清洗标签时不覆盖、两侧均含标签仍按词级覆盖。
 - `v0.23.9`：修复阅读器设置保存回归。普通阅读器设置保存不再把当前 reader 强行切回 `bridge.openMode`，旧 readerSettings 缺 `_v` 时不再整包清空，心理页真正使用 `thoughtFont/thoughtColor/thoughtAlign`；新增回归测试覆盖打开后旧设置保留、显式 openMode 切换、角色名/分割线、心理页主题和 mode 不一致时的立绘布局。
 - `v0.23.9`：修复阅读器设置保存回归。普通阅读器设置保存不再把当前 reader 强行切回 `bridge.openMode`，旧 readerSettings 缺 `_v` 时不再整包清空，心理页真正使用 `thoughtFont/thoughtColor/thoughtAlign`；新增回归测试覆盖打开后旧设置保留、显式 openMode 切换、角色名/分割线、心理页主题和 mode 不一致时的立绘布局。
 - `v0.23.4`：修复手机版阅读器读不到关键词过滤插件（如 Veridis）改后正文的问题。根因有两处：①IGS 读正文时优先取数据层 `chat[n].mes`，而 Veridis 在移动端宿主下回写 `mes` 滞后甚至只改 `.mes_text` 渲染层不回写，导致读到改前旧词（PC 因 `saveChat` 同步回写而正常）；现 `buildIgsTextPayload` 增加「DOM 差异优先」：当 DOM 可见文本与数据层纯文本仅为词级差异（长度量级接近、编辑距离占比 ≤50%）时改用 DOM 文本，结构性不同则仍保留原文。②点「刷新」时只重扫图片和重解析配置，`visibleText` 仍是打开阅读器那一刻的旧 DOM 快照；现刷新会按消息 ID 重查 `.mes` 节点重抓最新渲染文本。新增 2 个单测覆盖词级覆盖与内容不同时不覆盖。
@@ -171,6 +172,13 @@ projects/Immersive Galgame System/
 
 ## 更新日志
 
+### v0.23.12 - 2026-06-20
+
+- 阅读器选项气泡新增识别数据库表名「检定建议表」。它是「选项 / 选项表 / 行动选项」之外的又一别名，与选项表互斥出现（用户表里命中任一即作为选项来源）。
+- 实现：在 `app/src/choices/option-table.js` 的 `OPTION_TABLE_NAMES` 末尾加入 `'检定建议表'`，沿用现有「命中任一表名即用」逻辑，无需合并或优先级处理。同步更新设置面板提示、未找到表 toast 文案、`README` 与回归测试断言（`gate:choices:option-table accepts 选项/行动选项 aliases` 增加 `检定建议表` 命中用例）。
+- 验证边界：Node gate / fake shujuku，不写入真实 shujuku，不调用真实 provider；本轮未新增抽象，未留下技术债。
+- 版本同步到 `v0.23.12`，重新生成 dist、loader 和版本化酒馆助手脚本 JSON。
+
 ### v0.23.11 - 2026-06-20
 
 - 彻底修复 v0.23.10 未解决的真机问题：场景素材模式下用 `[igs-char:]` / `[igs-thought:]` 标签写的对白和心理话在阅读器整段丢失、角色名与分割线不显示。
@@ -280,7 +288,7 @@ projects/Immersive Galgame System/
 - 毛玻璃真正对齐工具栏：v0.22.8 仅统一了 `backdrop-filter` 的 blur，但通透感由背景层 alpha 决定——工具栏 0.12、对话框/数据库被 glassOpacity 覆盖成 0.62，所以仍显厚重。现对话框 `.igs-dialog`、数据库 `#igs-db-panel`、工具栏 `.igs-ctrl-bar`、选项气泡统一用 glassOpacity 驱动背景，默认值 0.62→0.12（去掉工具栏原 `-0.07` 偏移）；「毛玻璃浓度」滑块保留，想调厚仍可调。`.igs-text`/`.igs-speaker` 加重文字阴影，补偿通透背景下的正文可读性。
 - 新增「选项气泡」功能：
   - 设置：阅读器 tab 新增「选项气泡」卡片——启用开关、气泡位置（滑块：左上角 / 正上方居中）、点击行为（滑块：自动发送 / 填入输入框）。配置存于 bridge config（全模式共用）。
-  - 数据源：`app/src/choices/option-table.js` 从数据库读名为「选项 / 选项表 / 行动选项」的同名表，取首个非 row_id 列的文本（去空去重）作为选项。参考骰子系统的同名表机制，复用 `createShujukuClient` + `parseTables`。
+  - 数据源：`app/src/choices/option-table.js` 从数据库读名为「选项 / 选项表 / 行动选项 / 检定建议表」的同名表，取首个非 row_id 列的文本（去空去重）作为选项。参考骰子系统的同名表机制，复用 `createShujukuClient` + `parseTables`。
   - 交互：仅在最后一页点击对话框空白处显示气泡，再点空白隐藏（不加工具栏按钮）；翻页离开最后一页 / 新回复重渲染时自动收起。点击选项按设置「自动发送」（经 `submitReaderInput` 走输入框→发送，不绕过，保 shujuku 剧情推进）或「填入输入框」（写 `#igs-input` 不发送）。数据库不可用 / 无同名表时静默不弹并提示。
   - 气泡毛玻璃与工具栏一致（`rgba(20,20,22,.12)` + `blur(48px) saturate(220%)`），位置浮于对话框正上方（CSS 变量 `--igs-dialog-h` 跟随对话框实际高度）。
 - Playwright 真机验证：气泡左上/居中定位、浮于对话框上方且不溢出视口、毛玻璃参数与工具栏一致。新增选项表数据提取与别名/空表兜底单测。

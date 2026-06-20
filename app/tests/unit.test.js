@@ -1704,8 +1704,8 @@ test('gate:choices:option-table extracts wide option rows', () => {
 });
 
 test('gate:choices:option-table accepts 选项/行动选项 aliases', () => {
-    assert.deepEqual(OPTION_TABLE_NAMES, ['选项', '选项表', '行动选项']);
-    for (const name of ['选项', '行动选项']) {
+    assert.deepEqual(OPTION_TABLE_NAMES, ['选项', '选项表', '行动选项', '检定建议表']);
+    for (const name of ['选项', '行动选项', '检定建议表']) {
         const t = findOptionTable([{ uid: 'sheet_1', name, columns: ['row_id', 'x'], rows: [['1', 'A']] }]);
         assert.ok(t, `应命中表名 ${name}`);
     }

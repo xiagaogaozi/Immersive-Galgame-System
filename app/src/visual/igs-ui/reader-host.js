@@ -443,7 +443,7 @@ export function createIgsReaderHost(options = {}) {
         const items = readOptionItems(createShujukuClient(api));
         if (!items.length) {
             hideOptionBubbles(container);
-            if (!optionsForShow.silent) writeToastSafe('未找到选项表（选项 / 选项表 / 行动选项）或表为空');
+            if (!optionsForShow.silent) writeToastSafe('未找到选项表（选项 / 选项表 / 行动选项 / 检定建议表）或表为空');
             return;
         }
         container.setAttribute('data-igs-pos', cfg.position);

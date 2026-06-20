@@ -1,7 +1,7 @@
 import { parseTables } from '../shujuku-panel/panel-model.js';
 
-// 约定的选项表名：命中任一即作为选项来源。
-export const OPTION_TABLE_NAMES = Object.freeze(['选项', '选项表', '行动选项']);
+// 约定的选项表名：命中任一即作为选项来源。「检定建议表」是选项表的别名，与选项表互斥出现。
+export const OPTION_TABLE_NAMES = Object.freeze(['选项', '选项表', '行动选项', '检定建议表']);
 
 // 第一列通常是 row_id（只读主键），选项文本取首个非 row_id 列。
 function isRowIdColumn(name) {
