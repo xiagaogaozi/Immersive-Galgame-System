@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { bootstrapIGS, createMemoryStorage, createPresetRegistry, PRESET_STORE_KEY } from '../src/index.js';
 import { createShujukuClient } from '../src/data/shujuku/client.js';
-import { toShujukuApiRowIndex } from '../src/shujuku-panel/panel-controller.js';
+import { createDbTabClickGuard, toShujukuApiRowIndex } from '../src/shujuku-panel/panel-controller.js';
 import { renderDbPanelInner, getDbPanelStyles } from '../src/shujuku-panel/panel-render.js';
 import { createResourceCache } from '../src/media/resource-cache.js';
 import { buildIgsTextPayload } from '../src/scene/message-source.js';
@@ -127,6 +127,31 @@ test('gate:simulation:db-panel converts rendered rows to shujuku api row indexes
     assert.equal(Number.isNaN(toShujukuApiRowIndex(NaN)), true);
 });
 
+test('gate:simulation:db-tab-drag-click-guard-does-not-block-later-tab-clicks', () => {
+    let clock = 1000;
+    const strip = {};
+    const tab = {
+        closest(selector) {
+            return selector === '.igs-shujuku-tabs' ? strip : null;
+        },
+    };
+    const guard = createDbTabClickGuard(() => clock);
+
+    assert.equal(guard.shouldSuppress({ clientX: 120, clientY: 32 }, tab), false);
+
+    guard.arm({ strip, clientX: 120, clientY: 32 });
+    assert.equal(guard.shouldSuppress({ clientX: 123, clientY: 34 }, tab), true);
+    assert.equal(guard.shouldSuppress({ clientX: 123, clientY: 34 }, tab), false);
+
+    guard.arm({ strip, clientX: 220, clientY: 40 });
+    clock += 200;
+    assert.equal(guard.shouldSuppress({ clientX: 220, clientY: 40 }, tab), false);
+
+    clock = 2000;
+    guard.arm({ strip, clientX: 320, clientY: 48 });
+    assert.equal(guard.shouldSuppress({ clientX: 380, clientY: 48 }, tab), false);
+});
+
 test('gate:simulation:resource cache preserves local resource entry', () => {
     const pack = readJson('fixtures/media/resource-pack.json');
     const cache = createResourceCache();
@@ -212,7 +237,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.23.0');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.23.1');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);

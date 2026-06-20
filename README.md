@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.0`：制作 UI 多皮肤底座并修复用户探针定位到的运行态问题。①阅读器新增稳定层 `#igs-dialog-layer` / `#igs-toolbar-layer` / `#igs-option-layer` / `#igs-db-layer`，工具栏从对话框内部移到独立 HUD 层，避免双重玻璃叠加导致对话框、数据库面板、选项气泡看起来比工具栏更“磨砂”。②新增 `--igs-glass-*` 与 dialog / toolbar / choice / db 语义 token，后续皮肤只需要覆盖 CSS 变量和稳定槽位。③选项表支持“一行四列”的宽表选项提取。④数据库面板挂到系统层，标签栏保留横向滚动命中区；删除/编辑行继续按 shujuku API 的表头偏移 rowIndex 转换。
+- 当前项目版本 `v0.23.1`：修复用户探针继续定位到的两个运行态问题。①数据库标签栏真实 click 已经到达按钮、程序化 click 也能切页，根因收敛为拖动滚动后的全局 click 抑制位过宽；现改为只短暂拦截拖拽释放产生的同坐标 click，避免后续正常点击被吞。②选项浮窗无旧 DOM 残留，残影来自多个气泡叠加工具栏同款重阴影；现给 choice 独立轻阴影 token，保留同一玻璃背景/blur 语义，后续皮肤仍可覆盖。
 - `v0.22.8`：修复数据库面板四个问题（Playwright 真机验证）。①标签栏溢出后电脑/手机都无法滚动、看不到后面的标签：加标签栏拖动滚动（pointer 事件，鼠标按住拖+手机触摸拖，拖动后抑制误触发切换），保持单行不折行、滚动条隐藏。②行数>8 时看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（body 的实际 flex 父级）无 flex 样式，table 把它撑破溢出面板、`flex:1+min-height:0` 失去高度约束；现给 inner 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器、表头 sticky 钉住（背景调至不透明防透色），去掉多余 table-wrap 层、横向滚动条隐藏。③新增行后空格子无法编辑：真因是 `data-db-edit` 挂在内层 span 上，空 span `display:-webkit-box` 无内容时塌缩成 0×0 无点击区；现移到 `<td>`（有 padding/列宽，空格子也可点）。④对话框+数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 由 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`，透明度仍由「毛玻璃浓度」可调。新增 DB 面板渲染回归单测。
 - `v0.22.7`：修复 v0.22.6 矫枉过正——上一版 floating（pc/mobile）模式直接忽略「对话框高度」，导致 PC/手机端怎么调都无效。现 floating 模式下 dialogHeight 改用 `.igs-dialog` 的 `min-height`（把气泡撑到目标高度，内容更多时自然增长）+ `max-height` clamp 到浮窗可用高度（约 86%），不再写死 `height`（固定 height 比内容小时会把输入框挤出气泡）。Playwright 真机验证：dialogHeight 60→600 气泡高度跟随、输入框恒在气泡内不溢出、气泡始终在视口内。
 - `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text`；v0.22.6 改为忽略 dialogHeight（v0.22.7 修正为改气泡 min-height）。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
@@ -166,6 +166,13 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.1 - 2026-06-20
+
+- 修复数据库标签页非 F12 状态点击不切换：用户探针显示真实 `click.target` 已经是 `BUTTON.igs-shujuku-tab`，且程序化 `.click()` 能切换 activeUid，因此不是 z-index、pointer-events、数据渲染或标签绑定问题。根因是标签栏拖动滚动后使用全局 `suppressTabClick` 吃掉“下一次 click”，在实际浏览器里会误吞后续正常标签点击。
+- `shujuku-panel` 新增 `createDbTabClickGuard()`：只在发生实际拖动后，短时间内拦截与拖拽释放点同坐标的合成 click；过期、远离释放点、无坐标的程序化 click 或后续真实点击都不会被拦截。新增模拟回归测试锁定“拖拽释放 click 可抑制，但后续标签点击不再被吞”。
+- 修复选项浮窗残影：用户探针显示 `optionCount: 4` 且四个按钮均命中自身，排除旧节点残留；残影来自每个 `.igs-option-bubble` 叠加 `0 4px 24px rgba(0,0,0,.20)` 与玻璃滤镜。现新增 `--igs-choice-soft-shadow`，默认 `--igs-choice-shadow` 改为 `0 2px 10px rgba(0,0,0,.14)`，保留背景、边框、blur 与皮肤 token 覆盖能力。
+- 版本同步到 `v0.23.1`，重新生成 dist、loader 和版本化酒馆助手脚本 JSON。验证边界：使用 fake DOM / fake shujuku / Node gate，不写入真实 shujuku，不调用真实 provider；本轮未留下技术债。
 
 ### v0.23.0 - 2026-06-20
 

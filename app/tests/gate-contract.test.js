@@ -100,11 +100,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0.23.0/);
+    assert.match(bundle, /IGS version: 0.23.1/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Immersive Galgame System');
-    assert.equal(manifest.version, '0.23.0');
+    assert.equal(manifest.version, '0.23.1');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
@@ -381,6 +381,10 @@ test('gate:igs-ui:reader-source-keeps-original-selectors', () => {
     assert.match(source.styleText, /--igs-dialog-bg:var\(--igs-glass-bg\)/);
     assert.match(source.styleText, /--igs-toolbar-bg:var\(--igs-glass-bg\)/);
     assert.match(source.styleText, /--igs-choice-bg:var\(--igs-glass-bg\)/);
+    assert.match(source.styleText, /--igs-choice-soft-shadow:0 2px 10px rgba\(0,0,0,\.14\)/);
+    assert.match(source.styleText, /--igs-choice-shadow:var\(--igs-choice-soft-shadow\)/);
+    assert.match(source.styleText, /\.igs-option-bubble\{[^}]*box-shadow:var\(--igs-choice-shadow,0 2px 10px rgba\(0,0,0,\.14\)\)/);
+    assert.doesNotMatch(source.styleText, /\.igs-option-bubble\{[^}]*box-shadow:var\(--igs-choice-shadow,0 4px 24px/);
     assert.match(source.styleText, /--igs-db-bg:var\(--igs-glass-bg\)/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating\.is-dragging #igs-click-layer\{cursor:grabbing;\}/);
     assert.match(source.styleText, /#igs-overlay\.igs-floating #igs-click-layer\{cursor:grab;touch-action:none;\}/);

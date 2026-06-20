@@ -6,12 +6,52 @@ export function toShujukuApiRowIndex(rowIndex) {
     return Number.isInteger(rowIndex) ? rowIndex + 1 : NaN;
 }
 
+export function createDbTabClickGuard(now = () => Date.now()) {
+    let blockedClick = null;
+    const blockMs = 120;
+    const maxDistance = 8;
+
+    function arm(input = {}) {
+        if (!input.strip) return;
+        blockedClick = {
+            strip: input.strip,
+            clientX: toFiniteNumber(input.clientX),
+            clientY: toFiniteNumber(input.clientY),
+            expiresAt: now() + blockMs,
+        };
+    }
+
+    function shouldSuppress(event, tab) {
+        if (!blockedClick) return false;
+        if (now() > blockedClick.expiresAt) {
+            blockedClick = null;
+            return false;
+        }
+        if (!tab || typeof tab.closest !== 'function' || tab.closest('.igs-shujuku-tabs') !== blockedClick.strip) {
+            return false;
+        }
+        const clientX = toFiniteNumber(event && event.clientX);
+        const clientY = toFiniteNumber(event && event.clientY);
+        if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return false;
+        if (Number.isFinite(blockedClick.clientX) && Math.abs(clientX - blockedClick.clientX) > maxDistance) return false;
+        if (Number.isFinite(blockedClick.clientY) && Math.abs(clientY - blockedClick.clientY) > maxDistance) return false;
+        blockedClick = null;
+        return true;
+    }
+
+    function clear() {
+        blockedClick = null;
+    }
+
+    return { arm, shouldSuppress, clear };
+}
+
 export function createDbPanelController(doc, global) {
     let root = null;
     let modalRoot = null;
     let client = null;
     let igsWriting = false;
-    let suppressTabClick = false;
+    const tabClickGuard = createDbTabClickGuard();
     const state = { tables: [], activeUid: '', status: 'loading', errorMsg: '', externalPending: false, tabScrollLeft: 0 };
 
     const externalCallback = () => {
@@ -153,7 +193,7 @@ export function createDbPanelController(doc, global) {
         const tab = event.target.closest('[data-db-tab]');
         if (tab) {
             // 拖动标签栏后抑制本次 click，避免误切换标签
-            if (suppressTabClick) { suppressTabClick = false; return; }
+            if (tabClickGuard.shouldSuppress(event, tab)) return;
             state.activeUid = tab.getAttribute('data-db-tab'); render(); return;
         }
 
@@ -307,8 +347,9 @@ export function createDbPanelController(doc, global) {
             state.tabScrollLeft = Math.max(0, Number(strip.scrollLeft) || 0);
             if (e.cancelable) e.preventDefault();
         });
-        const end = () => {
+        const end = (e) => {
             if (!active) return;
+            const endedStrip = strip;
             active = false;
             if (strip) {
                 try { if (pointerId != null && strip.releasePointerCapture) strip.releasePointerCapture(pointerId); } catch (err) { /* ignore */ }
@@ -316,10 +357,10 @@ export function createDbPanelController(doc, global) {
             }
             // 拖动后抑制紧随的 click，避免误切标签
             if (moved) {
-                suppressTabClick = true;
+                if (endedStrip) tabClickGuard.arm({ strip: endedStrip, clientX: e && e.clientX, clientY: e && e.clientY });
                 const win = doc.defaultView || globalThis;
                 if (win && typeof win.setTimeout === 'function') {
-                    win.setTimeout(() => { suppressTabClick = false; }, 0);
+                    win.setTimeout(tabClickGuard.clear, 160);
                 }
             }
             strip = null;
@@ -363,4 +404,9 @@ export function createDbPanelController(doc, global) {
 
 function esc(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function toFiniteNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : NaN;
 }
