@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.8`：把已由探针确认的透明玻璃材质正式落地为默认行为。`backdrop-filter` 是造成前台组件出现磨砂层的根因，现对话框、工具栏、数据库面板、数据库表头和选项气泡默认统一为 `rgba(20,20,22,.62)` 透明玻璃底 + `backdrop-filter:none`；`设置 -> 阅读器` 新增「启用背景滤镜」开关，默认关闭，打开后才恢复旧的 `blur(32px) saturate(180%)` 滤镜。
+- 当前项目版本 `v0.23.9`：修复阅读器设置保存回归。普通阅读器设置保存不再把当前 reader 强行切回 `bridge.openMode`，旧 readerSettings 缺 `_v` 时不再整包清空，心理页真正使用 `thoughtFont/thoughtColor/thoughtAlign`；新增回归测试覆盖打开后旧设置保留、显式 openMode 切换、角色名/分割线、心理页主题和 mode 不一致时的立绘布局。
 - `v0.23.4`：修复手机版阅读器读不到关键词过滤插件（如 Veridis）改后正文的问题。根因有两处：①IGS 读正文时优先取数据层 `chat[n].mes`，而 Veridis 在移动端宿主下回写 `mes` 滞后甚至只改 `.mes_text` 渲染层不回写，导致读到改前旧词（PC 因 `saveChat` 同步回写而正常）；现 `buildIgsTextPayload` 增加「DOM 差异优先」：当 DOM 可见文本与数据层纯文本仅为词级差异（长度量级接近、编辑距离占比 ≤50%）时改用 DOM 文本，结构性不同则仍保留原文。②点「刷新」时只重扫图片和重解析配置，`visibleText` 仍是打开阅读器那一刻的旧 DOM 快照；现刷新会按消息 ID 重查 `.mes` 节点重抓最新渲染文本。新增 2 个单测覆盖词级覆盖与内容不同时不覆盖。
 - `v0.23.3`：修复最后一页输入框点击会穿透触发选项浮窗、背景图点击会翻页的问题。根因是 `#igs-dialog-layer` 为 `pointer-events:none`，但 `.igs-dialog` 没有显式恢复 `pointer-events:auto`，输入区真实点击可能穿透到 `#igs-click-layer`；同时 click-layer 的空白点击逻辑在选项触发后仍兜底执行下一页。现改为背景 click-layer 只处理恢复隐藏、关闭设置和选项浮窗触发，不再翻页；对话框点击只负责左右翻页且排除输入区/工具栏/设置；选项浮窗触发排除对话框、工具栏和输入框。
 - `v0.22.8`：修复数据库面板四个问题（Playwright 真机验证）。①标签栏溢出后电脑/手机都无法滚动、看不到后面的标签：加标签栏拖动滚动（pointer 事件，鼠标按住拖+手机触摸拖，拖动后抑制误触发切换），保持单行不折行、滚动条隐藏。②行数>8 时看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（body 的实际 flex 父级）无 flex 样式，table 把它撑破溢出面板、`flex:1+min-height:0` 失去高度约束；现给 inner 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器、表头 sticky 钉住（背景调至不透明防透色），去掉多余 table-wrap 层、横向滚动条隐藏。③新增行后空格子无法编辑：真因是 `data-db-edit` 挂在内层 span 上，空 span `display:-webkit-box` 无内容时塌缩成 0×0 无点击区；现移到 `<td>`（有 padding/列宽，空格子也可点）。④对话框+数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 由 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`，透明度仍由「毛玻璃浓度」可调。新增 DB 面板渲染回归单测。
@@ -168,6 +168,14 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.9 - 2026-06-20
+
+- 修复普通阅读器设置保存会把当前打开模式强行切回 `bridge.openMode` 的回归：`rerenderActiveReader()` 默认保留 `state.activeReader.mode`，只有用户明确修改 `bridge.openMode` 时才同步切换当前 reader。
+- 修复旧 readerSettings 兼容：不再因为内部 `_v` 缺失或不匹配整包清空，改为字段级 normalize，并保留 `fontSize`、`dialogHeight`、`spriteLayouts`、`vnTheme` 等合法旧字段后写回当前 schema 版本。
+- 修复心理页主题：`textType === "thought"` 时使用 `thoughtFont`、`thoughtColor` 和 `thoughtAlign`；台词页和旁白页保持各自主题字段不变。
+- 新增 5 个阅读器回归模拟测试，覆盖普通设置保存保留当前 mode、显式 openMode 设置仍切换 reader、旧桶打开后保留高度/字号/立绘布局、心理页样式与角色名/分割线显示、mode 不一致时立绘布局仍按当前 reader mode 应用。
+- 验证边界：Node gate / fake DOM / fake shujuku，不写入真实 shujuku，不调用真实 provider。本轮未新增抽象，未留下技术债。
 
 ### v0.23.8 - 2026-06-20
 

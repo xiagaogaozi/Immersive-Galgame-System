@@ -486,7 +486,7 @@ export function createIgsReaderHost(options = {}) {
         if (path === 'bridge.openMode') {
             const nextMode = normalizeReaderMode(value, draft.bridge);
             setPath(draft, path, nextMode);
-            const persisted = persistSettingsDraft();
+            const persisted = persistSettingsDraft({ syncActiveModeFromSettings: true });
             if (persisted.ok === false) return persisted;
             return rerenderSettings();
         }
@@ -511,7 +511,7 @@ export function createIgsReaderHost(options = {}) {
         return rerenderSettings();
     }
 
-    function persistSettingsDraft() {
+    function persistSettingsDraft(optionsForPersist = {}) {
         if (!state.activeSettings) return { ok: false, reason: 'settings-not-open' };
         const draft = state.activeSettings.draft;
         const save = typeof options.saveUnifiedSettings === 'function'
@@ -530,7 +530,9 @@ export function createIgsReaderHost(options = {}) {
 
         const snapshot = resolveBridgeConfigSnapshot({ mode: 'default' });
         state.activeSettings.draft = cloneData(snapshot);
-        rerenderActiveReader();
+        rerenderActiveReader({
+            syncModeFromSettings: optionsForPersist.syncActiveModeFromSettings === true,
+        });
         return result;
     }
 
@@ -646,17 +648,18 @@ export function createIgsReaderHost(options = {}) {
         return { ok: true, moved: true, index: state.activeReader.index };
     }
 
-    function rerenderActiveReader() {
+    function rerenderActiveReader(optionsForRender = {}) {
         if (!state.activeReader) return { ok: true, reason: 'reader-not-open' };
-        // 先解析出 nextMode，再用 nextMode 取 unified，确保 readerSettings 与立绘位置来自
-        // 同一个模式桶。原 bug：用旧 activeReader.mode 取的 unified.readerSettings 去配
-        // openMode 推出的 nextMode，两者模式桶不一致，导致切模式后 spriteLayouts 取错桶、
-        // 立绘 key 查不到而回退默认位置。
+        // 普通设置保存必须保留当前 reader mode；只有 openMode 设置本身变化时才同步切换。
+        // 确保 readerSettings 与立绘位置始终来自同一个 mode，避免 spriteLayouts 取错 key。
+        const syncModeFromSettings = optionsForRender.syncModeFromSettings === true;
         const baseSnapshot = resolveBridgeConfigSnapshot({ mode: state.activeReader.mode });
-        const nextMode = normalizeReaderMode(
-            firstDefined(baseSnapshot.bridge.openMode, state.activeReader.mode),
-            baseSnapshot.bridge,
-        );
+        const nextMode = syncModeFromSettings
+            ? normalizeReaderMode(
+                firstDefined(baseSnapshot.bridge.openMode, state.activeReader.mode),
+                baseSnapshot.bridge,
+            )
+            : normalizeReaderMode(state.activeReader.mode, baseSnapshot.bridge);
         const unified = resolveBridgeConfigSnapshot({ mode: nextMode });
         state.activeReader.mode = nextMode;
         const readerSettings = normalizeReaderSettings(unified.readerSettings, unified.bridge.vnTheme);
@@ -1768,7 +1771,9 @@ export function createIgsReaderHost(options = {}) {
 
     function normalizeReaderSettings(settings, legacyTheme) {
         const currentVersion = READER_SETTINGS_SCHEMA_VERSION;
-        const src = (settings && settings._v === currentVersion) ? cloneData(settings) : {};
+        const src = (settings && typeof settings === 'object' && !Array.isArray(settings))
+            ? cloneData(settings)
+            : {};
         const base = {
             _v: currentVersion,
             fontSize: 18,
@@ -1786,7 +1791,7 @@ export function createIgsReaderHost(options = {}) {
             btnOrder: TOOLBAR_ACTIONS.map(([id]) => id),
             spriteLayouts: {},
         };
-        const normalized = { ...base, ...src };
+        const normalized = { ...base, ...src, _v: currentVersion };
         normalized.fontSize = normalizeFiniteNumber(normalized.fontSize, base.fontSize);
         normalized.dialogWidth = normalizeNullableNumber(normalized.dialogWidth);
         normalized.dialogHeight = normalizeNullableNumber(normalized.dialogHeight);
@@ -1804,8 +1809,8 @@ export function createIgsReaderHost(options = {}) {
         // 对话主题（vnTheme）按模式存进 readerSettings。独立于 _v 门控处理，避免 schema 版本
         // 不符时被清空。settings.vnTheme 缺失时回退到旧的全局 bridge.vnTheme（legacyTheme），
         // 实现从全局存储到按模式存储的平滑迁移。
-        const rawTheme = (settings && settings.vnTheme && typeof settings.vnTheme === 'object')
-            ? settings.vnTheme
+        const rawTheme = (src.vnTheme && typeof src.vnTheme === 'object')
+            ? src.vnTheme
             : (legacyTheme && typeof legacyTheme === 'object' ? legacyTheme : null);
         normalized.vnTheme = normalizeVnTheme(rawTheme || {});
         return normalized;

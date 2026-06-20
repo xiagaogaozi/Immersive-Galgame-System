@@ -246,8 +246,9 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
     });
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
+    const pkgVersion = readJson('package.json').version;
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.23.8');
+    assert.equal(entry.getAttribute('data-igs-version'), pkgVersion);
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -440,6 +441,85 @@ test('gate:simulation:scene-assets-sprite-follows-bubble-speaker-across-mixed-se
     assert.equal(snap.content.speaker, '小林海斗');
     // mood 欣喜 reduces to 喜悦 group → joy.png
     assert.equal(snap.content.spriteImage, 'https://example.com/joy.png');
+
+    vn.destroy();
+});
+
+test('gate:simulation:thought-theme-applies-thought-style-and-speaker-divider-visible', async () => {
+    const document = createFakeDocument();
+    const storage = createMemoryStorage({
+        igs_bridge_config: JSON.stringify({
+            sceneAssets: {
+                enabled: true,
+                promptRule: 'rule',
+                scenes: {},
+                characters: {
+                    Hero: {
+                        calm: 'https://example.com/hero-calm.png',
+                        tense: 'https://example.com/hero-tense.png',
+                    },
+                },
+            },
+        }),
+    });
+    storage.setItem('igs-reader-settings-v9-default', JSON.stringify({
+        _v: '0.5.2',
+        vnTheme: {
+            preset: 'custom',
+            nameColor: '#ffffff',
+            nameFont: 'Arial,sans-serif',
+            textColor: '#00ff00',
+            textFont: 'Georgia,serif',
+            thoughtColor: '#0000ff',
+            thoughtFont: 'Courier New,monospace',
+            narrationColor: '#cccccc',
+            narrationFont: 'Times New Roman,serif',
+            dividerSymbol: 'gradient',
+            dividerColor: '#ff00ff',
+        },
+    }));
+    const vn = bootstrapIGS({
+        global: { document, localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => ({
+                id: 1,
+                text: [
+                    '<now_plot>',
+                    '<content>',
+                    '[igs-char:Hero|calm|Hello.]',
+                    '[igs-thought:Hero|tense|Think.]',
+                    '</content>',
+                    '</now_plot>',
+                ].join('\n'),
+            }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const overlay = document.getElementById('igs-overlay');
+    let textEl = overlay.querySelector('#igs-text');
+    let speakerEl = overlay.querySelector('#igs-speaker');
+    let dividerEl = overlay.querySelector('#igs-divider');
+
+    assert.equal(opened.reader.snapshot.content.textType, 'dialogue');
+    assert.equal(speakerEl.style.display, 'block');
+    assert.equal(dividerEl.style.display, 'block');
+    assert.equal(textEl.style.color, '#00ff00');
+    assert.equal(textEl.style.fontFamily, 'Georgia,serif');
+
+    await opened.reader.controller.invokeAction('next');
+    const thoughtSnapshot = vn.getState().igsUi.activeReader.snapshot;
+    textEl = document.getElementById('igs-overlay').querySelector('#igs-text');
+    speakerEl = document.getElementById('igs-overlay').querySelector('#igs-speaker');
+    dividerEl = document.getElementById('igs-overlay').querySelector('#igs-divider');
+    assert.equal(thoughtSnapshot.content.textType, 'thought');
+    assert.equal(thoughtSnapshot.content.speaker, 'Hero');
+    assert.equal(speakerEl.style.display, 'block');
+    assert.equal(dividerEl.style.display, 'block');
+    assert.equal(textEl.style.color, '#0000ff');
+    assert.equal(textEl.style.fontFamily, 'Courier New,monospace');
 
     vn.destroy();
 });
@@ -680,6 +760,114 @@ test('gate:simulation:reader-settings-shared-across-modes', async () => {
     vn.destroy();
 });
 
+test('gate:simulation:reader-settings-save-preserves-current-explicit-mode', async () => {
+    const storage = createMemoryStorage();
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        config: { openMode: 'pc' },
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: '旁白一段。' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('mobile');
+    assert.equal(opened.reader.snapshot.mode, 'mobile');
+    assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
+
+    const settings = (await opened.reader.controller.invokeAction('settings')).controller;
+    const result = settings.setValue('readerSettings.fontSize', 24);
+
+    assert.equal(result.ok, true);
+    assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
+    assert.equal(vn.getState().igsUi.activeReader.snapshot.mode, 'mobile');
+    assert.equal(vn.getState().igsUi.activeReader.snapshot.readerSettings.fontSize, 24);
+
+    vn.destroy();
+});
+
+test('gate:simulation:open-mode-setting-still-switches-active-reader', async () => {
+    const storage = createMemoryStorage();
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        config: { openMode: 'pc' },
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: 'plain page.' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const settings = (await opened.reader.controller.invokeAction('settings')).controller;
+    const result = settings.setValue('bridge.openMode', 'mobile');
+
+    assert.equal(result.ok, true);
+    assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
+    assert.equal(vn.getState().igsUi.activeReader.snapshot.mode, 'mobile');
+
+    vn.destroy();
+});
+
+test('gate:simulation:sprite-layout-save-survives-mode-mismatch', async () => {
+    const document = createFakeDocument();
+    const storage = createMemoryStorage({
+        igs_bridge_config: JSON.stringify({
+            openMode: 'pc',
+            sceneAssets: {
+                enabled: true,
+                promptRule: 'rule',
+                scenes: {},
+                characters: {
+                    Hero: { calm: 'https://example.com/hero-calm.png' },
+                },
+            },
+        }),
+    });
+    storage.setItem('igs-reader-settings-v9-default', JSON.stringify({
+        _v: '0.5.2',
+        spriteLayouts: {
+            'mobile::Hero::calm': { posX: 12, posY: 34, scale: 156 },
+            'pc::Hero::calm': { posX: 78, posY: 90, scale: 111 },
+        },
+    }));
+    const vn = bootstrapIGS({
+        global: { document, localStorage: storage },
+        autoAttachMagicWand: false,
+        hostAdapter: {
+            getCurrentMessage: async () => ({
+                id: 1,
+                text: [
+                    '<now_plot>',
+                    '<content>',
+                    '[igs-char:Hero|calm|Hello.]',
+                    '</content>',
+                    '</now_plot>',
+                ].join('\n'),
+            }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('mobile');
+    let sprite = document.getElementById('igs-overlay').querySelector('#igs-sprite');
+    assert.equal(opened.reader.snapshot.mode, 'mobile');
+    assert.equal(sprite.style.backgroundSize, '156%');
+    assert.equal(sprite.style.backgroundPosition, '12% 34%');
+
+    const settings = (await opened.reader.controller.invokeAction('settings')).controller;
+    settings.setValue('readerSettings.fontSize', 26);
+
+    sprite = document.getElementById('igs-overlay').querySelector('#igs-sprite');
+    assert.equal(vn.getState().igsUi.activeReader.mode, 'mobile');
+    assert.equal(vn.getState().igsUi.activeReader.snapshot.mode, 'mobile');
+    assert.equal(sprite.style.backgroundSize, '156%');
+    assert.equal(sprite.style.backgroundPosition, '12% 34%');
+
+    vn.destroy();
+});
+
 test('gate:simulation:reader-settings-saved-in-mobile-mode-read-back', async () => {
     // 回归锁：saveUnifiedSettings 曾按 readerMode 分桶存、却固定读 default 桶，
     // 导致移动端保存（含 spriteLayouts）读不回。统一到 default 桶后，
@@ -723,6 +911,34 @@ test('gate:simulation:legacy-mode-bucket-migrates-to-default-read', () => {
     const rs = vn.getUnifiedSettings({ mode: 'mobile' }).readerSettings;
     assert.equal(rs.fontSize, 22, 'falls back to mobile bucket when default empty');
     assert.deepEqual(rs.spriteLayouts, layouts);
+
+    vn.destroy();
+});
+
+test('gate:simulation:legacy-reader-settings-render-after-open', async () => {
+    const layouts = { 'mobile::Hero': { posX: 24, posY: 76, scale: 135 } };
+    const storage = createMemoryStorage();
+    storage.setItem('igs-reader-settings-v9-default', JSON.stringify({}));
+    storage.setItem('igs-reader-settings-v9-mobile', JSON.stringify({
+        fontSize: 22,
+        dialogHeight: 300,
+        spriteLayouts: layouts,
+    }));
+    const vn = bootstrapIGS({
+        global: { localStorage: storage },
+        autoAttachMagicWand: false,
+        config: { openMode: 'mobile' },
+        hostAdapter: {
+            getCurrentMessage: async () => ({ id: 1, text: 'plain page.' }),
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('mobile');
+
+    assert.equal(opened.reader.snapshot.readerSettings.fontSize, 22);
+    assert.equal(opened.reader.snapshot.readerSettings.dialogHeight, 300);
+    assert.deepEqual(opened.reader.snapshot.readerSettings.spriteLayouts, layouts);
 
     vn.destroy();
 });

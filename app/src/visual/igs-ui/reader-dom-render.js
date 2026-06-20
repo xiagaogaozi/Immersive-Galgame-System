@@ -481,8 +481,8 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
         textEl.style.marginTop = '';
         const isNarration = textType === 'narration';
         const isThought = textType === 'thought';
-        const segFont = isNarration ? theme.narrationFont : theme.textFont;
-        const segColor = isNarration ? theme.narrationColor : theme.textColor;
+        const segFont = isThought ? theme.thoughtFont : isNarration ? theme.narrationFont : theme.textFont;
+        const segColor = isThought ? theme.thoughtColor : isNarration ? theme.narrationColor : theme.textColor;
         const segAlign = isThought ? theme.thoughtAlign : isNarration ? theme.narrationAlign : theme.textAlign;
         applyAlignStyle(textEl, sceneAssetsEnabled ? segAlign : '');
         if (sceneAssetsEnabled && segFont && segFont !== 'inherit') {
