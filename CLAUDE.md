@@ -35,10 +35,23 @@ npm run build   # 构建 bundle
 
 ## 提交与推送规则
 
-- 每次有文件改动必须提交并推送到 GitHub
-- 每次提交必须创建新版本标签（`git tag vX.Y.Z`），禁止覆盖旧标签
-- 推送命令：`git push origin main --tags`
-- 不要用 `git tag -d` + 重建的方式覆盖已推送的标签
+- 每次有文件改动必须提交并推送到 main（`git push origin main`）。
+- **tag 与 push 分离**：push 可随时累加；版本标签（`git tag vX.Y.Z`）只在真机 CDP 测试通过后才打并推送（见下文「Bug 修复闭环」）。loader 拉取 `@main`，push 到 main 后真机即可加载新代码验证。
+- 真机测试失败时回去继续修，同一版本号继续 commit+push，不打 tag。
+- 禁止覆盖旧标签；不要用 `git tag -d` + 重建的方式覆盖已推送的标签。标签已存在时提升 patch 版本号重来。
+
+## Bug 修复闭环
+
+修复 bug 按以下闭环，**真机测试通过才算结束、才打 tag**：
+
+1. 修复 + 本地 `npm run gate` 全绿。
+2. 本地预验：用真机导出的真实数据本地复跑修复后代码，确认逻辑正确（第一道闸，能挡掉方向性错误）。
+3. `git commit` + `git push origin main`（先推 main，让真机能加载新 bundle；暂不打 tag）。
+4. CDP 真机测试：触发真机重载新 bundle，抓状态确认现象消失（第二道闸）。
+5. 成功才 `git tag vX.Y.Z` + `git push origin vX.Y.Z`；失败回到第 1 步继续修。
+
+真机调试用 CDP 直连自动注入（详见 `docs/AI_WORKFLOW.md` 的「真机调试与复验」）。CDP 不可用（用户不在/不愿重启浏览器/手机端）时，本地 gate + 真机导出数据本地复跑通过即可打 tag 结束，并在回复注明未做 CDP 真机终验。
+
 
 ## 修改前必读
 
