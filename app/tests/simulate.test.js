@@ -152,6 +152,16 @@ test('gate:simulation:db-tab-drag-click-guard-does-not-block-later-tab-clicks', 
     assert.equal(guard.shouldSuppress({ clientX: 380, clientY: 48 }, tab), false);
 });
 
+test('gate:simulation:db-tab-drag-scroll-captures-only-after-move-threshold', () => {
+    const source = fs.readFileSync(path.join(appRoot, 'src/shujuku-panel/panel-controller.js'), 'utf8');
+    const pointerDown = source.match(/panel\.addEventListener\('pointerdown',[\s\S]*?\n        \}\);/)[0];
+    const pointerMove = source.match(/panel\.addEventListener\('pointermove',[\s\S]*?\n        \}\);/)[0];
+
+    assert.doesNotMatch(pointerDown, /setPointerCapture/);
+    assert.match(pointerMove, /Math\.abs\(dx\) < 4/);
+    assert.match(pointerMove, /setPointerCapture/);
+});
+
 test('gate:simulation:resource cache preserves local resource entry', () => {
     const pack = readJson('fixtures/media/resource-pack.json');
     const cache = createResourceCache();
@@ -237,7 +247,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.23.1');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.23.2');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);

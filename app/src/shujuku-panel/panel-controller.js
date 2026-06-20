@@ -316,6 +316,7 @@ export function createDbPanelController(doc, global) {
         let startX = 0;
         let startScroll = 0;
         let pointerId = null;
+        let captured = false;
 
         panel.addEventListener('scroll', (e) => {
             const target = e.target;
@@ -335,14 +336,22 @@ export function createDbPanelController(doc, global) {
             startX = e.clientX;
             startScroll = s.scrollLeft;
             pointerId = e.pointerId;
-            try { if (pointerId != null && s.setPointerCapture) s.setPointerCapture(pointerId); } catch (err) { /* ignore */ }
+            captured = false;
         });
         panel.addEventListener('pointermove', (e) => {
             if (!active || !strip) return;
             const dx = e.clientX - startX;
             if (!moved && Math.abs(dx) < 4) return;
-            moved = true;
-            strip.classList.add('igs-db-dragging');
+            if (!moved) {
+                moved = true;
+                try {
+                    if (pointerId != null && strip.setPointerCapture) {
+                        strip.setPointerCapture(pointerId);
+                        captured = true;
+                    }
+                } catch (err) { /* ignore */ }
+                strip.classList.add('igs-db-dragging');
+            }
             strip.scrollLeft = startScroll - dx;
             state.tabScrollLeft = Math.max(0, Number(strip.scrollLeft) || 0);
             if (e.cancelable) e.preventDefault();
@@ -352,7 +361,7 @@ export function createDbPanelController(doc, global) {
             const endedStrip = strip;
             active = false;
             if (strip) {
-                try { if (pointerId != null && strip.releasePointerCapture) strip.releasePointerCapture(pointerId); } catch (err) { /* ignore */ }
+                try { if (captured && pointerId != null && strip.releasePointerCapture) strip.releasePointerCapture(pointerId); } catch (err) { /* ignore */ }
                 strip.classList.remove('igs-db-dragging');
             }
             // 拖动后抑制紧随的 click，避免误切标签
@@ -365,6 +374,7 @@ export function createDbPanelController(doc, global) {
             }
             strip = null;
             pointerId = null;
+            captured = false;
         };
         panel.addEventListener('pointerup', end);
         panel.addEventListener('pointercancel', end);
