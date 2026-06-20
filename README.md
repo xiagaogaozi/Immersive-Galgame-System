@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.3`：修复最后一页输入框点击会穿透触发选项浮窗、背景图点击会翻页的问题。根因是 `#igs-dialog-layer` 为 `pointer-events:none`，但 `.igs-dialog` 没有显式恢复 `pointer-events:auto`，输入区真实点击可能穿透到 `#igs-click-layer`；同时 click-layer 的空白点击逻辑在选项触发后仍兜底执行下一页。现改为背景 click-layer 只处理恢复隐藏、关闭设置和选项浮窗触发，不再翻页；对话框点击只负责左右翻页且排除输入区/工具栏/设置；选项浮窗触发排除对话框、工具栏和输入框。
+- 当前项目版本 `v0.23.4`：修复手机版阅读器读不到关键词过滤插件（如 Veridis）改后正文的问题。根因有两处：①IGS 读正文时优先取数据层 `chat[n].mes`，而 Veridis 在移动端宿主下回写 `mes` 滞后甚至只改 `.mes_text` 渲染层不回写，导致读到改前旧词（PC 因 `saveChat` 同步回写而正常）；现 `buildIgsTextPayload` 增加「DOM 差异优先」：当 DOM 可见文本与数据层纯文本仅为词级差异（长度量级接近、编辑距离占比 ≤50%）时改用 DOM 文本，结构性不同则仍保留原文。②点「刷新」时只重扫图片和重解析配置，`visibleText` 仍是打开阅读器那一刻的旧 DOM 快照；现刷新会按消息 ID 重查 `.mes` 节点重抓最新渲染文本。新增 2 个单测覆盖词级覆盖与内容不同时不覆盖。
+- `v0.23.3`：修复最后一页输入框点击会穿透触发选项浮窗、背景图点击会翻页的问题。根因是 `#igs-dialog-layer` 为 `pointer-events:none`，但 `.igs-dialog` 没有显式恢复 `pointer-events:auto`，输入区真实点击可能穿透到 `#igs-click-layer`；同时 click-layer 的空白点击逻辑在选项触发后仍兜底执行下一页。现改为背景 click-layer 只处理恢复隐藏、关闭设置和选项浮窗触发，不再翻页；对话框点击只负责左右翻页且排除输入区/工具栏/设置；选项浮窗触发排除对话框、工具栏和输入框。
 - `v0.22.8`：修复数据库面板四个问题（Playwright 真机验证）。①标签栏溢出后电脑/手机都无法滚动、看不到后面的标签：加标签栏拖动滚动（pointer 事件，鼠标按住拖+手机触摸拖，拖动后抑制误触发切换），保持单行不折行、滚动条隐藏。②行数>8 时看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（body 的实际 flex 父级）无 flex 样式，table 把它撑破溢出面板、`flex:1+min-height:0` 失去高度约束；现给 inner 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器、表头 sticky 钉住（背景调至不透明防透色），去掉多余 table-wrap 层、横向滚动条隐藏。③新增行后空格子无法编辑：真因是 `data-db-edit` 挂在内层 span 上，空 span `display:-webkit-box` 无内容时塌缩成 0×0 无点击区；现移到 `<td>`（有 padding/列宽，空格子也可点）。④对话框+数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 由 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`，透明度仍由「毛玻璃浓度」可调。新增 DB 面板渲染回归单测。
 - `v0.22.7`：修复 v0.22.6 矫枉过正——上一版 floating（pc/mobile）模式直接忽略「对话框高度」，导致 PC/手机端怎么调都无效。现 floating 模式下 dialogHeight 改用 `.igs-dialog` 的 `min-height`（把气泡撑到目标高度，内容更多时自然增长）+ `max-height` clamp 到浮窗可用高度（约 86%），不再写死 `height`（固定 height 比内容小时会把输入框挤出气泡）。Playwright 真机验证：dialogHeight 60→600 气泡高度跟随、输入框恒在气泡内不溢出、气泡始终在视口内。
 - `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text`；v0.22.6 改为忽略 dialogHeight（v0.22.7 修正为改气泡 min-height）。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
@@ -166,6 +167,14 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.4 - 2026-06-20
+
+- 修复手机版阅读器读不到关键词过滤插件（如 [Veridis-Keyword-filtering](https://github.com/The-Veridis-Lion/Veridis-Keyword-filtering)）改后正文的问题。两处根因：①IGS 经 `getMessagePrimaryText` 优先读数据层 `chat[n].mes`，DOM 渲染层（`.mes_text`）仅作兜底；Veridis 在移动端宿主（TauriTavern/柏宝箱）下回写 `mes` 滞后、或只改渲染层不回写，导致 IGS 读到改前旧词，PC 因 `saveChat` 同步回写而表现正常。②点「刷新」（`rescanCurrentImages`）只重扫图片和重解析筛选/格式化配置，`visibleText` 仍是打开阅读器那一刻抓的旧 DOM 快照。
+- `buildIgsTextPayload` 新增「DOM 差异优先」：当 DOM 可见文本与数据层纯文本仅为词级差异（去空白后长度量级接近 ≥60%、且编辑距离占比 ≤50%）时改用 DOM 文本并置 `usedDomOverride`，结构性不同（不同消息/截断/宿主 UI 噪声）则保留原文。编辑距离用带上界的 Levenshtein，超界即判定为不同内容。
+- 刷新路径新增 `readLiveVisibleText`：按消息 ID 重查 `#chat .mes[mesid]` 节点、回退到 payload 缓存的 element，重抓最新渲染文本写回 `payload.visibleText`，使刷新能拿到插件改后的文字而非旧快照。
+- 新增回归测试 `gate:scene:igs-message-source:prefers-dom-text-when-keyword-filter-rewrites-word`（词级改写时覆盖生效）与 `gate:scene:igs-message-source:keeps-data-text-when-dom-is-different-content`（内容不同时不覆盖）。验证边界：fake message / Node gate，不调用真实宿主与 provider；本轮未留下技术债。
+- 版本同步到 `v0.23.4`，重新生成 dist、loader 和版本化酒馆助手脚本 JSON。
 
 ### v0.23.3 - 2026-06-20
 

@@ -222,6 +222,25 @@ test('gate:scene:igs-message-source:extracts-readable-text-from-host-ui-html', (
     assert.equal(payload.usedFallback, true);
 });
 
+test('gate:scene:igs-message-source:prefers-dom-text-when-keyword-filter-rewrites-word', () => {
+    const dataLayer = '<content>这一步迈出去，好像就真的踏进了那个名为“自相残杀”的怪圈里。</content>';
+    const domVisible = '这一步迈出去，好像就真的踏进了那个名为“互相杀”的怪圈里。';
+    const payload = buildIgsTextPayload({ text: dataLayer, visibleText: domVisible });
+
+    assert.equal(payload.usedDomOverride, true);
+    assert.match(payload.formattedText, /互相杀/);
+    assert.equal(payload.formattedText.includes('自相残杀'), false);
+});
+
+test('gate:scene:igs-message-source:keeps-data-text-when-dom-is-different-content', () => {
+    const dataLayer = '<content>玉子站在门口，犹豫着要不要敲门。</content>';
+    const domVisible = '完全不相干的另一段文字，长度也明显不同，理应判定为不同内容而保留原文。';
+    const payload = buildIgsTextPayload({ text: dataLayer, visibleText: domVisible });
+
+    assert.equal(Boolean(payload.usedDomOverride), false);
+    assert.match(payload.formattedText, /犹豫着要不要敲门/);
+});
+
 test('gate:scene:igs-message-source:reader-segments-skip-scene-tags', () => {
     const payload = buildIgsTextPayload({
         text: '[角色: 艾莉]\n艾莉: 第一句。 第二句。',

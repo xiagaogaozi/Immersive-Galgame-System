@@ -1,6 +1,7 @@
 import {
     buildIgsTextPayload,
     getMessagePrimaryText,
+    getVisibleMessageTextFromElement,
     normalizeSourceFilter,
     normalizeVirtualRegex,
 } from '../../scene/message-source.js';
@@ -732,6 +733,24 @@ export function createIgsReaderHost(options = {}) {
         return result;
     }
 
+    function readLiveVisibleText(current) {
+        if (!current) return '';
+        const messageId = current.snapshot && current.snapshot.messageId != null
+            ? current.snapshot.messageId
+            : (current.payload && current.payload.messageId);
+        const doc = getRootDocument(options.global);
+        let element = null;
+        if (doc && messageId != null) {
+            element = doc.querySelector(`#chat .mes[mesid="${messageId}"]`)
+                || doc.querySelector(`#chat .mes[data-mesid="${messageId}"]`);
+        }
+        if (!element && current.payload && current.payload.message) {
+            element = current.payload.message.element || null;
+        }
+        if (!element) return '';
+        return getVisibleMessageTextFromElement(element);
+    }
+
     async function rescanCurrentImages() {
         const current = state.activeReader;
         if (!current) return { ok: false, reason: 'reader-not-open' };
@@ -763,6 +782,10 @@ export function createIgsReaderHost(options = {}) {
                 current.payload.textSegments = null;
                 current.payload.segmentImageSlots = null;
                 current.payload.sceneDirectives = null;
+                // 重抓 DOM 可见文本：关键词过滤插件（如 Veridis）只改 .mes_text 渲染层、
+                // 移动端宿主回写 chat[n].mes 滞后时，刷新需拿到最新渲染文本而非打开时的旧快照。
+                const freshVisible = readLiveVisibleText(current);
+                if (freshVisible) current.payload.visibleText = freshVisible;
             }),
         ]);
 

@@ -285,6 +285,7 @@ export function buildIgsTextPayload(message, options = {}) {
     let formatSourceKind = strictPayload.formatSourceKind;
     let sceneDirectives = strictPayload.sceneDirectives || [];
     let usedFallback = false;
+    let usedDomOverride = false;
 
     if (looksLikeHostUiHtml(raw)) {
         warnings.push({ code: 'host-ui-html-raw', message: 'Raw message looks like host UI HTML.' });
@@ -312,6 +313,23 @@ export function buildIgsTextPayload(message, options = {}) {
     }
 
     formattedText = normalizeWhitespace(formattedText);
+
+    // DOM 差异优先：第三方关键词过滤插件（如 Veridis）只改渲染层 .mes_text，
+    // 不一定回写 chat[n].mes。移动端宿主下数据层回写更会滞后，导致读到旧词。
+    // 当 DOM 可见文本与数据层纯文本只是局部（词级）不同时，信任 DOM。
+    const domVisibleText = normalizeWhitespace(visibleText);
+    if (domVisibleText
+        && !looksLikeHostUiHtml(domVisibleText)
+        && localizedTextDiffers(cleanedRaw, domVisibleText)) {
+        formattedText = domVisibleText;
+        sourceKind = 'dom-visible-override';
+        formatSourceKind = 'dom-visible-override';
+        usedDomOverride = true;
+        sceneDirectives = sceneAssetsEnabled
+            ? extractSceneDirectives(domVisibleText).directives
+            : sceneDirectives;
+    }
+
     if (sceneAssetsEnabled && !sceneDirectives.length) {
         sceneDirectives = extractSceneDirectives(firstNonEmpty(
             formattedText,
@@ -340,6 +358,9 @@ export function buildIgsTextPayload(message, options = {}) {
     if (usedFallback) {
         warnings.push({ code: 'forced-fallback', message: 'Fell back to visible text or cleaned raw source.' });
     }
+    if (usedDomOverride) {
+        warnings.push({ code: 'dom-visible-override', message: 'Used rendered DOM text over stale message data.' });
+    }
     if (!formattedText) {
         errors.push({ code: 'empty-igs-text', message: 'No readable Immersive Galgame System text could be extracted.' });
     }
@@ -363,6 +384,7 @@ export function buildIgsTextPayload(message, options = {}) {
         virtualRegexChanged: strictPayload.virtualRegexChanged,
         virtualRegexError: strictPayload.virtualRegexError,
         usedFallback,
+        usedDomOverride,
         warnings,
         errors,
     };
@@ -507,6 +529,57 @@ function firstNonEmpty(...values) {
         if (text) return text;
     }
     return '';
+}
+
+function compactForCompare(text) {
+    return String(text || '')
+        .replace(/\x00IMG\x00/g, '')
+        .replace(/\s+/g, '')
+        .trim();
+}
+
+// 判断 DOM 可见文本相对数据层纯文本是否只是"词级"差异（关键词过滤插件改词）。
+// 返回 true 才允许用 DOM 覆盖。两者长度量级接近且高度相似才认定为同一段被改词的正文，
+// 避免把"不同消息 / 被截断的 DOM / 宿主 UI 噪声"误判成改后正文。
+function localizedTextDiffers(dataText, domText) {
+    const dataCompact = compactForCompare(dataText);
+    const domCompact = compactForCompare(domText);
+    if (!domCompact || domCompact === dataCompact) return false;
+    if (!dataCompact) return false;
+
+    const longer = Math.max(dataCompact.length, domCompact.length);
+    const shorter = Math.min(dataCompact.length, domCompact.length);
+    // 长度差超过 40% 视为结构性差异（截断/不同消息），不覆盖。
+    if (shorter / longer < 0.6) return false;
+
+    const distance = boundedLevenshtein(dataCompact, domCompact, Math.ceil(longer * 0.5));
+    if (distance < 0) return false;
+    // 改动字符占比超过 50% 视为内容不同，不覆盖。
+    return distance / longer <= 0.5;
+}
+
+function boundedLevenshtein(a, b, maxDistance) {
+    const lenA = a.length;
+    const lenB = b.length;
+    if (Math.abs(lenA - lenB) > maxDistance) return -1;
+    let prev = new Array(lenB + 1);
+    let curr = new Array(lenB + 1);
+    for (let j = 0; j <= lenB; j++) prev[j] = j;
+    for (let i = 1; i <= lenA; i++) {
+        curr[0] = i;
+        let rowMin = curr[0];
+        const charA = a.charCodeAt(i - 1);
+        for (let j = 1; j <= lenB; j++) {
+            const cost = charA === b.charCodeAt(j - 1) ? 0 : 1;
+            curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+            if (curr[j] < rowMin) rowMin = curr[j];
+        }
+        if (rowMin > maxDistance) return -1;
+        const swap = prev;
+        prev = curr;
+        curr = swap;
+    }
+    return prev[lenB];
 }
 
 function normalizeReaderSegmentText(text, speaker = '') {

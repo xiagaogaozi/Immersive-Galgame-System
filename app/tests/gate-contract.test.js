@@ -100,11 +100,11 @@ test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
 
     assert.doesNotMatch(bundle, /^\s*import\s/m);
     assert.doesNotMatch(bundle, /\.\.\/src\/index\.js/);
-    assert.match(bundle, /IGS version: 0.23.3/);
+    assert.match(bundle, /IGS version: 0.23.4/);
     assert.match(bundle, /resolveSegmentImageIndex/);
     assert.match(bundle, /message-scope-not-found/);
     assert.equal(manifest.name, 'Immersive Galgame System');
-    assert.equal(manifest.version, '0.23.3');
+    assert.equal(manifest.version, '0.23.4');
 });
 
 test('gate:dist-bundle:loads-as-esm-entry', async () => {
