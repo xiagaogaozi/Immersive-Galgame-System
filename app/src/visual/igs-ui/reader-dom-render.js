@@ -256,6 +256,11 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     const win = getOwnerWindow(root);
     const overlayWidth = readElementWidth(root, win && win.innerWidth);
     const overlayHeight = readElementHeight(root, win && win.innerHeight);
+    const glassOpacity = normalizeOpacity(readerSettings.glassOpacity, .12);
+    if (root && root.style && typeof root.style.setProperty === 'function') {
+        root.style.setProperty('--igs-glass-opacity', String(glassOpacity));
+        root.style.setProperty('--igs-glass-bg', `rgba(20,20,22,${glassOpacity})`);
+    }
 
     if (textEl) {
         textEl.style.fontSize = `${readerSettings.fontSize}px`;
@@ -298,14 +303,14 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
             const viewportWidth = Number(win && win.innerWidth) || readerSettings.dialogWidth;
             dialog.style.width = `${Math.max(260, Math.min(readerSettings.dialogWidth, Math.max(260, viewportWidth - 8)))}px`;
         }
-        dialog.style.background = `rgba(20,20,22,${normalizeOpacity(readerSettings.glassOpacity, .12)})`;
+        dialog.style.background = `rgba(20,20,22,${glassOpacity})`;
     }
 
     if (toolbar) {
         toolbar.style.transform = `scale(${Number(readerSettings.toolbarScale || 100) / 100})`;
         toolbar.style.transformOrigin = 'right bottom';
         // 工具栏/对话框/数据库面板统一用 glassOpacity，对齐通透质感（默认低 alpha）。
-        toolbar.style.background = `rgba(20,20,22,${normalizeOpacity(readerSettings.glassOpacity, .12)})`;
+        toolbar.style.background = `rgba(20,20,22,${glassOpacity})`;
     }
 
     if (controls) {
@@ -524,6 +529,8 @@ export function applyReaderSnapshotToDom(root, snapshot, current, ctx = {}) {
             )) {
                 return;
             }
+            // README 声明“点击对话框空白处显示选项气泡”；dialog 内空白点击也应先走气泡逻辑。
+            if (typeof ctx.handleBlankClick === 'function' && ctx.handleBlankClick()) return;
             const rect = typeof dialog.getBoundingClientRect === 'function'
                 ? dialog.getBoundingClientRect()
                 : { left: 0, width: 0 };

@@ -8,7 +8,7 @@ export function createDbPanelController(doc, global) {
     let client = null;
     let igsWriting = false;
     let suppressTabClick = false;
-    const state = { tables: [], activeUid: '', status: 'loading', errorMsg: '', externalPending: false };
+    const state = { tables: [], activeUid: '', status: 'loading', errorMsg: '', externalPending: false, tabScrollLeft: 0 };
 
     const externalCallback = () => {
         if (igsWriting || !root) return;
@@ -29,7 +29,25 @@ export function createDbPanelController(doc, global) {
     function render() {
         if (!root) return;
         const inner = root.querySelector('#igs-db-inner');
-        if (inner) inner.innerHTML = renderDbPanelInner(state);
+        if (inner) {
+            rememberTabScroll();
+            inner.innerHTML = renderDbPanelInner(state);
+            restoreTabScroll();
+        }
+    }
+
+    function rememberTabScroll() {
+        const tabs = root && root.querySelector ? root.querySelector('.igs-shujuku-tabs') : null;
+        if (tabs && Number.isFinite(Number(tabs.scrollLeft))) {
+            state.tabScrollLeft = Math.max(0, Number(tabs.scrollLeft) || 0);
+        }
+    }
+
+    function restoreTabScroll() {
+        const tabs = root && root.querySelector ? root.querySelector('.igs-shujuku-tabs') : null;
+        if (tabs && state.tabScrollLeft > 0) {
+            tabs.scrollLeft = state.tabScrollLeft;
+        }
     }
 
     async function loadData() {
@@ -76,8 +94,7 @@ export function createDbPanelController(doc, global) {
         const opacity = readerSettings && typeof readerSettings.glassOpacity === 'number'
             ? readerSettings.glassOpacity : 0.12;
         root.style.setProperty('--igs-db-bg', `rgba(20,20,22,${opacity})`);
-        // sticky 表头需足够不透明，否则滚动时下方行会透过表头；在面板浓度之上叠到至少 0.92。
-        root.style.setProperty('--igs-db-head-bg', `rgba(24,24,27,${Math.max(0.92, opacity)})`);
+        root.style.setProperty('--igs-db-head-bg', `rgba(20,20,22,${opacity})`);
 
         // drag within container
         const header = root.querySelector('.igs-shujuku-header');
@@ -114,7 +131,10 @@ export function createDbPanelController(doc, global) {
             if (action === 'refresh') { state.externalPending = false; await loadData(); return; }
             if (action === 'add-row') { await doAddRow(); return; }
             if (action === 'delete-row') {
-                await doDeleteRow(parseInt(act.getAttribute('data-db-row'), 10));
+                await doDeleteRow(
+                    parseInt(act.getAttribute('data-db-row-index'), 10),
+                    act.getAttribute('data-db-row-id')
+                );
                 return;
             }
         }
@@ -162,12 +182,11 @@ export function createDbPanelController(doc, global) {
         const oldVal = String(row[ci] ?? '');
         const newVal = input.value;
         if (newVal === oldVal) { render(); return; }
-        const rowId = parseInt(row[0], 10);
         const colName = table.columns[ci];
         igsWriting = true;
         row[ci] = newVal;
         render();
-        const result = await client.updateCell(table.name, rowId, colName, newVal);
+        const result = await client.updateCell(table.name, ri, colName, newVal);
         igsWriting = false;
         if (!result.ok) { row[ci] = oldVal; render(); }
         else await client.refresh();
@@ -184,13 +203,15 @@ export function createDbPanelController(doc, global) {
         if (result.ok) await loadData();
     }
 
-    async function doDeleteRow(rowId) {
+    async function doDeleteRow(rowIndex, rowId) {
         const table = activeTable();
         if (!table || !client) return;
+        if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= table.rows.length) return;
         const win = doc.defaultView || globalThis;
-        if (!win.confirm(`确认删除 row_id=${rowId} 的行？`)) return;
+        const label = rowId != null && rowId !== '' ? `row_id=${rowId}` : `第 ${rowIndex + 1} 行`;
+        if (!win.confirm(`确认删除 ${label} 的行？`)) return;
         igsWriting = true;
-        const result = await client.deleteRow(table.name, rowId);
+        const result = await client.deleteRow(table.name, rowIndex);
         igsWriting = false;
         if (result.ok) await loadData();
     }
@@ -201,7 +222,6 @@ export function createDbPanelController(doc, global) {
         if (!table) return;
         const row = table.rows[ri];
         if (!row) return;
-        const rowId = parseInt(row[0], 10);
         const colName = table.columns[ci];
         const origVal = String(row[ci] ?? '');
         closeModal();
@@ -224,7 +244,7 @@ export function createDbPanelController(doc, global) {
             igsWriting = true;
             row[ci] = newVal;
             render();
-            const result = await client.updateCell(table.name, rowId, colName, newVal);
+            const result = await client.updateCell(table.name, ri, colName, newVal);
             igsWriting = false;
             if (!result.ok) { row[ci] = origVal; render(); }
             else await client.refresh();
@@ -265,6 +285,7 @@ export function createDbPanelController(doc, global) {
             moved = true;
             strip.classList.add('igs-db-dragging');
             strip.scrollLeft = startScroll - dx;
+            state.tabScrollLeft = Math.max(0, Number(strip.scrollLeft) || 0);
             if (e.cancelable) e.preventDefault();
         });
         const end = () => {

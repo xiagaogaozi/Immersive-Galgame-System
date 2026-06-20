@@ -99,6 +99,27 @@ test('gate:simulation:fake shujuku update calls refresh worldbook', async () => 
     assert.equal(calls[1][0], 'refreshDataAndWorldbook');
 });
 
+test('gate:simulation:shujuku client writes row indexes, not row_id values', async () => {
+    const calls = [];
+    const client = createShujukuClient({
+        updateCell: async (tableName, rowIndex, colName, value) => {
+            calls.push(['updateCell', tableName, rowIndex, colName, value]);
+            return { success: true };
+        },
+        deleteRow: async (tableName, rowIndex) => {
+            calls.push(['deleteRow', tableName, rowIndex]);
+            return { success: true };
+        },
+    });
+
+    assert.equal((await client.updateCell('主角技能表', 1, '技能名称', '敏锐观察')).ok, true);
+    assert.equal((await client.deleteRow('主角技能表', 1)).ok, true);
+    assert.deepEqual(calls, [
+        ['updateCell', '主角技能表', 1, '技能名称', '敏锐观察'],
+        ['deleteRow', '主角技能表', 1],
+    ]);
+});
+
 test('gate:simulation:resource cache preserves local resource entry', () => {
     const pack = readJson('fixtures/media/resource-pack.json');
     const cache = createResourceCache();
@@ -184,7 +205,7 @@ test('gate:simulation:magic-wand-entry-opens-latest-reader', async () => {
 
     const entry = menu.querySelector('[data-igs-magic-entry="1"]');
     assert.ok(entry);
-    assert.equal(entry.getAttribute('data-igs-version'), '0.22.9');
+    assert.equal(entry.getAttribute('data-igs-version'), '0.22.10');
     assert.match(entry.innerHTML, /fa-book-open/);
     assert.match(entry.innerHTML, /沉浸式Galgame系统/);
     assert.equal(vn.getMagicWandEntryState().attached, true);
@@ -1805,6 +1826,8 @@ test('gate:simulation:db-panel renders editable empty cells on td and scrollable
     assert.match(html, /<td data-db-edit="1:2"><span class="igs-shujuku-cell"><\/span><\/td>/);
     // row_id 列只读，不可编辑
     assert.match(html, /<td class="igs-db-ro-cell"><span class="igs-shujuku-cell igs-db-ro">2<\/span><\/td>/);
+    // 删除操作传 shujuku 需要的 rowIndex，row_id 只用于确认提示。
+    assert.match(html, /data-db-row-index="1" data-db-row-id="2"/);
     // 不再有中间 wrap 层，body 直接包 table（方案A：body 为唯一滚动容器）
     assert.doesNotMatch(html, /igs-shujuku-table-wrap/);
 
@@ -1815,6 +1838,9 @@ test('gate:simulation:db-panel renders editable empty cells on td and scrollable
     assert.match(css, /\.igs-shujuku-body\{[^}]*flex:1[^}]*min-height:0[^}]*overflow-y:auto/);
     // 面板毛玻璃对齐工具栏 blur(48px)
     assert.match(css, /#igs-db-panel\{[^}]*backdrop-filter:blur\(48px\) saturate\(220%\)/);
+    // 面板材质对齐工具栏轻阴影，表头不再强制 0.92 厚底。
+    assert.match(css, /#igs-db-panel\{[^}]*box-shadow:0 4px 24px rgba\(0,0,0,\.20\)/);
+    assert.doesNotMatch(css, /--igs-db-head-bg,rgba\(20,20,22,\.92\)/);
 });
 
 function readJson(relativePath) {

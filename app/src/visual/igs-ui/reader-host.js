@@ -398,7 +398,8 @@ export function createIgsReaderHost(options = {}) {
     }
 
     function getOptionBubbleConfig() {
-        const bridge = state.config && state.config.bridge ? state.config.bridge : {};
+        const mode = state.activeReader && state.activeReader.mode ? state.activeReader.mode : undefined;
+        const bridge = resolveBridgeConfigSnapshot({ mode }).bridge;
         const ob = bridge.optionBubble && typeof bridge.optionBubble === 'object' ? bridge.optionBubble : {};
         return {
             enabled: ob.enabled === true,
@@ -434,13 +435,13 @@ export function createIgsReaderHost(options = {}) {
         clearChildren(container);
     }
 
-    function showOptionBubbles(container, cfg) {
+    function showOptionBubbles(container, cfg, optionsForShow = {}) {
         const doc = container.ownerDocument || getRootDocument(options.global);
         const api = (options.global || globalThis).AutoCardUpdaterAPI || null;
         const items = readOptionItems(createShujukuClient(api));
         if (!items.length) {
             hideOptionBubbles(container);
-            writeToastSafe('未找到选项表（选项 / 选项表 / 行动选项）或表为空');
+            if (!optionsForShow.silent) writeToastSafe('未找到选项表（选项 / 选项表 / 行动选项）或表为空');
             return;
         }
         container.setAttribute('data-igs-pos', cfg.position);
@@ -1528,9 +1529,13 @@ export function createIgsReaderHost(options = {}) {
         if (!overlay || !overlay.querySelector) return;
         const container = overlay.querySelector('#igs-option-bubbles');
         if (!container) return;
+        const cfg = getOptionBubbleConfig();
+        const isLastPage = isReaderLastPage(snapshot);
         // 翻页离开最后一页 / 重渲染（如新回复到来）一律收起气泡，避免错页残留。
-        if (!getOptionBubbleConfig().enabled || !isReaderLastPage(snapshot)) {
+        if (!cfg.enabled || !isLastPage) {
             hideOptionBubbles(container);
+        } else if (container.hasAttribute('hidden')) {
+            showOptionBubbles(container, cfg, { silent: true });
         }
         // 把对话框实际高度写入 CSS 变量，供气泡定位在对话框正上方。
         const dialog = overlay.querySelector('#igs-dialog');

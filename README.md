@@ -19,7 +19,7 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.22.9`：①毛玻璃真正对齐工具栏通透感——v0.22.8 只统一了 blur，但通透由背景 alpha 决定（工具栏 0.12 vs 对话框/数据库 0.62）；现对话框/数据库/工具栏/选项气泡统一用 glassOpacity 且默认值 0.62→0.12，「毛玻璃浓度」滑块保留可调；正文/角色名加重文字阴影补偿通透背景下的可读性。②新增「选项气泡」功能：阅读器 tab 新增设置卡片（启用开关 + 气泡位置滑块[左上角/正上方居中] + 点击行为滑块[自动发送/填入输入框]）；选项取自数据库中名为「选项/选项表/行动选项」的同名表的文本列（参考骰子系统机制，复用 shujuku client）；仅在最后一页点击对话框空白处显示气泡、再点空白隐藏（不加工具栏按钮），翻页/新回复自动收起；点击选项按设置走发送或填入（发送经输入框，不绕过，保剧情推进）。Playwright 真机验证气泡定位与毛玻璃对齐。
+- 当前项目版本 `v0.22.10`：修复 v0.22.9 后用户探针定位到的运行态回归。①对话框、数据库面板与选项气泡不再只同步 alpha/blur，而是同步工具栏同款轻边框、18px 圆角与 `0 4px 24px rgba(0,0,0,.20)` 通透材质；数据库 sticky 表头取消强制 0.92 厚底，改跟随面板 glassOpacity。②数据库标签切换后保留横向滚动位置，避免每次选择后回到第一个标签。③删除行与单元格编辑改传 shujuku API 要求的 rowIndex，不再把第一列 row_id 当 rowIndex，修复 `Row index out of bounds`。④选项气泡读取统一 bridge 设置，最后一页会自动尝试弹出，点击对话框空白处也会优先切换气泡。
 - `v0.22.8`：修复数据库面板四个问题（Playwright 真机验证）。①标签栏溢出后电脑/手机都无法滚动、看不到后面的标签：加标签栏拖动滚动（pointer 事件，鼠标按住拖+手机触摸拖，拖动后抑制误触发切换），保持单行不折行、滚动条隐藏。②行数>8 时看不到后面的行、竖向滚不动：真因是 `#igs-db-inner`（body 的实际 flex 父级）无 flex 样式，table 把它撑破溢出面板、`flex:1+min-height:0` 失去高度约束；现给 inner 加 `flex:1;min-height:0;display:flex;flex-direction:column`，body 成为唯一纵向滚动容器、表头 sticky 钉住（背景调至不透明防透色），去掉多余 table-wrap 层、横向滚动条隐藏。③新增行后空格子无法编辑：真因是 `data-db-edit` 挂在内层 span 上，空 span `display:-webkit-box` 无内容时塌缩成 0×0 无点击区；现移到 `<td>`（有 padding/列宽，空格子也可点）。④对话框+数据库面板毛玻璃对齐工具栏质感：`backdrop-filter` 由 `blur(32px) saturate(180%)` 提升到 `blur(48px) saturate(220%)`，透明度仍由「毛玻璃浓度」可调。新增 DB 面板渲染回归单测。
 - `v0.22.7`：修复 v0.22.6 矫枉过正——上一版 floating（pc/mobile）模式直接忽略「对话框高度」，导致 PC/手机端怎么调都无效。现 floating 模式下 dialogHeight 改用 `.igs-dialog` 的 `min-height`（把气泡撑到目标高度，内容更多时自然增长）+ `max-height` clamp 到浮窗可用高度（约 86%），不再写死 `height`（固定 height 比内容小时会把输入框挤出气泡）。Playwright 真机验证：dialogHeight 60→600 气泡高度跟随、输入框恒在气泡内不溢出、气泡始终在视口内。
 - `v0.22.6`：修复 v0.21.4 删桶（全模式共用一套设置）+ v0.22.5 改挂载点后引入的两类 UI 回归，已用 Playwright 真机验证。①设置面板被阅读器盖住（PC 网页全屏/浏览器全屏、移动端全部模式）：根因是 overlay 挂 documentElement、设置面板仍挂 body，宿主 `body{position:fixed}` 形成独立层叠上下文把设置面板整体压在 overlay 之下（z-index 翻不出 body）；现设置面板与 overlay 一致挂 documentElement。②floating（pc/mobile）模式「对话框高度」≥130 把输入框挤出气泡（真机实测溢出 +43px）：根因是用内联 min-height 强撑 `.igs-text`；v0.22.6 改为忽略 dialogHeight（v0.22.7 修正为改气泡 min-height）。③「输入框高度」(inputScale) 从 `controls.style.zoom` 改为直接设 `#igs-input`/`#igs-send-btn` 高度，避免 zoom 改变占位高度干扰 flex 布局。
@@ -166,6 +166,15 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.22.10 - 2026-06-20
+
+- 修复玻璃材质只同步 alpha/blur 但质感仍不一致的问题：`.igs-dialog`、`#igs-db-panel`、`.igs-option-bubble` 统一到工具栏同款轻边框、18px 圆角与 `0 4px 24px rgba(0,0,0,.20)` 阴影；选项气泡背景改为 `--igs-glass-bg`，跟随「毛玻璃浓度」运行时变量。
+- 数据库面板 sticky 表头取消 `Math.max(0.92, opacity)` 强制厚底，改跟随 `--igs-db-bg` / `glassOpacity`，避免表头区域破坏通透感。
+- 修复数据库标签切换后横向滚动位置回到初始位置：`shujuku-panel` 在重渲染前记录 `.igs-shujuku-tabs.scrollLeft`，重建标签条后恢复原滚动位置。
+- 修复删除行无效：删除按钮保留显示用 `row_id`，实际调用 `AutoCardUpdaterAPI.deleteRow(tableName, rowIndex)`；同源修正 `updateCell(tableName, rowIndex, colName, value)`，避免 row_id 不连续时编辑写错行。
+- 修复选项气泡启用状态读取错误：点击/自动弹出路径改读统一 settings snapshot 的 `bridge.optionBubble`；最后一页渲染后会静默自动尝试显示选项气泡，对话框空白点击也会先切换选项气泡再考虑翻页。
+- 验证边界：本轮使用 fake shujuku / fake DOM / dist build 做回归验证，不写入真实 shujuku，不调用真实 provider；用户已提供真实后台错误 `deleteRow: Row index 3 out of bounds` 作为定位证据。
 
 ### v0.22.9 - 2026-06-20
 

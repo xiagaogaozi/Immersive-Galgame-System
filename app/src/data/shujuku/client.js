@@ -25,10 +25,10 @@ export function createShujukuClient(api) {
             }
         },
 
-        async updateCell(tableName, rowId, colName, value) {
+        async updateCell(tableName, rowIndex, colName, value) {
             if (!api || typeof api.updateCell !== 'function')
                 return { ok: false, reason: 'missing-api' };
-            const result = await api.updateCell(tableName, rowId, colName, String(value));
+            const result = await api.updateCell(tableName, rowIndex, colName, String(value));
             return isSuccessful(result) ? { ok: true } : { ok: false, reason: 'update-failed' };
         },
 
@@ -39,10 +39,10 @@ export function createShujukuClient(api) {
             return isSuccessful(result) ? { ok: true } : { ok: false, reason: 'insert-failed' };
         },
 
-        async deleteRow(tableName, rowId) {
+        async deleteRow(tableName, rowIndex) {
             if (!api || typeof api.deleteRow !== 'function')
                 return { ok: false, reason: 'missing-api' };
-            const result = await api.deleteRow(tableName, rowId);
+            const result = await api.deleteRow(tableName, rowIndex);
             return isSuccessful(result) ? { ok: true } : { ok: false, reason: 'delete-failed' };
         },
 
