@@ -53,13 +53,25 @@ const ORIGINAL_READER_STYLE_TEXT = `
 #igs-sprite-edit-bar button:hover{background:rgba(255,255,255,.22);}
 #igs-sprite-edit-bar .igs-se-save{background:rgba(92,170,255,.25);border-color:rgba(92,170,255,.5);}
 #igs-click-layer{position:absolute;inset:0;cursor:pointer;z-index:3;}
-#igs-option-bubbles{position:absolute;z-index:6;display:flex;flex-direction:column;gap:8px;max-width:min(70%,420px);max-height:60%;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;pointer-events:auto;}
+#igs-option-bubbles{position:absolute;z-index:6;display:flex;flex-direction:column;gap:8px;max-height:60%;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;pointer-events:auto;}
 #igs-option-bubbles::-webkit-scrollbar{display:none;}
 #igs-option-bubbles[hidden]{display:none;}
-#igs-option-bubbles[data-igs-pos="top-left"]{left:16px;bottom:calc(24px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 12px);align-items:flex-start;}
-#igs-option-bubbles[data-igs-pos="top-center"]{left:50%;transform:translateX(-50%);bottom:calc(24px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 12px);align-items:center;}
-#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-left"]{left:12px;bottom:calc(14px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 10px);}
-#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos="top-center"]{bottom:calc(14px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 10px);}
+/* 跟随对话框宽度模式（默认）：容器与对话框同宽居中，气泡宽度按位置取 100%/50%，文字超宽才换行。 */
+#igs-option-bubbles[data-igs-width="dialog"]{left:50%;transform:translateX(-50%);width:var(--igs-dialog-w,min(70%,420px));max-width:calc(100vw - 24px);}
+#igs-option-bubbles[data-igs-width="dialog"][data-igs-pos="top-left"]{align-items:flex-start;}
+#igs-option-bubbles[data-igs-width="dialog"][data-igs-pos="top-center"]{align-items:center;}
+#igs-option-bubbles[data-igs-width="dialog"][data-igs-pos="top-right"]{align-items:flex-end;}
+#igs-option-bubbles[data-igs-width="dialog"][data-igs-pos="top-center"] .igs-option-bubble{width:100%;}
+#igs-option-bubbles[data-igs-width="dialog"][data-igs-pos="top-left"] .igs-option-bubble{width:50%;}
+#igs-option-bubbles[data-igs-width="dialog"][data-igs-pos="top-right"] .igs-option-bubble{width:50%;}
+/* 随文本宽度模式：气泡宽度跟随文字（旧行为），按位置贴左/居中/贴右。 */
+#igs-option-bubbles[data-igs-width="text"]{max-width:min(70%,420px);}
+#igs-option-bubbles[data-igs-width="text"][data-igs-pos="top-left"]{left:16px;align-items:flex-start;}
+#igs-option-bubbles[data-igs-width="text"][data-igs-pos="top-center"]{left:50%;transform:translateX(-50%);align-items:center;}
+#igs-option-bubbles[data-igs-width="text"][data-igs-pos="top-right"]{right:16px;align-items:flex-end;}
+/* 纵向定位：所有位置统一吊在对话框正上方。 */
+#igs-option-bubbles[data-igs-pos]{bottom:calc(24px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 12px);}
+#igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos]{bottom:calc(14px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 10px);}
 .igs-option-bubble{pointer-events:auto;cursor:pointer;border:1px solid var(--igs-choice-border,rgba(255,255,255,.14));background:var(--igs-choice-bg,var(--igs-glass-bg,rgba(20,20,22,.62)));-webkit-backdrop-filter:var(--igs-choice-blur,none);backdrop-filter:var(--igs-choice-blur,none);border-radius:var(--igs-choice-radius,18px);padding:10px 16px;color:#f4f4f6;font-size:14px;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.92),0 0 8px rgba(0,0,0,.7);box-shadow:var(--igs-choice-shadow,0 2px 10px rgba(0,0,0,.14));max-width:100%;word-break:break-word;transition:background .15s,transform .1s;}
 .igs-option-bubble:hover{background:rgba(60,60,66,.32);}
 .igs-option-bubble:active{transform:scale(.97);}
@@ -113,7 +125,7 @@ const ORIGINAL_READER_HTML = `
 <div id="igs-sprite" class="igs-character-layer"></div>
 <div id="igs-click-layer"></div>
 <div id="igs-option-layer" class="igs-choice-layer">
-  <div id="igs-option-bubbles" data-igs-pos="top-left" hidden></div>
+  <div id="igs-option-bubbles" data-igs-pos="top-left" data-igs-width="dialog" hidden></div>
 </div>
 <div id="igs-dialog-layer" class="igs-dialogue-layer">
 <div class="igs-dialog" id="igs-dialog">

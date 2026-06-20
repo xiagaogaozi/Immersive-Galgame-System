@@ -403,10 +403,12 @@ export function createIgsReaderHost(options = {}) {
         const mode = state.activeReader && state.activeReader.mode ? state.activeReader.mode : undefined;
         const bridge = resolveBridgeConfigSnapshot({ mode }).bridge;
         const ob = bridge.optionBubble && typeof bridge.optionBubble === 'object' ? bridge.optionBubble : {};
+        const position = (ob.position === 'top-center' || ob.position === 'top-right') ? ob.position : 'top-left';
         return {
             enabled: ob.enabled === true,
-            position: ob.position === 'top-center' ? 'top-center' : 'top-left',
+            position,
             clickAction: ob.clickAction === 'fill' ? 'fill' : 'send',
+            widthFollowsText: ob.widthFollowsText === true,
         };
     }
 
@@ -447,6 +449,7 @@ export function createIgsReaderHost(options = {}) {
             return;
         }
         container.setAttribute('data-igs-pos', cfg.position);
+        container.setAttribute('data-igs-width', cfg.widthFollowsText ? 'text' : 'dialog');
         clearChildren(container);
         for (const text of items) {
             const bubble = doc.createElement('button');
@@ -1309,8 +1312,9 @@ export function createIgsReaderHost(options = {}) {
                 + checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行')
                 + checkbox('bridge.sentencePaging', Boolean(bridge.sentencePaging), '按句号自动分页（启用场景素材时仅分旁白）'),
             optionBubbleToggle: checkbox('bridge.optionBubble.enabled', Boolean(bridge.optionBubble && bridge.optionBubble.enabled), '启用选项气泡'),
-            optionBubblePositionField: field('bridge.optionBubble.position', '气泡位置', segmentedInput('bridge.optionBubble.position', (bridge.optionBubble && bridge.optionBubble.position) || 'top-left', [['top-left', '左上角'], ['top-center', '正上方居中']], '气泡位置')),
+            optionBubblePositionField: field('bridge.optionBubble.position', '气泡位置', segmentedInput('bridge.optionBubble.position', (bridge.optionBubble && bridge.optionBubble.position) || 'top-left', [['top-left', '左上角'], ['top-center', '正上方居中'], ['top-right', '右上角']], '气泡位置')),
             optionBubbleActionField: field('bridge.optionBubble.clickAction', '点击选项', segmentedInput('bridge.optionBubble.clickAction', (bridge.optionBubble && bridge.optionBubble.clickAction) || 'send', [['send', '自动发送'], ['fill', '填入输入框']], '点击行为')),
+            optionBubbleWidthToggle: checkbox('bridge.optionBubble.widthFollowsText', Boolean(bridge.optionBubble && bridge.optionBubble.widthFollowsText), '气泡宽度随文本变化（关闭则跟随对话框宽度：居中=满宽，左/右上角=半宽）'),
             pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns, reader.btnOrder),
             themeGroupClass: `igs-source-filter igs-settings-full${themeDisabled ? ' igs-settings-api-group is-disabled' : ''}`,
             themePresetField: field('readerSettings.vnTheme.preset', '对话主题', selectInput('readerSettings.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], themeDisabled)),
@@ -1565,11 +1569,14 @@ export function createIgsReaderHost(options = {}) {
         } else if (container.hasAttribute('hidden')) {
             showOptionBubbles(container, cfg, { silent: true });
         }
-        // 把对话框实际高度写入 CSS 变量，供气泡定位在对话框正上方。
+        // 把对话框实际高度/宽度写入 CSS 变量，供气泡定位在对话框正上方、宽度跟随对话框。
         const dialog = overlay.querySelector('#igs-dialog');
         if (dialog && typeof dialog.getBoundingClientRect === 'function') {
-            const h = Math.round(dialog.getBoundingClientRect().height || 0);
+            const rect = dialog.getBoundingClientRect();
+            const h = Math.round(rect.height || 0);
             if (h > 0) overlay.style.setProperty('--igs-dialog-h', `${h}px`);
+            const w = Math.round(rect.width || 0);
+            if (w > 0) overlay.style.setProperty('--igs-dialog-w', `${w}px`);
         }
         const toolbar = overlay.querySelector('#igs-ctrl-bar');
         if (toolbar && typeof toolbar.getBoundingClientRect === 'function') {
@@ -1665,10 +1672,14 @@ export function createIgsReaderHost(options = {}) {
 
     function normalizeOptionBubble(value) {
         const src = value && typeof value === 'object' ? value : {};
+        const position = (src.position === 'top-center' || src.position === 'top-right')
+            ? src.position
+            : 'top-left';
         return {
             enabled: normalizeBoolean(src.enabled, false),
-            position: src.position === 'top-center' ? 'top-center' : 'top-left',
+            position,
             clickAction: src.clickAction === 'fill' ? 'fill' : 'send',
+            widthFollowsText: normalizeBoolean(src.widthFollowsText, false),
         };
     }
 

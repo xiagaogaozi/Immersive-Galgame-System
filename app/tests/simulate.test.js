@@ -676,6 +676,55 @@ test('gate:simulation:igs-ui-option-bubble-trigger-excludes-dialog-toolbar-and-i
     clickLayer.click();
     assert.equal(optionBubbles.hasAttribute('hidden'), false);
     assert.equal(optionBubbles.querySelectorAll('.igs-option-bubble').length, 2);
+    // 默认（未开启随文本）气泡宽度跟随对话框。
+    assert.equal(optionBubbles.getAttribute('data-igs-width'), 'dialog');
+
+    vn.destroy();
+});
+
+test('gate:simulation:igs-ui-option-bubble-width-follows-text-and-top-right-position', async () => {
+    const document = createFakeDocument();
+    const latestMessage = { id: 7, text: '[角色: 艾莉]\n艾莉: 最后一段。' };
+    const vn = bootstrapIGS({
+        global: {
+            document,
+            AutoCardUpdaterAPI: {
+                exportTableAsJson() {
+                    return {
+                        sheet_options: {
+                            uid: 'sheet_options',
+                            name: '选项表',
+                            orderNo: 1,
+                            content: [['row_id', '选项'], ['1', '甲'], ['2', '乙']],
+                        },
+                    };
+                },
+            },
+        },
+        autoAttachMagicWand: false,
+        config: {
+            optionBubble: {
+                enabled: true,
+                position: 'top-right',
+                clickAction: 'fill',
+                widthFollowsText: true,
+            },
+        },
+        hostAdapter: {
+            getCurrentMessage: async () => latestMessage,
+            typeAndSend: async () => ({ ok: true }),
+        },
+    });
+
+    const opened = await vn.openLatestAvailable('pc');
+    const overlay = document.getElementById('igs-overlay');
+    const optionBubbles = overlay.querySelector('#igs-option-bubbles');
+    optionBubbles.setAttribute('hidden', '');
+    overlay.querySelector('#igs-click-layer').click();
+
+    assert.equal(optionBubbles.hasAttribute('hidden'), false);
+    assert.equal(optionBubbles.getAttribute('data-igs-width'), 'text');
+    assert.equal(optionBubbles.getAttribute('data-igs-pos'), 'top-right');
 
     vn.destroy();
 });

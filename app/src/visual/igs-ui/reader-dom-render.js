@@ -109,6 +109,7 @@ export function buildFallbackReaderOverlay(doc) {
     const optionBubbles = doc.createElement('div');
     optionBubbles.id = 'igs-option-bubbles';
     optionBubbles.setAttribute('data-igs-pos', 'top-left');
+    optionBubbles.setAttribute('data-igs-width', 'dialog');
     optionBubbles.setAttribute('hidden', '');
     overlay.appendChild(optionBubbles);
 
