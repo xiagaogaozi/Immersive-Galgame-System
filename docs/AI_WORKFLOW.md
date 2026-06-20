@@ -89,16 +89,17 @@ NailongHub 工作流中的安装版实机验真、Computer Use 实机操作和 l
 bug 修复走以下闭环，**真机测试通过才算结束、才打 tag**：
 
 ```text
-1. 修复 + 本地 npm run gate 全绿
+1. 修复 + 升 patch 版本号（同步 package.json / bootstrap.js / README）+ npm run build + npm run build:loader + 本地 npm run gate 全绿
 2. 本地预验：用真机导出的真实数据，本地复跑修复后代码，确认逻辑对（第一道闸）
 3. git commit + git push origin main   ← 先推 main，让 jsdelivr @main 能拉到新 bundle；【暂不打 tag】
 4. CDP 真机测试：触发真机重载新 bundle，抓状态确认现象消失（第二道闸）
-5a. 测试成功 → git tag vX.Y.Z + git push origin vX.Y.Z → 结束
-5b. 测试失败 → 回步骤 1 继续修，同一版本号继续 commit+push（push 可累加），直到真机测过才打 tag
+5a. 测试成功 → git tag v<当前版本> + git push origin v<当前版本> → 结束（tag 与脚本内版本号对齐）
+5b. 测试失败 → 改完再升 patch 版本号、再 push（每次 push 都升号），真机重验；只给真机验过的那一版打 tag
 ```
 
-- tag = 经过真机验证的发布点。废版本号只浪费 commit、不浪费 tag；不强推、不覆盖已存在的 tag。
-- loader 从 `@main` 拉取，push 到 main 后真机即可加载新代码做验证；版本号未变时同版本可多次 commit+push。
+- 每次 push 都升 patch 版本号；tag = 经过真机验证的那一版版本号，必须与脚本内版本号对齐。
+- 失败的中间版本号只留在 commit 历史、不打 tag；不强推、不覆盖已存在的 tag。
+- loader 从 `@main` 拉取，push 到 main 后真机即可加载新代码做验证。
 
 ### CDP 不可用时
 
@@ -159,10 +160,13 @@ git status --short
 
 每一轮只要产生文件改动，结束前必须 push 到 main。**tag 与 push 分离：push 可随时累加，tag 仅在真机验证通过后才打**（见上文「修复闭环」）。
 
-第一步——推代码到 main（修复后立即执行，让 jsdelivr `@main` 能拉到新 bundle 供真机验证）：
+第一步——升版本号 + 推代码到 main（修复后立即执行，让 jsdelivr `@main` 能拉到新 bundle 供真机验证）：
 
 ```powershell
+# 先升 patch 版本号：package.json、bootstrap.js 的 IGS_VERSION、README 状态行/更新日志
 cd "D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel\app"
+npm run build          # dist bundle 版本号随之更新
+npm run build:loader   # 生成 loader/…… v<当前版本>.json
 npm run gate
 cd ..
 git status --short
@@ -181,8 +185,8 @@ git ls-remote --heads origin main
 git ls-remote --tags origin v<当前版本>
 ```
 
-- 真机测试失败时回去继续修，同一版本号继续 commit+push，不打 tag。
-- 标签已存在时不覆盖、不强推，提升 patch 版本后重新执行。
+- 真机测试失败时改完再升 patch 版本号、再 push（每次 push 都升号），真机重验；只给真机验过的版本打 tag，失败的中间版本号不打 tag。
+- tag 必须与脚本内版本号对齐；标签已存在时不覆盖、不强推。
 - CDP 不可用（用户不在/不愿重启/手机端）时，本地 gate + 真机导出数据本地复跑通过即可打 tag 结束，并在回复注明未做 CDP 真机终验。
 - 只有用户明确说不要上传或不要打标签时才跳过，并在最终回复说明原因。
 

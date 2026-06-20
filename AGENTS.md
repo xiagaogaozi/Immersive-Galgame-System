@@ -26,7 +26,7 @@
 - `R4` loader、dist、发布流程、版本号或远程 bundle 链路修改：运行 `pnpm build`、`pnpm simulate`、`pnpm perf`，并保留模拟发布证据。
 - `R5` 真实 provider、真实 shujuku 写入、真实用户数据迁移或不可逆操作：先用 fake provider / fake shujuku / fixtures 做确定性模拟，真实链路必须等用户明确确认。
 
-本项目当前不要求安装版实机验真，也不要求 Computer Use 实机操作。NailongHub 工作流中的实机验真位置，在本项目一律替换为 Visual Novel 模拟测试。
+本项目常规验证以 Visual Novel 模拟测试替换 NailongHub 的安装版实机验真。例外：bug 修复在模拟测试覆盖不到、或现象只在用户真实酒馆+存量数据下出现时，按 `docs/AI_WORKFLOW.md` 的「真机调试与复验」用 CDP 直连（F12 手动探针兜底）做真机定位与终验，真机验过才打 tag。
 
 ## 执行清单规则
 
@@ -84,7 +84,7 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 ## 发布策略
 
 - 只讨论、只规划、只审查时，不提交、不打包、不发布。
-- 用户要求实现时，默认做到本地修改、文档更新、可执行范围内的模拟验证、提交、推送 GitHub 和创建/推送版本标签。
+- 用户要求实现时，默认做到本地修改、文档更新、可执行范围内的模拟验证、升版本号、提交、推送 GitHub main；版本标签按「GitHub 回退点硬要求」在真机验证通过后才打。
 - 用户明确要求只做本地草稿、不上传或不打标签时，才跳过 GitHub 上传；最终回复必须说明 skipped 原因。
 - 用户明确要求发布酒馆导入件时，才额外生成 loader、release notes 或 GitHub Release。
 - 发布候选不得依赖真实 API key、真实聊天记录或真实 shujuku 数据作为唯一验证来源。
@@ -95,11 +95,15 @@ shujuku 数据层读取 `app/src/data/shujuku/CONTRACT.md`。模型提示词 sch
 
 ## GitHub 回退点硬要求
 
-- 每一轮产生文件改动后，结束前必须在本项目独立仓库执行 `git add .`、`git commit`、`git push origin main`。
-- 每一轮提交后必须创建版本标签并推送：`git tag -a v<当前版本> -m "<版本说明>"` 与 `git push origin v<当前版本>`。
-- 如果当前版本标签已存在，不得强推覆盖；应提升 patch 版本并更新 `app/package.json`、`README.md`、必要的运行时版本常量和 `app/dist/manifest.json`。
+版本号、tag 与修复闭环的细则以 `CLAUDE.md` 的「版本号同步清单 / 提交与推送规则 / Bug 修复闭环」为准，本节与其保持一致。
+
+- 每一轮产生文件改动、push 到 main 前都必须升 patch 版本号并同步脚本内版本号（`app/package.json`、`app/src/core/bootstrap.js` 的 `IGS_VERSION`、`README.md`），不复用上次已 push 的版本号；升号后 `npm run build` + `npm run build:loader` 让 dist 与 loader 版本号对齐。
+- 结束前必须在本项目独立仓库执行 `git add .`、`git commit`、`git push origin main`。
+- **tag 与 push 分离**：push 可随时累加；版本标签只在真机 CDP 测试通过后才打，且**必须与脚本内版本号对齐**（验过的那一版是 `vX.Y.Z` 就打 `vX.Y.Z`）。真机调试用 CDP 直连优先、F12 手动探针兜底（见 `docs/AI_WORKFLOW.md` 的「真机调试与复验」）。
+- 真机测试失败时改完再升号 push，真机重验；失败的中间版本号只留 commit 历史、不打 tag。CDP 不可用时本地 gate + 真机导出数据本地复跑通过即可打 tag，并在回复注明未做 CDP 真机终验。
+- 版本标签已存在时不得强推覆盖；提升 patch 版本重来。
 - 上传前必须确认 `git rev-parse --show-toplevel` 指向 `D:\下载\酒馆\奶龙王\nailongwang-main\奶龙工具箱\projects\Visual Novel`，禁止从上级 `nailongwang-main` 仓库提交本项目。
-- 上传后必须回查 `git status --short --branch`、`git ls-remote --heads origin main` 与 `git ls-remote --tags origin v<当前版本>`，确认远程分支和标签存在。
+- 上传后必须回查 `git status --short --branch`、`git ls-remote --heads origin main`；打 tag 后回查 `git ls-remote --tags origin v<当前版本>`，确认远程分支和标签存在。
 - 只有用户明确要求“只本地修改/不要上传/不要打标签”时才能跳过；跳过必须写入最终回复和必要的 README/docs 技术债记录。
 
 ## 技术债记录

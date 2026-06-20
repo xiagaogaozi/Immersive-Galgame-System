@@ -25,30 +25,33 @@ npm run build   # 构建 bundle
 
 ## 版本号同步清单
 
-每次版本变更时，以下文件必须全部同步更新：
+**每次 push 到 main 前都必须升 patch 版本号**（如 0.23.11 → 0.23.12），并同步更新以下文件：
 
 1. `app/package.json` — `"version": "X.Y.Z"`
-2. `app/src/core/bootstrap.js` — `version: 'X.Y.Z'`
-3. `app/tests/gate-contract.test.js` — `assert.match(bundle, /IGS version: X\.Y\.Z/)` 和 `assert.equal(manifest.version, 'X.Y.Z')`
-4. `app/tests/simulate.test.js` — `assert.equal(entry.getAttribute('data-igs-version'), 'X.Y.Z')`
-5. `README.md` — 当前状态行和更新日志
+2. `app/src/core/bootstrap.js` — `const IGS_VERSION = 'X.Y.Z'`
+3. `README.md` — 当前状态行和更新日志
+4. 升号后必须 `npm run build`（dist bundle 内 `IGS version` 注释随之更新）+ `npm run build:loader`（生成 `loader/…… vX.Y.Z.json`）
+
+`app/tests/gate-contract.test.js` 与 `app/tests/simulate.test.js` 自 v0.23.9 起已改为动态读 `package.json` 版本号（`pkgVersion`/`readJson`），无需手改；但升号后必须重新 `npm run build` 让 dist 版本号对齐，否则 `gate-contract` 校验 dist 版本会失败。
 
 ## 提交与推送规则
 
 - 每次有文件改动必须提交并推送到 main（`git push origin main`）。
-- **tag 与 push 分离**：push 可随时累加；版本标签（`git tag vX.Y.Z`）只在真机 CDP 测试通过后才打并推送（见下文「Bug 修复闭环」）。loader 拉取 `@main`，push 到 main 后真机即可加载新代码验证。
-- 真机测试失败时回去继续修，同一版本号继续 commit+push，不打 tag。
-- 禁止覆盖旧标签；不要用 `git tag -d` + 重建的方式覆盖已推送的标签。标签已存在时提升 patch 版本号重来。
+- **每次 push 前都升 patch 版本号并同步脚本内版本号**（见上文「版本号同步清单」），不复用上次已 push 的版本号。
+- **tag 与 push 分离**：push 可随时累加；版本标签只在真机 CDP 测试通过后才打。loader 拉取 `@main`，push 到 main 后真机即可加载新代码验证。
+- **tag 必须与脚本内版本号对齐**：真机验过的那一版版本号是 `X.Y.Z`，就打 `git tag vX.Y.Z`，不打不对应的号。
+- 真机测试失败时，改完再升号 push（新版本号），真机重验；只给真机验过的那一版打 tag——失败的中间版本号只留在 commit 历史，不打 tag。
+- 禁止覆盖旧标签；不要用 `git tag -d` + 重建的方式覆盖已推送的标签。
 
 ## Bug 修复闭环
 
 修复 bug 按以下闭环，**真机测试通过才算结束、才打 tag**：
 
-1. 修复 + 本地 `npm run gate` 全绿。
+1. 修复 + 升 patch 版本号（同步脚本内版本号）+ `npm run build` + `npm run build:loader` + 本地 `npm run gate` 全绿。
 2. 本地预验：用真机导出的真实数据本地复跑修复后代码，确认逻辑正确（第一道闸，能挡掉方向性错误）。
 3. `git commit` + `git push origin main`（先推 main，让真机能加载新 bundle；暂不打 tag）。
 4. CDP 真机测试：触发真机重载新 bundle，抓状态确认现象消失（第二道闸）。
-5. 成功才 `git tag vX.Y.Z` + `git push origin vX.Y.Z`；失败回到第 1 步继续修。
+5. 成功 → 给当前版本号打 `git tag vX.Y.Z` + `git push origin vX.Y.Z`，结束；失败 → 回第 1 步，再升号、再 push、再验，只给真机验过的版本打 tag。
 
 真机调试用 CDP 直连自动注入（详见 `docs/AI_WORKFLOW.md` 的「真机调试与复验」）。CDP 不可用（用户不在/不愿重启浏览器/手机端）时，本地 gate + 真机导出数据本地复跑通过即可打 tag 结束，并在回复注明未做 CDP 真机终验。
 
