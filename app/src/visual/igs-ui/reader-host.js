@@ -1773,7 +1773,7 @@ export function createIgsReaderHost(options = {}) {
             fontSize: 18,
             dialogWidth: null,
             dialogHeight: null,
-            glassOpacity: 0.12,
+            glassOpacity: 0.62,
             toolbarScale: 100,
             inputScale: 100,
             imgMode: 'adaptive',
