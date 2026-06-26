@@ -779,6 +779,14 @@ test('gate:simulation:igs-ui-toolbar-top-has-option-bubble-avoidance-css', () =>
     );
 });
 
+test('gate:simulation:igs-ui-toolbar-top-bar-is-horizontally-scrollable', () => {
+    // 顶部固定栏按钮放不下时须能横向滚动：触摸端 touch-action:pan-x，溢出态切 flex-start。
+    const css = getOriginalReaderStyleText();
+    assert.match(css, /#igs-overlay\.igs-toolbar-top #igs-bar-btns\{[^}]*overflow-x:auto/);
+    assert.match(css, /#igs-overlay\.igs-toolbar-top #igs-bar-btns\{[^}]*touch-action:pan-x/);
+    assert.match(css, /#igs-overlay\.igs-toolbar-top #igs-bar-btns\.igs-bar-overflow\{[^}]*justify-content:flex-start/);
+});
+
 test('gate:simulation:igs-ui-toolbar-dock-invalid-falls-back-to-float', async () => {
     const storage = createMemoryStorage();
     storage.setItem('igs-reader-settings-v9-default', JSON.stringify({ toolbarDock: 'bogus' }));

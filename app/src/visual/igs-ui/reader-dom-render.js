@@ -308,6 +308,25 @@ export function applyToolbarState(root, current) {
         pinned.style.gap = '6px';
         pinned.style.alignItems = 'center';
     }
+
+    // 顶部固定栏：按钮放得下时平均铺满（space-evenly），放不下时改左对齐以便横向滚动查看
+    // （space-evenly 在溢出时会把首尾按钮推出可视区且滚不到，故溢出时切 flex-start）。
+    if (collapsible && typeof collapsible.classList !== 'undefined') {
+        const measureOverflow = () => {
+            if (!dockTop) {
+                collapsible.classList.remove('igs-bar-overflow');
+                return;
+            }
+            const overflowing = collapsible.scrollWidth > collapsible.clientWidth + 1;
+            collapsible.classList.toggle('igs-bar-overflow', overflowing);
+        };
+        const win = getOwnerWindow(root);
+        if (win && typeof win.requestAnimationFrame === 'function') {
+            win.requestAnimationFrame(measureOverflow);
+        } else {
+            measureOverflow();
+        }
+    }
 }
 
 export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {

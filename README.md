@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.18`：修复三个 bug——①顶部固定工具栏下选项气泡向上生长被工具栏遮挡/截断（新增气泡 `top` 避让规则，超出走滚动）；②正文 `<content>` 带属性时 text-pipeline 正则匹配失败、兜底吐出含思考草稿的全文（正则统一为容忍属性 `<tag\b[^>]*>`）；③检定建议表的选项气泡把整行所有列都当选项（改为只取「展示文本」列，选项表宽表行为不变）。
+- 当前项目版本 `v0.23.19`：修复「顶部固定」工具栏横向滚动在真机滑不动的问题。v0.23.17 用 `justify-content:space-evenly` 让按钮平均铺满，但溢出时 `space-evenly` 会把首尾按钮推出可视区且无法滚到。改为：放得下时仍 `space-evenly` 平均铺满，放不下时由 JS 检测溢出加 `igs-bar-overflow` 切 `flex-start` 以便左右滑动；并补 `touch-action:pan-x` 保证移动端横滑不被纵向手势吞掉。
+- `v0.23.18`：修复三个 bug——①顶部固定工具栏下选项气泡向上生长被工具栏遮挡/截断（新增气泡 `top` 避让规则，超出走滚动）；②正文 `<content>` 带属性时 text-pipeline 正则匹配失败、兜底吐出含思考草稿的全文（正则统一为容忍属性 `<tag\b[^>]*>`）；③检定建议表的选项气泡把整行所有列都当选项（改为只取「展示文本」列，选项表宽表行为不变）。
 - `v0.23.17`：修复「顶部固定」工具栏按钮过多时溢出、设置键和退出键被挤出屏幕点不到的问题。按钮区改为横向滚动（隐藏滚动条），设置 ⚙ 与退出 × 固定在右侧不随之滚动、始终可见可点。
 - `v0.23.16`：设置 → 阅读器新增「图片亮度」百分比下拉（50%~100%，默认 88%）。背景图亮度此前由 CSS 硬编码 `brightness(.88)` 全局压暗，现改为按 `readerSettings.imgBrightness` 用 inline style 控制，想要原图亮度可调到 100%。
 - `v0.23.15`：修复「顶部固定」工具栏没有铺满、按钮全挤在右侧的问题。顶部模式改为按钮区 `flex:1 + space-evenly` 平均铺开整条，退出（×）键独立靠最右角；并取消顶部模式下的工具栏缩放（缩放只用于悬浮小条，全宽栏缩放会从角落缩成异形）。
@@ -177,6 +178,14 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.19 - 2026-06-26
+
+- 修复「顶部固定」工具栏横向滚动在真机（移动端）滑不动的问题。
+- 根因：v0.23.17 给 `#igs-bar-btns` 设 `justify-content:space-evenly` 实现按钮平均铺满，但 flex 容器内容溢出时 `space-evenly`（及 center/space-around）会在两端也分配间距、使滚动起点不可达、首尾按钮被推出可视区且滚不回来。
+- 修复：CSS 默认仍 `space-evenly`（放得下时平均铺满，保留 v0.23.15 的设计），新增 `#igs-bar-btns.igs-bar-overflow{justify-content:flex-start}`；`applyToolbarState` 在 rAF 后测 `scrollWidth>clientWidth`，溢出则加 `igs-bar-overflow` class 切左对齐可滚。
+- 补 `touch-action:pan-x` + `-webkit-overflow-scrolling:touch`，保证移动端横向滑动不被纵向手势吞掉。
+- 补 simulate 静态断言：overflow-x:auto / touch-action:pan-x / 溢出态 flex-start 规则存在。
 
 ### v0.23.18 - 2026-06-26
 
