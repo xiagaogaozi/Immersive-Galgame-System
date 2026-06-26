@@ -277,6 +277,7 @@ export function applyToolbarState(root, current) {
     const readerSettings = current.snapshot && current.snapshot.readerSettings || {};
     const pins = new Set(Array.isArray(readerSettings.pinnedBtns) ? readerSettings.pinnedBtns : []);
     const hiddenSet = new Set(Array.isArray(readerSettings.hiddenBtns) ? readerSettings.hiddenBtns : []);
+    const dockTop = readerSettings.toolbarDock === 'top';
     const order = Array.isArray(readerSettings.btnOrder) && readerSettings.btnOrder.length
         ? readerSettings.btnOrder
         : TOOLBAR_ACTIONS.map(([id]) => id);
@@ -288,7 +289,8 @@ export function applyToolbarState(root, current) {
             button.style.display = 'none';
         } else {
             button.style.display = '';
-            if (pins.has(id) && pinned) {
+            // 顶部固定模式下，按钮区横向滚动；设置键固定到右侧不随之滚动。
+            if ((pins.has(id) || (dockTop && id === 'settings')) && pinned) {
                 pinned.appendChild(button);
             } else if (collapsible) {
                 collapsible.appendChild(button);
@@ -297,7 +299,6 @@ export function applyToolbarState(root, current) {
     }
 
     if (collapsible) {
-        const dockTop = readerSettings.toolbarDock === 'top';
         collapsible.style.display = (current.toolbarCollapsed && !dockTop) ? 'none' : 'flex';
         collapsible.style.gap = '6px';
         collapsible.style.alignItems = 'center';

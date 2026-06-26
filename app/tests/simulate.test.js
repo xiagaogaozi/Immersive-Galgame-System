@@ -757,6 +757,15 @@ test('gate:simulation:igs-ui-toolbar-dock-top-fixes-bar-and-keeps-buttons-visibl
     assert.equal(vn.getState().igsUi.activeReader.toolbarCollapsed, true);
     assert.equal(collapsible.style.display, 'flex');
 
+    // 顶部固定模式：设置键移入固定区、退出键固定在 ctrl-bar 直属，导航键留在横滚按钮区。
+    const pinned = overlay.querySelector('#igs-bar-pinned');
+    const settingsBtn = overlay.querySelector('#igs-btn-settings');
+    const closeBtn = toolbar.querySelector('[data-act="close"]');
+    assert.equal(settingsBtn.parentNode, pinned);
+    assert.equal(closeBtn.parentNode, toolbar);
+    assert.equal(overlay.querySelector('#igs-btn-next').parentNode, collapsible);
+    assert.equal(overlay.querySelector('#igs-btn-db-panel').parentNode, collapsible);
+
     vn.destroy();
 });
 
