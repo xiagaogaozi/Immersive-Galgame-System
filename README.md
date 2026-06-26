@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.19`：修复「顶部固定」工具栏横向滚动在真机滑不动的问题。v0.23.17 用 `justify-content:space-evenly` 让按钮平均铺满，但溢出时 `space-evenly` 会把首尾按钮推出可视区且无法滚到。改为：放得下时仍 `space-evenly` 平均铺满，放不下时由 JS 检测溢出加 `igs-bar-overflow` 切 `flex-start` 以便左右滑动；并补 `touch-action:pan-x` 保证移动端横滑不被纵向手势吞掉。
+- 当前项目版本 `v0.23.20`：修复顶部固定工具栏横向滚动用手指滑不动的问题。v0.23.19 仅靠 CSS `overflow-x:auto` 在移动端 overlay 区域被原生触摸滚动吞掉而无效，改为照搬数据库标签栏的 JS 指针拖拽滚动（pointerdown 记起点 → pointermove 改 scrollLeft，仅溢出时启动，拖动后抑制误触 click）。
+- `v0.23.19`：（真机滑动仍无效，被 v0.23.20 取代）顶部固定工具栏横向滚动尝试：放得下时 `space-evenly` 平均铺满，放不下时 JS 检测溢出切 `flex-start` + `touch-action:pan-x`。
 - `v0.23.18`：修复三个 bug——①顶部固定工具栏下选项气泡向上生长被工具栏遮挡/截断（新增气泡 `top` 避让规则，超出走滚动）；②正文 `<content>` 带属性时 text-pipeline 正则匹配失败、兜底吐出含思考草稿的全文（正则统一为容忍属性 `<tag\b[^>]*>`）；③检定建议表的选项气泡把整行所有列都当选项（改为只取「展示文本」列，选项表宽表行为不变）。
 - `v0.23.17`：修复「顶部固定」工具栏按钮过多时溢出、设置键和退出键被挤出屏幕点不到的问题。按钮区改为横向滚动（隐藏滚动条），设置 ⚙ 与退出 × 固定在右侧不随之滚动、始终可见可点。
 - `v0.23.16`：设置 → 阅读器新增「图片亮度」百分比下拉（50%~100%，默认 88%）。背景图亮度此前由 CSS 硬编码 `brightness(.88)` 全局压暗，现改为按 `readerSettings.imgBrightness` 用 inline style 控制，想要原图亮度可调到 100%。
@@ -178,6 +179,13 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.20 - 2026-06-26
+
+- 修复顶部固定工具栏按钮区用手指横向滑动无效的问题（接 v0.23.19，真机实测仍滑不动）。
+- 根因：移动端 IGS overlay 区域吞掉了原生触摸滚动手势，纯 CSS `overflow-x:auto` 即使内容溢出也无法用手指滑动；数据库标签栏（`.igs-shujuku-tabs`）能滑是因为它有 JS 指针拖拽滚动实现。
+- 修复：新增 `installToolbarDragScroll`，照搬 `panel-controller` 标签栏的拖拽滚动逻辑——委托监听 `#igs-bar-btns` 的 pointerdown（仅 `scrollWidth>clientWidth` 溢出时启动）、pointermove 改 `scrollLeft`、4px 移动阈值后 setPointerCapture、pointerup/cancel 结束并在 capture 阶段抑制紧随的 click（避免拖动误触按钮）。
+- 配套 CSS：溢出态 `#igs-bar-btns.igs-bar-overflow` 加 `cursor:grab`、拖动态 `.igs-bar-dragging` 加 `cursor:grabbing`、容器加 `overscroll-behavior:contain`。
 
 ### v0.23.19 - 2026-06-26
 

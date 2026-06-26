@@ -1339,6 +1339,76 @@ export function createIgsReaderHost(options = {}) {
         });
     }
 
+    // 顶部固定工具栏按钮区横向滚动：移动端 overlay 区域吞掉了原生触摸滚动，
+    // 故照搬数据库标签栏的 JS 拖拽滚动（pointerdown 起点 → pointermove 改 scrollLeft），
+    // 仅在内容溢出时启动，拖动后抑制紧随的 click 避免误触按钮。参照 panel-controller 的标签栏拖拽。
+    function installToolbarDragScroll(root, doc) {
+        if (!root || !doc || typeof root.addEventListener !== 'function') return;
+        let strip = null;
+        let active = false;
+        let moved = false;
+        let startX = 0;
+        let startScroll = 0;
+        let pointerId = null;
+        let captured = false;
+        let suppressClick = false;
+
+        root.addEventListener('pointerdown', (event) => {
+            const s = event.target && event.target.closest ? event.target.closest('#igs-bar-btns') : null;
+            if (!s) return;
+            if (s.scrollWidth <= s.clientWidth + 1) return;
+            strip = s;
+            active = true;
+            moved = false;
+            startX = Number(event.clientX) || 0;
+            startScroll = Number(s.scrollLeft) || 0;
+            pointerId = event.pointerId !== undefined ? event.pointerId : null;
+            captured = false;
+        });
+        root.addEventListener('pointermove', (event) => {
+            if (!active || !strip) return;
+            const dx = (Number(event.clientX) || 0) - startX;
+            if (!moved && Math.abs(dx) < 4) return;
+            if (!moved) {
+                moved = true;
+                try {
+                    if (pointerId != null && strip.setPointerCapture) {
+                        strip.setPointerCapture(pointerId);
+                        captured = true;
+                    }
+                } catch (err) { /* ignore */ }
+                strip.classList.add('igs-bar-dragging');
+            }
+            strip.scrollLeft = startScroll - dx;
+            if (event.cancelable) event.preventDefault();
+        });
+        const end = () => {
+            if (!active) return;
+            active = false;
+            if (strip) {
+                try { if (captured && pointerId != null && strip.releasePointerCapture) strip.releasePointerCapture(pointerId); } catch (err) { /* ignore */ }
+                strip.classList.remove('igs-bar-dragging');
+            }
+            if (moved) {
+                suppressClick = true;
+                const win = doc.defaultView || globalThis;
+                if (win && typeof win.setTimeout === 'function') win.setTimeout(() => { suppressClick = false; }, 160);
+            }
+            strip = null;
+            pointerId = null;
+            captured = false;
+        };
+        root.addEventListener('pointerup', end);
+        root.addEventListener('pointercancel', end);
+        // 拖动后抑制紧随的 click（capture 阶段拦在按钮 click 处理之前）。
+        root.addEventListener('click', (event) => {
+            if (!suppressClick) return;
+            suppressClick = false;
+            event.stopPropagation();
+            event.preventDefault();
+        }, true);
+    }
+
     function mountReaderDom(snapshot, controller) {
         const doc = getRootDocument(options.global);
         if (!doc) return null;
@@ -1350,6 +1420,7 @@ export function createIgsReaderHost(options = {}) {
         // 挂到 documentElement 而非 body：宿主移动端把 body 设为 position:fixed 且尺寸受限，
         // 会成为 overlay fixed 定位的包含块，导致 100% 取到 body 尺寸而非视口（阅读器被压成一小块）。
         (doc.documentElement || doc.body).appendChild(root);
+        installToolbarDragScroll(root, doc);
         root.addEventListener('click', async (event) => {
             const button = event.target.closest('[data-act]');
             if (!button) return;
