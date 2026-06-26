@@ -77,6 +77,7 @@ export const READER_REQUIRED_SETTINGS_PATHS = Object.freeze([
     'readerSettings.toolbarScale',
     'readerSettings.toolbarDock',
     'readerSettings.imgMode',
+    'readerSettings.imgBrightness',
     'readerSettings.showStatusLine',
     'readerSettings.pinnedBtns',
     'readerSettings.hiddenBtns',

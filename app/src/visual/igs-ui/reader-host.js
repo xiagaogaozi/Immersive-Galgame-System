@@ -34,6 +34,7 @@ import {
     firstDefined,
     firstNonEmptyString,
     firstRenderableText,
+    clampNumber,
     normalizeBoolean,
     normalizeFiniteIndex,
     normalizeFiniteNumber,
@@ -1309,6 +1310,7 @@ export function createIgsReaderHost(options = {}) {
             toolbarScaleField: field('readerSettings.toolbarScale', '工具栏大小', selectInput('readerSettings.toolbarScale', reader.toolbarScale, [20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((n) => [n, `${n}%`]))),
             toolbarDockField: field('readerSettings.toolbarDock', '工具栏位置', selectInput('readerSettings.toolbarDock', reader.toolbarDock || 'float', [['float', '悬浮'], ['top', '顶部固定']])),
             imgModeField: field('readerSettings.imgMode', '图像显示模式', selectInput('readerSettings.imgMode', reader.imgMode, [['adaptive', '自适应'], ['contain', '完整']])),
+            imgBrightnessField: field('readerSettings.imgBrightness', '图片亮度', selectInput('readerSettings.imgBrightness', reader.imgBrightness, [50, 60, 70, 80, 88, 90, 100].map((n) => [n, `${n}%`]))),
             readerToggles: checkbox('readerSettings.glassBackdropFilter', reader.glassBackdropFilter, '启用背景滤镜')
                 + checkbox('readerSettings.showStatusLine', reader.showStatusLine, '显示状态行')
                 + checkbox('bridge.sentencePaging', Boolean(bridge.sentencePaging), '按句号自动分页（启用场景素材时仅分旁白）'),
@@ -1797,6 +1799,7 @@ export function createIgsReaderHost(options = {}) {
             toolbarDock: 'float',
             inputScale: 100,
             imgMode: 'adaptive',
+            imgBrightness: 88,
             showStatusLine: false,
             imageCountOverride: null,
             pinnedBtns: Array.from(DEFAULT_PINNED_TOOLBAR_BUTTONS),
@@ -1814,6 +1817,7 @@ export function createIgsReaderHost(options = {}) {
         normalized.toolbarDock = normalized.toolbarDock === 'top' ? 'top' : 'float';
         normalized.inputScale = normalizeFiniteNumber(normalized.inputScale, base.inputScale);
         normalized.imgMode = normalized.imgMode === 'contain' ? 'contain' : 'adaptive';
+        normalized.imgBrightness = clampNumber(normalizeFiniteNumber(normalized.imgBrightness, base.imgBrightness), 10, 100);
         normalized.showStatusLine = normalizeBoolean(normalized.showStatusLine, false);
         normalized.imageCountOverride = normalizeNullableNumber(normalized.imageCountOverride);
         normalized.pinnedBtns = normalizePinnedButtons(normalized.pinnedBtns);

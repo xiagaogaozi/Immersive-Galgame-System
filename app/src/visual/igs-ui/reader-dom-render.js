@@ -402,6 +402,8 @@ export function applyReaderSettingsToDom(root, snapshot, current, refs = {}) {
     if (bg) {
         bg.style.backgroundSize = readerSettings.imgMode === 'contain' ? 'contain' : 'cover';
         bg.style.backgroundColor = '#000';
+        const brightness = Number(readerSettings.imgBrightness);
+        bg.style.filter = `brightness(${(Number.isFinite(brightness) ? brightness : 88) / 100})`;
     }
     if (bgBlur) {
         bgBlur.style.backgroundSize = readerSettings.imgMode === 'contain' ? 'cover' : 'cover';
