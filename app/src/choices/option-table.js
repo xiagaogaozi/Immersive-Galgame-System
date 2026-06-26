@@ -9,6 +9,12 @@ function isRowIdColumn(name) {
     return n === 'row_id' || n === 'rowid' || n === 'id' || n === '序号';
 }
 
+// 「检定建议表」是多业务字段表（展示文本/对抗/角色/属性…），只取「展示文本」列；
+// 其余选项表是宽表（每列一个并列选项），取全部非 row_id 列。
+function findDisplayTextColumn(columns) {
+    return columns.findIndex((column) => String(column || '').replace(/\s+/g, '') === '展示文本');
+}
+
 export function findOptionTable(tables) {
     const list = Array.isArray(tables) ? tables : [];
     for (const wanted of OPTION_TABLE_NAMES) {
@@ -19,13 +25,20 @@ export function findOptionTable(tables) {
 }
 
 // 从一张表里提取选项文本：取首个非 row_id 列的每行内容，去空去重。
+// 若表含「展示文本」列，则只取该列（用于检定建议表这类多列表）。
 export function extractOptionTexts(table) {
     if (!table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) return [];
-    let textCols = table.columns
-        .map((column, index) => ({ column, index }))
-        .filter((item) => !isRowIdColumn(item.column))
-        .map((item) => item.index);
-    if (!textCols.length) textCols = table.columns.length > 1 ? [1] : [0];
+    const displayCol = findDisplayTextColumn(table.columns);
+    let textCols;
+    if (displayCol >= 0) {
+        textCols = [displayCol];
+    } else {
+        textCols = table.columns
+            .map((column, index) => ({ column, index }))
+            .filter((item) => !isRowIdColumn(item.column))
+            .map((item) => item.index);
+        if (!textCols.length) textCols = table.columns.length > 1 ? [1] : [0];
+    }
     const seen = new Set();
     const out = [];
     for (const row of table.rows) {

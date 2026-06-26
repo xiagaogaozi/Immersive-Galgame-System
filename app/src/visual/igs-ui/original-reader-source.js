@@ -72,6 +72,8 @@ const ORIGINAL_READER_STYLE_TEXT = `
 /* 纵向定位：所有位置统一吊在对话框正上方。 */
 #igs-option-bubbles[data-igs-pos]{bottom:calc(24px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 12px);}
 #igs-overlay.igs-floating #igs-option-bubbles[data-igs-pos]{bottom:calc(14px + var(--igs-dialog-h,220px) + var(--igs-toolbar-h,50px) + 10px);}
+/* 顶部固定工具栏：工具栏在屏幕顶端而非底部，气泡须避让顶部工具栏（加 top 下限，超出走滚动），底部不再为工具栏留空。 */
+#igs-overlay.igs-toolbar-top #igs-option-bubbles[data-igs-pos]{top:calc(var(--igs-toolbar-h,50px) + 12px);bottom:calc(24px + var(--igs-dialog-h,220px) + 12px);max-height:none;}
 .igs-option-bubble{pointer-events:auto;cursor:pointer;border:1px solid var(--igs-choice-border,rgba(255,255,255,.14));background:var(--igs-choice-bg,var(--igs-glass-bg,rgba(20,20,22,.62)));-webkit-backdrop-filter:var(--igs-choice-blur,none);backdrop-filter:var(--igs-choice-blur,none);border-radius:var(--igs-choice-radius,18px);padding:10px 16px;color:#f4f4f6;font-size:14px;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.92),0 0 8px rgba(0,0,0,.7);box-shadow:var(--igs-choice-shadow,0 2px 10px rgba(0,0,0,.14));max-width:100%;word-break:break-word;transition:background .15s,transform .1s;}
 .igs-option-bubble:hover{background:rgba(60,60,66,.32);}
 .igs-option-bubble:active{transform:scale(.97);}

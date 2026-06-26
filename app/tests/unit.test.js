@@ -160,6 +160,35 @@ test('gate:scene:text-filter-preset:extracts-content', () => {
     assert.deepEqual(scene.textPipelineErrors, []);
 });
 
+test('gate:scene:text-filter-preset:extracts-content-with-attributes', () => {
+    // 真机回归：content 带属性（<content data-igs-formatted="1">）时，
+    // 此前 text-pipeline 正则不容忍属性 → 匹配失败 → 兜底吐出含思考草稿的全文。
+    const textFilterPreset = readJson('fixtures/text/text-filter-preset.json');
+    const raw = [
+        '<!-- begin_of_Subtext_think -->',
+        'Atri: 大段思考草稿，不应进入正文。',
+        '<!-- end_of_Subtext_think -->',
+        '</thinking>',
+        '### 正文',
+        '<now_plot>',
+        '<content data-igs-formatted="1">',
+        '[igs-scene:白府偏房|早晨|晴天]',
+        '正文第一句。',
+        '正文第二句。',
+        '</content>',
+        '</now_plot>',
+    ].join('\n');
+    const scene = parseSceneText(raw, { messageId: 1, textFilterPreset });
+
+    assert.equal(scene.sourceKind, 'tagged-content');
+    assert.equal(scene.text.includes('大段思考草稿'), false);
+    assert.equal(scene.text.includes('</thinking>'), false);
+    assert.equal(scene.text.includes('### 正文'), false);
+    assert.equal(scene.text.includes('now_plot'), false);
+    assert.equal(scene.text.includes('正文第一句。'), true);
+    assert.equal(scene.text.includes('正文第二句。'), true);
+});
+
 test('gate:scene:text-format-preset:applies-replacement', () => {
     const message = readJson('fixtures/text/tagged-content-message.json');
     const textFilterPreset = readJson('fixtures/text/text-filter-preset.json');
@@ -1701,6 +1730,20 @@ test('gate:choices:option-table extracts wide option rows', () => {
         rows: [['1', '报警', '找工具', '原地等待', '离开']],
     };
     assert.deepEqual(extractOptionTexts(table), ['报警', '找工具', '原地等待', '离开']);
+});
+
+test('gate:choices:option-table 检定建议表 only extracts 展示文本 column', () => {
+    const table = {
+        uid: 'sheet_3',
+        name: '检定建议表',
+        columns: ['row_id', '展示文本', '对抗', '角色', '属性'],
+        rows: [
+            ['1', '力量对抗试试看', '对抗', '哪吒', '力量'],
+            ['2', '用话术周旋', '对抗', '白墨', '话术'],
+        ],
+    };
+    // 多业务字段表只取「展示文本」列，不把对抗/角色/属性等列也当选项。
+    assert.deepEqual(extractOptionTexts(table), ['力量对抗试试看', '用话术周旋']);
 });
 
 test('gate:choices:option-table accepts 选项/行动选项 aliases', () => {

@@ -9,6 +9,7 @@ import { createDbTabClickGuard, toShujukuApiRowIndex } from '../src/shujuku-pane
 import { renderDbPanelInner, getDbPanelStyles } from '../src/shujuku-panel/panel-render.js';
 import { createResourceCache } from '../src/media/resource-cache.js';
 import { buildIgsTextPayload } from '../src/scene/message-source.js';
+import { getOriginalReaderStyleText } from '../src/visual/igs-ui/original-reader-source.js';
 import { VISUAL_MODES } from '../src/visual/visual-mode.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
@@ -767,6 +768,15 @@ test('gate:simulation:igs-ui-toolbar-dock-top-fixes-bar-and-keeps-buttons-visibl
     assert.equal(overlay.querySelector('#igs-btn-db-panel').parentNode, collapsible);
 
     vn.destroy();
+});
+
+test('gate:simulation:igs-ui-toolbar-top-has-option-bubble-avoidance-css', () => {
+    // 顶部固定模式：选项气泡须有 top 避让规则，防止向上生长被顶部工具栏遮挡/截断。
+    const css = getOriginalReaderStyleText();
+    assert.match(
+        css,
+        /#igs-overlay\.igs-toolbar-top #igs-option-bubbles\[data-igs-pos\]\{[^}]*top:calc\(var\(--igs-toolbar-h/,
+    );
 });
 
 test('gate:simulation:igs-ui-toolbar-dock-invalid-falls-back-to-float', async () => {
