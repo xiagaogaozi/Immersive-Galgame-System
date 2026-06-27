@@ -1297,9 +1297,9 @@ export function createIgsReaderHost(options = {}) {
         const sceneEnabled = !!(bridge.sceneAssets && bridge.sceneAssets.enabled);
         const themeDisabled = !sceneEnabled;
         const vnTheme = reader.vnTheme || {};
-        const themeCustom = vnTheme.preset === 'custom';
-        const activePreset = VN_THEME_PRESETS[vnTheme.preset] || VN_THEME_PRESETS.minimal;
-        const displayTheme = themeCustom ? vnTheme : activePreset;
+        // 对话主题已取消预设选择，恒为自定义：自定义项始终可编辑（仅受场景素材开关 themeDisabled 控制）。
+        const themeCustom = true;
+        const displayTheme = vnTheme;
         return renderTemplate(getSettingsTabTemplate('reader'), {
             fontSizeField: field('readerSettings.fontSize', '字体大小', selectInput('readerSettings.fontSize', reader.fontSize, [12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30].map((n) => [n, `${n}px`]))),
             dialogWidthField: field('readerSettings.dialogWidth', '对话框宽度', selectInput('readerSettings.dialogWidth', reader.dialogWidth === null ? 'null' : reader.dialogWidth, [['null', '自动'], [200, '200px'], [280, '280px'], [360, '360px'], [440, '440px'], [520, '520px'], [600, '600px'], [680, '680px'], [760, '760px'], [840, '840px'], [920, '920px'], [1000, '1000px'], [1080, '1080px'], [1160, '1160px'], [1280, '1280px']])),
@@ -1320,12 +1320,12 @@ export function createIgsReaderHost(options = {}) {
             optionBubbleWidthToggle: checkbox('bridge.optionBubble.widthFollowsText', Boolean(bridge.optionBubble && bridge.optionBubble.widthFollowsText), '气泡宽度随文本变化（关闭则跟随对话框宽度：居中=满宽，左/右上角=半宽）'),
             pinnedButtonsField: renderPinnedButtons(reader.pinnedBtns, reader.hiddenBtns, reader.btnOrder),
             themeGroupClass: `igs-source-filter igs-settings-full${themeDisabled ? ' igs-settings-api-group is-disabled' : ''}`,
-            themePresetField: field('readerSettings.vnTheme.preset', '对话主题', selectInput('readerSettings.vnTheme.preset', vnTheme.preset || 'genshin', [['genshin', '原神风'], ['honkai', '崩铁风'], ['minimal', '极简'], ['custom', '自定义']], themeDisabled)),
+            themePresetField: '',
             nameAlignField: field('readerSettings.vnTheme.nameAlign', '对齐', selectInput('readerSettings.vnTheme.nameAlign', displayTheme.nameAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
             textAlignField: field('readerSettings.vnTheme.textAlign', '对齐', selectInput('readerSettings.vnTheme.textAlign', displayTheme.textAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
             narrationAlignField: field('readerSettings.vnTheme.narrationAlign', '对齐', selectInput('readerSettings.vnTheme.narrationAlign', displayTheme.narrationAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
             thoughtAlignField: field('readerSettings.vnTheme.thoughtAlign', '对齐', selectInput('readerSettings.vnTheme.thoughtAlign', displayTheme.thoughtAlign || 'left', [['left', '左对齐'], ['center', '居中'], ['indent', '首行缩进']], themeDisabled || !themeCustom)),
-            dividerField: field('readerSettings.vnTheme.dividerSymbol', '样式', selectInput('readerSettings.vnTheme.dividerSymbol', displayTheme.dividerSymbol || '───◇───', [['───◇───', '───◇───'], ['──✦──', '──✦──'], ['══', '══'], ['gradient', '渐变线'], ['none', '无']], themeDisabled || !themeCustom)),
+            dividerField: field('readerSettings.vnTheme.dividerSymbol', '样式', selectInput('readerSettings.vnTheme.dividerSymbol', displayTheme.dividerSymbol || 'gradient', [['gradient', '渐变线'], ['none', '无']], themeDisabled || !themeCustom)),
             nameFontField: field('readerSettings.vnTheme.nameFont', '字体', selectInput('readerSettings.vnTheme.nameFont', displayTheme.nameFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], themeDisabled || !themeCustom)),
             textFontField: field('readerSettings.vnTheme.textFont', '字体', selectInput('readerSettings.vnTheme.textFont', displayTheme.textFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], themeDisabled || !themeCustom)),
             thoughtFontField: field('readerSettings.vnTheme.thoughtFont', '字体', selectInput('readerSettings.vnTheme.thoughtFont', displayTheme.thoughtFont || 'inherit', [['inherit', '默认'], ['"KaiTi","STKaiti",serif', '楷体'], ['"SimHei",sans-serif', '黑体'], ['"FangSong","STFangsong",serif', '仿宋'], ['"Microsoft YaHei",sans-serif', '微软雅黑']], themeDisabled || !themeCustom)),
@@ -1833,15 +1833,16 @@ export function createIgsReaderHost(options = {}) {
 
     function normalizeVnTheme(value) {
         const normalized = cloneData(value || {});
-        const validPresets = ['genshin', 'honkai', 'minimal', 'custom'];
-        if (!validPresets.includes(normalized.preset)) normalized.preset = 'genshin';
-        const fallback = VN_THEME_PRESETS[normalized.preset] || VN_THEME_PRESETS.genshin;
+        // 对话主题已取消预设选择，恒为自定义；用 genshin 作为各字段的初值来源（fallback）。
+        normalized.preset = 'custom';
+        const fallback = VN_THEME_PRESETS.genshin;
         const normalizeAlign = (value, def) => (value === 'left' || value === 'center' || value === 'indent') ? value : def;
         normalized.nameAlign = normalizeAlign(normalized.nameAlign, fallback.nameAlign);
         normalized.textAlign = normalizeAlign(normalized.textAlign, fallback.textAlign || 'left');
         normalized.narrationAlign = normalizeAlign(normalized.narrationAlign, fallback.narrationAlign || 'left');
         normalized.thoughtAlign = normalizeAlign(normalized.thoughtAlign, fallback.thoughtAlign || 'left');
-        normalized.dividerSymbol = normalized.dividerSymbol || fallback.dividerSymbol;
+        // 分割线只保留「渐变线(gradient)」与「无(none)」；旧符号样式一律归到渐变线。
+        normalized.dividerSymbol = normalized.dividerSymbol === 'none' ? 'none' : 'gradient';
         normalized.nameFont = normalized.nameFont || fallback.nameFont;
         normalized.textFont = normalized.textFont || fallback.textFont;
         normalized.thoughtFont = normalized.thoughtFont || fallback.thoughtFont;

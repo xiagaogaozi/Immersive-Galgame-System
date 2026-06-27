@@ -20,6 +20,8 @@ const SETTINGS_STYLE_TEXT = `
 .igs-settings-field em{font-style:normal;font-size:11px;color:rgba(255,255,255,.36);line-height:1.45}
 .igs-settings-field input,.igs-settings-field select,.igs-settings-field textarea{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);border-radius:11px;padding:9px 11px;font:inherit;font-size:13px;outline:none}
 .igs-settings-field input[type="color"]{width:42px;height:36px;padding:3px;border-radius:8px;cursor:pointer}
+.igs-scene-preset-select{box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:rgba(255,255,255,.92);border-radius:11px;padding:9px 11px;font:inherit;font-size:13px;outline:none;height:38px}
+.igs-scene-preset-select:focus{border-color:rgba(92,170,255,.58);background:rgba(255,255,255,.11)}
 .igs-settings-field textarea{min-height:132px;resize:vertical;line-height:1.55;font-family:ui-monospace,Consolas,monospace}
 .igs-settings-field input:focus,.igs-settings-field select:focus,.igs-settings-field textarea:focus{border-color:rgba(92,170,255,.58);background:rgba(255,255,255,.11)}
 .igs-settings-api-group{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
