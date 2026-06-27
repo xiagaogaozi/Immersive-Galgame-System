@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.22`：清理 loader 冗余——删掉 58 个内容全同、都指向 `@main` 的「（自动更新） vX.Y.Z.json」副本（它们文件名带版本号却不锁版本、纯冗余）。改为两类 loader：`igs-loader.json`（自动更新版，追 main）+ 按需生成的固定版 `沉浸式Galgame系统 vX.Y.Z.json`（注入 `IGS_LOADER_REF` 真正锁定该 tag、不自动更新）。本轮产出 v0.23.21、v0.23.15 两个固定版 loader。
+- 当前项目版本 `v0.23.23`：再修移动端对话框左下角漏直角。根因是 floating 对话框 `transform:none` 不创建合成层，移动端在 `#igs-bg`（带 filter 的合成层）之上渲染时，对话框圆角缺口处把背后黑渐变渲染成直角硬边（桌面 pc 模式用 `translateX(-50%)` 本就是合成层故正常）。改 floating 对话框 `transform:translateZ(0)` 补合成层；移除上版无效的 `isolation:isolate`。
+- `v0.23.22`：清理 loader 冗余，改为锁定 tag 的固定版 loader 机制。
 - `v0.23.21`：①对话主题取消预设下拉、恒自定义；②分割线只留渐变线/无；③场景预设框统一样式；④修复对话框左下角漏直角。
 - `v0.23.20`：修复顶部固定工具栏横向滚动用手指滑不动的问题，改为照搬数据库标签栏的 JS 指针拖拽滚动。
 - `v0.23.19`：（真机滑动仍无效，被 v0.23.20 取代）顶部固定工具栏横向滚动尝试：放得下时 `space-evenly` 平均铺满，放不下时 JS 检测溢出切 `flex-start` + `touch-action:pan-x`。
@@ -181,6 +182,12 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.23 - 2026-06-27
+
+- 再修移动端对话框左下角漏直角（v0.23.21 加 `isolation:isolate` 无效，本版换方案）。
+- 定位：桌面 pc 模式对话框用 `transform:translateX(-50%)` 本身就是 GPU 合成层，圆角裁剪正常；移动端 floating 模式用 `transform:none`，对话框是非合成层。v0.23.16 给 `#igs-bg` 加 `filter:brightness` 后，`#igs-bg` 成为合成层，移动端在它之上渲染非合成的圆角对话框时，圆角缺口处把背后 `#igs-bg::after` 的矩形黑渐变渲染成直角硬边（开 backdrop-filter 毛玻璃时被模糊掩盖、桌面合成精度高也看不出，故只在「移动端 + 关毛玻璃」复现）。
+- 修复：floating 对话框 `transform:none` → `transform:translateZ(0)`，强制创建合成层，使其圆角裁剪行为与桌面 pc 模式一致；移除基础 `.igs-dialog` 上版无效的 `isolation:isolate`。
 
 ### v0.23.22 - 2026-06-27
 
