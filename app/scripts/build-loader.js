@@ -6,13 +6,43 @@ const projectRoot = path.resolve(appRoot, '..');
 const loaderRoot = path.join(projectRoot, 'loader');
 const jsPath = path.join(loaderRoot, 'igs-loader.js');
 const jsonPath = path.join(loaderRoot, 'igs-loader.json');
-const packageJson = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8'));
-const releaseJsonName = `酒馆助手脚本-沉浸式Galgame系统（自动更新） v${packageJson.version}.json`;
-const releaseJsonPath = path.join(loaderRoot, releaseJsonName);
 
 const content = fs.readFileSync(jsPath, 'utf8');
 if (!content.includes('igs.bundle.js') || !content.includes('igs.bundle.css')) {
     throw new Error('Loader source must reference igs.bundle.js and igs.bundle.css.');
+}
+
+// 版本化固定 loader：在 loader 源前注入 IGS_LOADER_REF，把它锁定到具体 tag（不追 main、不自动更新）。
+function buildPinnedContent(source, ref) {
+    const prefix = `(function(){try{(window.parent&&window.parent.document?window.parent:window).IGS_LOADER_REF=${JSON.stringify(ref)};}catch(e){try{window.IGS_LOADER_REF=${JSON.stringify(ref)};}catch(e2){}}})();\n`;
+    return prefix + source;
+}
+
+function writePinnedLoader(ref) {
+    const pinnedContent = buildPinnedContent(content, ref);
+    const pinnedName = `沉浸式Galgame系统 ${ref}.json`;
+    const pinnedPath = path.join(loaderRoot, pinnedName);
+    const pinnedJson = {
+        type: 'script',
+        enabled: false,
+        name: `沉浸式Galgame系统 ${ref}`,
+        id: `igs-pinned-${ref}`,
+        content: pinnedContent,
+        info: [
+            `Immersive Galgame System 固定版 loader（锁定 ${ref}，不自动更新）。`,
+            `从 GitHub/jsDelivr 加载 ${ref} tag 的 app/dist/igs.bundle.css 与 igs.bundle.js。`,
+            '如需自动更新，请改用「沉浸式Galgame系统（自动更新）」loader。',
+        ].join('\n'),
+        button: { enabled: false, buttons: [] },
+        data: {},
+        export_with: { data: true, button: true },
+    };
+    fs.writeFileSync(pinnedPath, `${JSON.stringify(pinnedJson, null, 2)}\n`, 'utf8');
+    const verify = JSON.parse(fs.readFileSync(pinnedPath, 'utf8'));
+    if (verify.content !== pinnedContent || !verify.content.includes(`IGS_LOADER_REF=${JSON.stringify(ref)}`)) {
+        throw new Error(`Pinned loader JSON for ${ref} does not match source.`);
+    }
+    console.log(`loader:pinned ok ${path.relative(projectRoot, pinnedPath)}`);
 }
 
 const loaderJson = {
@@ -38,19 +68,26 @@ const loaderJson = {
 };
 
 fs.writeFileSync(jsonPath, `${JSON.stringify(loaderJson, null, 2)}\n`, 'utf8');
-fs.writeFileSync(releaseJsonPath, `${JSON.stringify(loaderJson, null, 2)}\n`, 'utf8');
 
 const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
 if (parsed.content !== content) {
     throw new Error('Loader JSON content does not match loader source.');
 }
-const releaseParsed = JSON.parse(fs.readFileSync(releaseJsonPath, 'utf8'));
-if (releaseParsed.content !== content || releaseParsed.name !== loaderJson.name) {
-    throw new Error('Versioned release JSON does not match loader source.');
-}
 
 console.log(`loader:build ok ${path.relative(projectRoot, jsonPath)}`);
-console.log(`loader:release ok ${path.relative(projectRoot, releaseJsonPath)}`);
+
+// 固定版 loader 按需生成：`node scripts/build-loader.js --pin v0.23.21 v0.23.15`
+// 不传 --pin 时只更新自动更新版 + debug 版，不生成任何 pinned（避免每次升号堆文件）。
+const pinArgIndex = process.argv.indexOf('--pin');
+if (pinArgIndex !== -1) {
+    const refs = process.argv.slice(pinArgIndex + 1).filter((arg) => /^v\d+\.\d+\.\d+$/.test(arg));
+    if (!refs.length) {
+        throw new Error('--pin requires at least one vX.Y.Z ref.');
+    }
+    for (const ref of refs) {
+        writePinnedLoader(ref);
+    }
+}
 
 // Debug loader: derived from the production source so it never drifts.
 // Difference: sets root.IGS_DEBUG = true before injecting the bundle, enabling

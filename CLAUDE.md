@@ -30,7 +30,16 @@ npm run build   # 构建 bundle
 1. `app/package.json` — `"version": "X.Y.Z"`
 2. `app/src/core/bootstrap.js` — `const IGS_VERSION = 'X.Y.Z'`
 3. `README.md` — 当前状态行和更新日志
-4. 升号后必须 `npm run build`（dist bundle 内 `IGS version` 注释随之更新）+ `npm run build:loader`（生成 `loader/…… vX.Y.Z.json`）
+4. 升号后必须 `npm run build`（dist bundle 内 `IGS version` 注释随之更新）+ `npm run build:loader`（更新 `loader/igs-loader.json` 自动更新版 + 生成当前版本的固定版 `loader/沉浸式Galgame系统 vX.Y.Z.json`）
+
+## Loader 说明
+
+`loader/` 下有两类 loader：
+
+- **自动更新版** `igs-loader.json`（脚本名「沉浸式Galgame系统（自动更新）」）：拉取 `@main` 最新代码，push 到 main 后真机即可加载验证。这是开发/日常使用的 loader，固定一个文件、不带版本号。
+- **固定版** `沉浸式Galgame系统 vX.Y.Z.json`：在 loader 源前注入 `IGS_LOADER_REF='vX.Y.Z'`，锁定加载该 tag 的 bundle、不自动更新。`build:loader` 会按当前 `package.json` 版本生成。固定版要真正可用，前提是 `vX.Y.Z` tag 已打并推送（否则 jsDelivr 拉 `@vX.Y.Z` 会 404）。
+
+历史上曾每次升号生成一份「（自动更新） vX.Y.Z.json」副本，但它们内容全同且都指向 `@main`、不锁版本，纯属冗余，已于 v0.23.21 清理，并改为上述固定版机制。
 
 `app/tests/gate-contract.test.js` 与 `app/tests/simulate.test.js` 自 v0.23.9 起已改为动态读 `package.json` 版本号（`pkgVersion`/`readJson`），无需手改；但升号后必须重新 `npm run build` 让 dist 版本号对齐，否则 `gate-contract` 校验 dist 版本会失败。
 

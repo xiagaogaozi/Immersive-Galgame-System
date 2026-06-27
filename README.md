@@ -19,7 +19,8 @@ JS-Slash-Runner（酒馆助手）Immersive Galgame System 项目。
 
 - 阶段：最小闭环已接通
 - 形态：独立 app 工程，已有 Node 原生测试与验收闸门
-- 当前项目版本 `v0.23.21`：①对话主题取消预设下拉（删原神风/崩铁风/极简），恒为自定义、各项始终可编辑；②分割线只保留「渐变线」和「无」，删掉三种符号样式；③场景预设选择框套用统一 UI 样式（字体/圆角/高度对齐其它设置框）；④修复无背景滤镜下对话框左下角漏直角（v0.23.16 给 `#igs-bg` 加 `filter:brightness` 创建合成层导致，给 `.igs-dialog` 加 `isolation:isolate` 独立合成）。
+- 当前项目版本 `v0.23.22`：清理 loader 冗余——删掉 58 个内容全同、都指向 `@main` 的「（自动更新） vX.Y.Z.json」副本（它们文件名带版本号却不锁版本、纯冗余）。改为两类 loader：`igs-loader.json`（自动更新版，追 main）+ 按需生成的固定版 `沉浸式Galgame系统 vX.Y.Z.json`（注入 `IGS_LOADER_REF` 真正锁定该 tag、不自动更新）。本轮产出 v0.23.21、v0.23.15 两个固定版 loader。
+- `v0.23.21`：①对话主题取消预设下拉、恒自定义；②分割线只留渐变线/无；③场景预设框统一样式；④修复对话框左下角漏直角。
 - `v0.23.20`：修复顶部固定工具栏横向滚动用手指滑不动的问题，改为照搬数据库标签栏的 JS 指针拖拽滚动。
 - `v0.23.19`：（真机滑动仍无效，被 v0.23.20 取代）顶部固定工具栏横向滚动尝试：放得下时 `space-evenly` 平均铺满，放不下时 JS 检测溢出切 `flex-start` + `touch-action:pan-x`。
 - `v0.23.18`：修复三个 bug——①顶部固定工具栏下选项气泡向上生长被工具栏遮挡/截断（新增气泡 `top` 避让规则，超出走滚动）；②正文 `<content>` 带属性时 text-pipeline 正则匹配失败、兜底吐出含思考草稿的全文（正则统一为容忍属性 `<tag\b[^>]*>`）；③检定建议表的选项气泡把整行所有列都当选项（改为只取「展示文本」列，选项表宽表行为不变）。
@@ -180,6 +181,15 @@ projects/Immersive Galgame System/
 15. `loader/` 只放自动更新入口；阅读器、设置面板、shujuku、Provider、Mod、Preset、Pack 等业务逻辑必须留在 `app/src/`。
 
 ## 更新日志
+
+### v0.23.22 - 2026-06-27
+
+- **清理 loader 冗余**：删掉 `loader/` 下 58 个「酒馆助手脚本-沉浸式Galgame系统（自动更新） vX.Y.Z.json」副本——它们内容完全相同、都写死 `@main`，文件名带版本号却不锁版本，对自动更新 loader 毫无作用，纯属每次升号攒下的冗余。
+- **改为两类 loader**：
+  - 自动更新版 `igs-loader.json`（脚本名「沉浸式Galgame系统（自动更新）」）：拉 `@main` 最新，开发/日常用。
+  - 固定版 `沉浸式Galgame系统 vX.Y.Z.json`：在 loader 源前注入 `IGS_LOADER_REF='vX.Y.Z'`，真正锁定加载该 tag 的 bundle、不自动更新；脚本名去掉「自动更新」。
+- `build-loader.js` 改为按需生成固定版：`node scripts/build-loader.js --pin v0.23.21 v0.23.15`，不传 `--pin` 只更新自动更新版 + debug 版（不再每次升号堆 pinned 文件）。
+- 本轮产出 `沉浸式Galgame系统 v0.23.21.json` 和 `沉浸式Galgame系统 v0.23.15.json`。注意：固定版要真正可用需对应 tag 已推送；`v0.23.15` tag 此前未打，需补打后该固定版才能从 jsDelivr 加载。
 
 ### v0.23.21 - 2026-06-27
 

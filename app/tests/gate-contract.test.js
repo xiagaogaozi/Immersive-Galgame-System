@@ -133,10 +133,14 @@ test('gate:loader-json:matches loader source and references public bundle', () =
     assert.equal(loaderJson.button.enabled, false);
     assert.deepEqual(loaderJson.button.buttons, []);
 
-    const pkgVersion = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')).version;
-    const releaseJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', `酒馆助手脚本-沉浸式Galgame系统（自动更新） v${pkgVersion}.json`), 'utf8'));
-    assert.equal(releaseJson.name, loaderJson.name);
-    assert.equal(releaseJson.content, loaderSource);
+    // 固定版 loader：锁定具体 tag、注入 IGS_LOADER_REF、不自动更新。按需生成（--pin），
+    // 不随升号自动产出，故校验已发布的 v0.23.21 固定版格式正确。
+    const pinnedRef = 'v0.23.21';
+    const pinnedJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'loader', `沉浸式Galgame系统 ${pinnedRef}.json`), 'utf8'));
+    assert.equal(pinnedJson.name, `沉浸式Galgame系统 ${pinnedRef}`);
+    assert.match(pinnedJson.content, new RegExp(`IGS_LOADER_REF=["']${pinnedRef.replace(/\./g, '\\.')}["']`));
+    assert.ok(pinnedJson.content.includes(loaderSource), '固定版 loader 应包含完整 loader 源');
+    assert.match(pinnedJson.content, /igs\.bundle\.js/);
 });
 
 test('gate:dist-bundle:is-self-contained-for-loader-cache-bust', () => {
